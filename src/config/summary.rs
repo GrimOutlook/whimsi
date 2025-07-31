@@ -1,9 +1,11 @@
 use flexstr::LocalStr;
 use serde::Deserialize;
+use serde_inline_default::serde_inline_default;
 
 /// # Summary Information Properties
 ///
 /// [Reference](https://learn.microsoft.com/en-us/windows/win32/msi/summary-property-descriptions)
+#[serde_inline_default]
 #[derive(Deserialize)]
 pub(crate) struct SummaryConfig {
     /// *Required*
@@ -11,7 +13,8 @@ pub(crate) struct SummaryConfig {
     /// Contains the minimum installer version required by the installation
     /// package.
     ///
-    /// - [Reference](https://learn.microsoft.com/en-us/windows/win32/msi/page-count-summary)
+    /// [Reference](https://learn.microsoft.com/en-us/windows/win32/msi/page-count-summary)
+    #[serde_inline_default(200)]
     pub(crate) page_count: u16,
     /// *Required*
     ///
@@ -43,7 +46,8 @@ pub(crate) struct SummaryConfig {
     /// stored in the summary information
     ///
     /// [Reference](https://learn.microsoft.com/en-us/windows/win32/msi/codepage-summary)
-    pub(crate) code_page: Option<String>,
+    #[serde_inline_default(Some(lcid::constants::LANG_EN_US.ansi_code_page.unwrap().into()))]
+    pub(crate) code_page: Option<u32>,
     /// Conveys the general purpose of the installation package, transform, or
     /// patch package.
     ///

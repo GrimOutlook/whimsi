@@ -49,10 +49,10 @@ author = "Test Name"
         let c: MsiConfig = toml::from_str(TEST_CONFIG).unwrap();
 
         // Product Info Properties
-        assert_eq!(c.product_info.product_name, "Test Application");
-        assert_eq!(c.product_info.product_version, "22.1.15");
+        assert_eq!(c.product_info.name, "Test Application");
+        assert_eq!(c.product_info.version, "22.1.15");
         assert_eq!(c.product_info.manufacturer, "Myself");
-        assert_eq!(c.product_info.product_language, 1033);
+        assert_eq!(c.product_info.language, 1033);
         assert_eq!(c.product_info.product_code, None);
 
         // Summary Info Properties

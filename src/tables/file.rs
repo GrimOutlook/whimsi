@@ -3,9 +3,9 @@
 use anyhow::{Context, Result};
 use msi::{Category, Column};
 
-use crate::{builder::Msi, models::file::File};
+use crate::{builder::MsiCursor, models::file::File};
 
-pub fn populate_file_table(package: &mut Msi, files: &[File]) -> Result<()> {
+pub fn populate_file_table(package: &mut MsiCursor, files: &[File]) -> Result<()> {
     create_file_table(package)?;
     todo!();
 
@@ -32,7 +32,7 @@ pub fn populate_file_table(package: &mut Msi, files: &[File]) -> Result<()> {
     Ok(())
 }
 
-fn create_file_table(package: &mut Msi) -> Result<()> {
+fn create_file_table(package: &mut MsiCursor) -> Result<()> {
     package
         .create_table(
             "File",

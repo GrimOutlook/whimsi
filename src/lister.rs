@@ -1,10 +1,4 @@
-#![deny(unsafe_code)]
-#![cfg_attr(
-    debug_assertions,
-    allow(dead_code, unused_variables, unreachable_code, unused_imports)
-)]
-#![cfg_attr(not(debug_assertions), deny(warnings, unused_crate_dependencies))]
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use camino::Utf8PathBuf;
 use cli_table::{Cell, CellStruct, Style, Table};
 use flexstr::{LocalStr, SharedStr};
@@ -14,23 +8,17 @@ use tracing::{debug, info};
 
 use crate::Listable;
 
-pub(crate) fn list(
-    input_file: &Utf8PathBuf,
-    list_item: Listable,
-) -> Result<String> {
+pub(crate) fn inspect(input_file: &Utf8PathBuf, list_item: Listable) -> Result<String> {
     info!("Reading MSI {}", input_file);
     validate_paths(input_file)?;
 
-    let mut msi = msi::open_rw(input_file)
-        .context(format!("Failed to open MSI {input_file}"))?;
+    let mut msi = msi::open_rw(input_file).context(format!("Failed to open MSI {input_file}"))?;
 
     match list_item {
         Listable::Author => list_author(msi),
         Listable::Tables => list_tables(msi),
         Listable::TableColumns { table } => list_table_columns(msi, table),
-        Listable::TableContents { table } => {
-            list_table_contents(&mut msi, table)
-        }
+        Listable::TableContents { table } => list_table_contents(&mut msi, table),
     }
 }
 
@@ -83,14 +71,14 @@ fn list_table_columns(msi: Package<File>, table: SharedStr) -> Result<String> {
         .title(table_columns.iter().map(|c| c.cell().bold(true)))
         .bold(true);
 
-    Ok(print_table.display().context("Displaying table columns")?.to_string())
+    Ok(print_table
+        .display()
+        .context("Displaying table columns")?
+        .to_string())
 }
 
 /// List the contents of the given table
-fn list_table_contents(
-    msi: &mut Package<File>,
-    table_name: SharedStr,
-) -> Result<String> {
+fn list_table_contents(msi: &mut Package<File>, table_name: SharedStr) -> Result<String> {
     debug!("Listing the contents of table {} in MSI", table_name);
 
     let rows = msi
@@ -105,7 +93,10 @@ fn list_table_contents(
 
     let contents: Vec<Vec<CellStruct>> = rows
         .map(|r| {
-            columns.iter().map(|c| r[c.as_str()].to_string().cell()).collect()
+            columns
+                .iter()
+                .map(|c| r[c.as_str()].to_string().cell())
+                .collect()
         })
         .collect();
 
@@ -114,5 +105,8 @@ fn list_table_contents(
         .title(columns.iter().map(|c| c.cell().bold(true)))
         .bold(true);
 
-    Ok(table.display().context("Failed to display table")?.to_string())
+    Ok(table
+        .display()
+        .context("Failed to display table")?
+        .to_string())
 }

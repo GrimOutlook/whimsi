@@ -1,3 +1,9 @@
+#![deny(unsafe_code)]
+#![cfg_attr(
+    debug_assertions,
+    allow(dead_code, unused_variables, unreachable_code, unused_imports)
+)]
+#![cfg_attr(not(debug_assertions), deny(warnings, unused_crate_dependencies))]
 mod builder;
 mod command_line;
 mod config;
@@ -13,43 +19,40 @@ mod traits {
     pub(crate) mod identifier;
 }
 
-use std::process::ExitCode;
-
+use anyhow::Result;
 use clap::Parser;
 use command_line::{CommandLineParser, Commands, Listable};
-use tracing::{error, info};
-use tracing_subscriber::{FmtSubscriber, util::SubscriberInitExt};
+use tracing::info;
+use tracing_subscriber::{util::SubscriberInitExt, FmtSubscriber};
 
-fn main() -> ExitCode {
+fn main() -> Result<()> {
     // Read the passed in arguments
     let args = CommandLineParser::parse();
     // Setup the logger
-    FmtSubscriber::builder().with_max_level(args.log_level).finish().init();
+    FmtSubscriber::builder()
+        .with_max_level(args.log_level)
+        .finish()
+        .init();
 
     info!("Running msipmbuild...");
-    let ret = match args.command {
-        Commands::Build { config, input_directory, output_path } => {
-            builder::build(&config, &input_directory, &output_path)
+    match args.command {
+        Commands::Build {
+            config_path: config,
+            input_directory,
+            output_path,
+        } => {
+            let package = builder::build(&config, &input_directory, &output_path)?;
+            builder::write_msi(package, &output_path)?
         }
-        Commands::Inspect { input_file, list_args } => {
-            match lister::list(&input_file, list_args) {
-                Ok(output) => {
-                    println!("{output}");
-                    Ok(())
-                }
-                Err(e) => Err(e),
-            }
-        }
-    };
-
-    match ret {
-        Ok(_) => (),
-        Err(e) => {
-            error!("msipmbuild operation failed. Error: {}", e);
-            return ExitCode::FAILURE;
+        Commands::Inspect {
+            input_file,
+            list_args,
+        } => {
+            let output = lister::inspect(&input_file, list_args)?;
+            println!("{output}");
         }
     };
 
     info!("msipmbuild operation succeeded");
-    ExitCode::SUCCESS
+    Ok(())
 }

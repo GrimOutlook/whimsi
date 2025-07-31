@@ -4,14 +4,11 @@ use anyhow::{Context, Result};
 use msi::{Category, Column, Insert, Value};
 use uuid::Uuid;
 
-use crate::{builder::Msi, models::file::File};
+use crate::{builder::MsiCursor, models::file::File};
 
 const TABLE_NAME: &str = "Component";
 
-pub fn populate_component_table(
-    package: &mut Msi,
-    files: &[File],
-) -> Result<()> {
+pub fn populate_component_table(package: &mut MsiCursor, files: &[File]) -> Result<()> {
     create_component_table(package)?;
 
     let query = Insert::into(TABLE_NAME).rows(
@@ -37,7 +34,7 @@ pub fn populate_component_table(
     Ok(())
 }
 
-fn create_component_table(package: &mut Msi) -> Result<()> {
+fn create_component_table(package: &mut MsiCursor) -> Result<()> {
     package
         .create_table(
             TABLE_NAME,

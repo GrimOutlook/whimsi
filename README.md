@@ -24,6 +24,7 @@ if you get any use out of it!
 - [ ] Set registry values.
 - [ ] PowerShell post install script.
 - [ ] Create services.
+- [ ] Sign MSI?
 
 ## Development
 

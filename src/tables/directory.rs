@@ -3,12 +3,9 @@
 use anyhow::{Context, Result};
 use msi::{Category, Column, Insert, Value};
 
-use crate::{builder::Msi, models::directory::Directory};
+use crate::{builder::MsiCursor, models::directory::Directory};
 
-pub fn populate_directory_table(
-    package: &mut Msi,
-    directories: &[Directory],
-) -> Result<()> {
+pub fn populate_directory_table(package: &mut MsiCursor, directories: &[Directory]) -> Result<()> {
     create_directory_table(package)?;
 
     let query = Insert::into("Directory").rows(
@@ -36,7 +33,7 @@ pub fn populate_directory_table(
     Ok(())
 }
 
-fn create_directory_table(package: &mut Msi) -> Result<()> {
+fn create_directory_table(package: &mut MsiCursor) -> Result<()> {
     package
         .create_table(
             "Directory",

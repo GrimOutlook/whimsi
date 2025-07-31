@@ -4,17 +4,15 @@ use std::os::unix::fs::MetadataExt;
 use std::os::windows::fs::MetadataExt;
 use std::{rc::Rc, str::FromStr};
 
-use anyhow::bail;
+use anyhow::{Context, bail};
 use camino::Utf8PathBuf;
-use flexstr::{local_str, LocalStr};
+use flexstr::{LocalStr, local_str};
 use itertools::Itertools;
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use crate::{
     config::MsiConfig,
-    error,
-    helpers::{debug, warns},
-    info,
     models::{directory::Directory, file::File, sequencer::Sequencer},
     traits::identifier::Identifier,
 };
@@ -64,7 +62,7 @@ fn add_explicit_path_directories(
     _input_directory: &Utf8PathBuf,
     _file_sequencer: &mut Sequencer,
 ) -> anyhow::Result<(Vec<Directory>, Vec<File>)> {
-    warns!("Sorry! Explicit paths are currently not implemented.");
+    warn!("Sorry! Explicit paths are currently not implemented.");
     // TODO: Finish implementing explicit path directories.
     unimplemented!("Explicit paths are currently not supported.");
 }
@@ -74,10 +72,7 @@ fn add_default_directories(
     input_directory: &Utf8PathBuf,
     file_sequencer: &mut Sequencer,
 ) -> anyhow::Result<(Vec<Directory>, Vec<File>)> {
-    debug!(
-        "Adding default directories for input path [{}]",
-        input_directory
-    );
+    debug!("Adding default directories for input path [{}]", input_directory);
     let files_section = config
         .default_files
         .as_ref()
@@ -168,20 +163,16 @@ fn scan_path(
 ) -> anyhow::Result<(Vec<Directory>, Vec<File>)> {
     debug!("Scanning directory path [{}]", scan_target);
     // Get the entries present in the `scan_target` directory.
-    let directory_entries = match scan_target.read_dir_utf8() {
-        Ok(dir) => dir,
-        Err(e) => {
-            error!("Failed to read directory [{}]", scan_target);
-            bail!(e);
-        }
-    };
+    let directory_entries = scan_target
+        .read_dir_utf8()
+        .context(format!("Failed to read directory [{scan_target}]"))?;
 
     // Get all of the entries that did not return an `Err` when scanned.
     let (ok_entries, errs): (Vec<_>, Vec<_>) =
         directory_entries.partition_result();
     // If any of them returned an error, short circuit and return that error.
     // May change this behavior based on config if desired in the future.
-    if let Some(_) = errs.first() {
+    if !errs.is_empty() {
         bail!("Failed to read file inside {}", scan_target);
     }
 
@@ -259,22 +250,15 @@ fn scan_path(
     }
 
     for file_path in found_file_paths {
-        let size = match file_path.metadata() {
-            Ok(metadata) => {
-                #[cfg(target_os = "linux")]
-                {
-                    metadata.size()
-                }
-                #[cfg(target_os = "windows")]
-                {
-                    metadata.file_size()
-                }
-            }
-            Err(err) => {
-                error!("Couldn't get metadata from file [{}]", file_path);
-                return Err(err.into());
-            }
-        };
+        let metadata = file_path
+            .metadata()
+            .context(format!("Getting metadata from file {file_path}"))?;
+
+        #[cfg(target_os = "linux")]
+        let size = metadata.size();
+        #[cfg(target_os = "windows")]
+        let size = metadata.file_size();
+
         let file = File::new(&file_path, sequencer.get(), size);
         all_files.push(file);
     }

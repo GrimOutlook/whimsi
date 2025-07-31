@@ -1,20 +1,17 @@
 // Populates the `File` table
 
+use anyhow::{Context, Result};
 use msi::{Category, Column, Insert, Value};
 use uuid::Uuid;
 
-use crate::{
-    builder::Msi,
-    error,
-    models::{error::MsiError, file::File},
-};
+use crate::{builder::Msi, models::file::File};
 
 const TABLE_NAME: &str = "Component";
 
 pub fn populate_component_table(
     package: &mut Msi,
-    files: &Vec<File>,
-) -> Result<(), MsiError> {
+    files: &[File],
+) -> Result<()> {
     create_component_table(package)?;
 
     let query = Insert::into(TABLE_NAME).rows(
@@ -25,42 +22,41 @@ pub fn populate_component_table(
                     Value::from(file.component_id().to_string()),
                     Value::from(Uuid::new_v4().to_string()),
                     Value::from(file.name().to_string()),
-                    Value::from(file.vital() & 16),
+                    Value::from(if *file.vital() { 16 } else { 0 }),
                 ]
             })
             .collect(),
     );
 
-    if let Err(err) = package.insert_rows(query) {
-        return Err(MsiError::nested("Failed to insert row into table", err));
-    };
+    // NOTE: This needs to come before calling insert_rows since it takes ownership of query.
+    let query_str = query.to_string();
+    package.insert_rows(query).context(format!(
+        "Inserting row into component table using query [{query_str}]"
+    ))?;
 
     Ok(())
 }
 
-fn create_component_table(package: &mut Msi) -> Result<(), MsiError> {
-    let result = package.create_table(
-        TABLE_NAME,
-        vec![
-            Column::build("Component").primary_key().id_string(72),
-            Column::build("ComponentId")
-                .category(Category::Guid)
-                .nullable()
-                .string(38),
-            Column::build("Directory_").id_string(72),
-            Column::build("Attributes").int16(),
-            Column::build("Condition")
-                .nullable()
-                .category(Category::Condition)
-                .string(255),
-            Column::build("KeyPath").nullable().id_string(72),
-        ],
-    );
-
-    if let Err(e) = result {
-        let err = error!("Failed to create {} table: {}", TABLE_NAME, e);
-        return Err(MsiError::nested(err, Box::new(e)));
-    }
+fn create_component_table(package: &mut Msi) -> Result<()> {
+    package
+        .create_table(
+            TABLE_NAME,
+            vec![
+                Column::build("Component").primary_key().id_string(72),
+                Column::build("ComponentId")
+                    .category(Category::Guid)
+                    .nullable()
+                    .string(38),
+                Column::build("Directory_").id_string(72),
+                Column::build("Attributes").int16(),
+                Column::build("Condition")
+                    .nullable()
+                    .category(Category::Condition)
+                    .string(255),
+                Column::build("KeyPath").nullable().id_string(72),
+            ],
+        )
+        .context(format!("Creating {TABLE_NAME} table"))?;
 
     Ok(())
 }

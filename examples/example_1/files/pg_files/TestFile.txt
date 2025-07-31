@@ -1,2 +1,0 @@
-This is a test file for msipmbuild. If you see this in C:\Program
-Files\GrimOutlook\msipmbuild-test\ then msi-gen is working.

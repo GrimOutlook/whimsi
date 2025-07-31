@@ -1,19 +1,13 @@
 // Populates the `File` table
 
+use anyhow::{Context, Result};
 use msi::{Category, Column};
 
-use crate::{
-    builder::Msi,
-    error,
-    models::{error::MsiError, file::File},
-};
+use crate::{builder::Msi, models::file::File};
 
-pub fn populate_file_table(
-    package: &mut Msi,
-    files: &Vec<File>,
-) -> Result<(), MsiError> {
+pub fn populate_file_table(package: &mut Msi, files: &[File]) -> Result<()> {
     create_file_table(package)?;
-    unimplemented!();
+    todo!();
 
     // let query = Insert::into("File").rows(
     //     files
@@ -38,35 +32,32 @@ pub fn populate_file_table(
     Ok(())
 }
 
-fn create_file_table(package: &mut Msi) -> Result<(), MsiError> {
-    let result = package.create_table(
-        "File",
-        vec![
-            Column::build("File").primary_key().id_string(72),
-            Column::build("Component_").id_string(72),
-            Column::build("FileName")
-                .category(Category::Filename)
-                .string(255),
-            Column::build("FileSize")
-                .category(Category::DoubleInteger)
-                .int16(),
-            Column::build("Version")
-                .nullable()
-                .category(Category::Version)
-                .string(72),
-            Column::build("Language")
-                .nullable()
-                .category(Category::Language)
-                .string(20),
-            Column::build("Attributes").nullable().int16(),
-            Column::build("Sequence").int16(),
-        ],
-    );
-
-    if let Err(e) = result {
-        let err = error!("Failed to create File table: {}", e);
-        return Err(MsiError::nested(err, Box::new(e)));
-    }
+fn create_file_table(package: &mut Msi) -> Result<()> {
+    package
+        .create_table(
+            "File",
+            vec![
+                Column::build("File").primary_key().id_string(72),
+                Column::build("Component_").id_string(72),
+                Column::build("FileName")
+                    .category(Category::Filename)
+                    .string(255),
+                Column::build("FileSize")
+                    .category(Category::DoubleInteger)
+                    .int16(),
+                Column::build("Version")
+                    .nullable()
+                    .category(Category::Version)
+                    .string(72),
+                Column::build("Language")
+                    .nullable()
+                    .category(Category::Language)
+                    .string(20),
+                Column::build("Attributes").nullable().int16(),
+                Column::build("Sequence").int16(),
+            ],
+        )
+        .context("Creating File table")?;
 
     Ok(())
 }

@@ -1,4 +1,4 @@
-# msipmbuild
+# whimsi
 
 This project is to create a command line tool that can be used on both Windows
 and Linux to create an MSI deliverable. The best alternative that I can find is
@@ -6,21 +6,29 @@ the [msitools](https://gitlab.gnome.org/GNOME/msitools) project but the
 documentation for that tool is nearly non-existent and many features are lacking
 such as CustomActions which is what this package aims to fix.
 
+The goal of this project is currently not to include every supported features
+for MSIs. That may become it's goal in the future but for now I'm just aiming
+to provide the most useful features. Issue submissions and interactions with
+those issues will drive what features are added next. That and what I need at the time
+
 If you end up using this package I'd love to know as it helps me stay motivated
 to continue working on projects like these! So drop a star or shoot me a message
 if you get any use out of it!
 
 ## Todo
 
-- [ ] Convert creation method to rpmbuild-esque
-- [ ] Convert MsiError to anyhow crate.
+### Capabilities
+
+- [ ] Read contents of directory to create file structure in MSI.
+- [ ] Set permissions on files in file structure.
+- [ ] Set registry values.
+- [ ] PowerShell post install script.
+- [ ] Create services.
 
 ## Development
 
 - [MSI Reference
   Material](https://learn.microsoft.com/en-us/windows/win32/msi/specifying-directory-structure)
-- `example_2.msi` is an msi for DualMonitorTools v2.3. Chosen at random from the
-  smaller installers that were on my system.
 
 ## CI/CD Desires
 

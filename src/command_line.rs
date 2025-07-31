@@ -1,13 +1,14 @@
 use camino::Utf8PathBuf;
-use clap::{arg, Parser, Subcommand};
+use clap::{Parser, Subcommand, arg};
 use flexstr::SharedStr;
+use tracing::Level;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 #[command(propagate_version = true)]
-pub(crate) struct App {
-    #[arg(long)]
-    pub(crate) log_level: Option<String>,
+pub(crate) struct CommandLineParser {
+    #[arg(long, default_value_t = Level::WARN)]
+    pub(crate) log_level: Level,
     #[command(subcommand)]
     pub(crate) command: Commands,
 }
@@ -31,13 +32,13 @@ pub(crate) enum Commands {
         input_file: Utf8PathBuf,
 
         #[command(subcommand)]
-        list_args: AllowedToList,
+        list_args: Listable,
     },
 }
 
 #[derive(Subcommand)]
 #[group(required = true, multiple = false)]
-pub(crate) enum AllowedToList {
+pub(crate) enum Listable {
     // List the author of the MSI
     Author,
     // List tables present in the MSI

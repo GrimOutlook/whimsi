@@ -1,17 +1,14 @@
 // Populates the `Directory` table
 
+use anyhow::{Context, Result};
 use msi::{Category, Column, Insert, Value};
 
-use crate::{
-    builder::Msi,
-    error,
-    models::{directory::Directory, error::MsiError},
-};
+use crate::{builder::Msi, models::directory::Directory};
 
 pub fn populate_directory_table(
     package: &mut Msi,
-    directories: &Vec<Directory>,
-) -> Result<(), MsiError> {
+    directories: &[Directory],
+) -> Result<()> {
     create_directory_table(package)?;
 
     let query = Insert::into("Directory").rows(
@@ -30,29 +27,28 @@ pub fn populate_directory_table(
             .collect(),
     );
 
-    if let Err(err) = package.insert_rows(query) {
-        return Err(MsiError::nested("Failed to insert row into table", err));
-    };
+    // NOTE: This needs to come before calling insert_rows since it takes ownership of query.
+    let query_str = query.to_string();
+    package.insert_rows(query).context(format!(
+        "Inserting row into directory table using query [{query_str}]"
+    ))?;
 
     Ok(())
 }
 
-fn create_directory_table(package: &mut Msi) -> Result<(), MsiError> {
-    let result = package.create_table(
-        "Directory",
-        vec![
-            Column::build("Directory").primary_key().id_string(72),
-            Column::build("Directory_Parent").nullable().id_string(72),
-            Column::build("DefaultDir")
-                .category(Category::DefaultDir)
-                .string(255),
-        ],
-    );
-
-    if let Err(e) = result {
-        let err = error!("Failed to create Directory table: {}", e);
-        return Err(MsiError::nested(err, Box::new(e)));
-    }
+fn create_directory_table(package: &mut Msi) -> Result<()> {
+    package
+        .create_table(
+            "Directory",
+            vec![
+                Column::build("Directory").primary_key().id_string(72),
+                Column::build("Directory_Parent").nullable().id_string(72),
+                Column::build("DefaultDir")
+                    .category(Category::DefaultDir)
+                    .string(255),
+            ],
+        )
+        .context("Creating Directory table")?;
 
     Ok(())
 }

@@ -2,6 +2,7 @@ pub(crate) mod files;
 pub(crate) mod meta;
 pub(crate) mod product;
 pub(crate) mod summary;
+pub(crate) mod system_folder;
 
 use std::env;
 

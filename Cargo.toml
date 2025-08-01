@@ -15,6 +15,7 @@ getset = "0.1.5"
 itertools = "0.14.0"
 lcid = "0.3.0"
 msi = "0.9.0"
+roxygen = "1.0.4"
 serde = { version = "1.0.219", features = ["derive"] }
 serde-inline-default = "0.2.3"
 toml = "0.9.3"

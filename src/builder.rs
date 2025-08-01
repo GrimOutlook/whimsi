@@ -8,151 +8,116 @@ use anyhow::{bail, ensure};
 use anyhow::{Context, Result};
 use camino::Utf8PathBuf;
 use msi::{Package, PackageType};
+use roxygen::roxygen;
 use tracing::info;
 
-use crate::{config::MsiConfig, scan, tables};
+use crate::{
+    enums::system_folder::SystemFolder,
+    models::sequencer::Sequencer,
+    scan,
+    tables::{self, directory::DirectoryTable},
+};
 
 // Make a shorthand way to refer to the package cursor for brevity.
-pub(crate) type MsiCursor = Package<Cursor<Vec<u8>>>;
+pub(crate) type MsiPackage = Package<Cursor<Vec<u8>>>;
 
-struct MsiBuilder {}
-
-impl MsiBuilder {}
-
-// Build an msi given the selected config
-pub(crate) fn from_config() -> Result<MsiCursor> {}
-
-fn set_author(package: &mut MsiCursor, config: Rc<MsiConfig>) {
-    package
-        .summary_info_mut()
-        .set_author(config.summary_info.author.clone().unwrap_or_default());
+pub struct MsiBuilder<'a> {
+    package: MsiPackage,
+    directory_table: DirectoryTable<'a>,
 }
 
-pub fn write_msi(package: MsiCursor, output_path: &Utf8PathBuf) -> Result<()> {
-    let cursor = package.into_inner().unwrap();
-    let mut file = File::create(output_path).context(format!(
-        "Failed to open output path {output_path} for writing"
-    ))?;
-
-    file.write_all(cursor.get_ref())
-        .context(format!("Failed to write MSI to location {output_path}"))?;
-    info!("Wrote MSI to {}", output_path);
-    Ok(())
-}
-
-fn check_config(config: &MsiConfig) -> Result<()> {
-    if config.default_files.is_none() && config.explicit_files.is_none() {
-        bail!(
-            "No files specified for MSI.
-        Files should be specified under `[default_files]` and `[explicit_files]` sections.
-        To disable this error use the `--no-files` flag."
-        );
-    }
-
-    // TODO: Do I really need this check?
-    // if let Some(default_files) = &config.default_files {
-    //     if default_files.program_files.is_none() && default_files.program_files_32.is_none() {
-    //         let msg = error!("No program files found in `[default_files]` section.");
-    //         error!(
-    //             "`program_files` or `program_files_32` must be present if `[default_files]` section is used."
-    //         );
-    //         return Err(MsiError::short(msg));
-    //     }
-    // }
-
-    Ok(())
-}
-
-pub(crate) fn validate_paths(config_path: &Utf8PathBuf, output_path: &Utf8PathBuf) -> Result<()> {
-    validate_output_path(output_path)?;
-    validate_config_path(config_path)?;
-
-    Ok(())
-}
-
-fn validate_config_path(config_path: &Utf8PathBuf) -> Result<()> {
-    ensure!(
-        config_path.exists(),
-        "Config path {config_path} does not exist"
-    );
-    ensure!(
-        config_path.is_file(),
-        "Config path {config_path} is not a file"
-    );
-
-    Ok(())
-}
-
-// TODO: Re-add this when the option to change the relative path from the CWD is added.
-fn validate_input_path(input_directory: &Utf8PathBuf) -> Result<()> {
-    ensure!(
-        input_directory.exists(),
-        "Input directory {input_directory} does not exist"
-    );
-    ensure!(
-        input_directory.is_dir(),
-        "Input directory {input_directory} is not a directory"
-    );
-
-    Ok(())
-}
-
-fn validate_output_path(output_path: &Utf8PathBuf) -> Result<()> {
-    // Convert the string (representing the path to scan) into an absolute path.
-    let full_path = camino::absolute_utf8(Utf8PathBuf::from(&output_path)).context(format!(
-        "Get full path for the passed in output path [{output_path}]"
-    ))?;
-
-    // Since parent returns None when you are at the root folder, it's fine to
-    // just use the full path if we hit None as this should just end up being
-    // `/` or `C:\` which is valid.
-    let output_parent_dir = full_path.as_path().parent().unwrap_or(&full_path);
-
-    ensure!(
-        output_path.parent().is_some(),
-        "Output path {output_path} is not valid a valid filepath."
-    );
-    ensure!(
-        output_parent_dir.is_dir(),
-        "Output parent directory {output_parent_dir} is not a valid directory."
-    );
-
-    Ok(())
-}
-
-impl TryFrom<MsiConfig> for MsiBuilder {
-    type Error = anyhow::Error;
-
-    fn try_from(config: MsiConfig) -> std::result::Result<Self, Self::Error> {
-        todo!();
-        info!("Building MSI at output path {}", config.output_path);
-        // Validate paths before continuing
-        validate_paths(config_path, output_path)?;
-        // Read the config from the passed in path
-        let raw_config =
-            read_to_string(config_path).context(format!("Failed to open config {config_path}"))?;
-        let config: Rc<MsiConfig> = toml::from_str::<MsiConfig>(&raw_config)
-            .context(format!("Failed to parse config toml {config_path}"))?
-            .into();
-
-        // Check the config for common errors
-        check_config(&config)?;
-
+impl<'a> MsiBuilder<'a> {
+    /// Create a new, emoty, MSI database to manipulate.
+    pub fn new() -> Result<Self> {
         // Create an empty MSI that we can populate.
         let cursor = Cursor::new(Vec::new());
-        let mut package =
+        let package =
             Package::create(PackageType::Installer, cursor).context("Creating MSI installer")?;
 
-        // Set the author
-        set_author(&mut package, config.clone());
+        Ok(Self {
+            package,
+            component_sequencer: Sequencer::new("component"),
+            file_sequencer: Sequencer::new("file"),
+            directory_sequencer: Sequencer::new("directory"),
+        })
+    }
 
-        // Add the files from the input directory
-        let (directories, files) = scan::scan_paths(config.clone(), input_directory)?;
+    fn set_author(&mut self, author: String) {
+        self.package.summary_info_mut().set_author(author);
+    }
 
-        tables::directory::populate_directory_table(&mut package, &directories)?;
-        tables::component::populate_component_table(&mut package, &files)?;
-        tables::file::populate_file_table(&mut package, &files)?;
+    #[roxygen]
+    fn add_path(
+        &mut self,
+        /// The path you want to add to the MSI. Can be to a file or a directory.
+        path: &Utf8PathBuf,
+        /// The base path/location of where the files and directories from the given path are to be
+        /// moved. This must be a Microsoft defined property so arbitrary paths are not allowed.
+        destination_base: SystemFolder,
+        /// Path to append to the base path in order to get the full path. This is the full path
+        /// where the files are to be placed upon install.
+        destination_suffix: Option<String>,
+    ) -> Result<()> {
+        let (directories, files) = scan::scan_path(path)?;
 
-        Ok(package)
+        self.directory_table.add_directories(&directories)?;
+        todo!();
+        // tables::component::populate_component_table(&mut package, &files)?;
+        // tables::file::populate_file_table(&mut package, &files)?;
+    }
+
+    /// Returns the in-memory database that was created by the commands passed to the builder.
+    pub fn finish(self) -> Cursor<Vec<u8>> {
+        self.package.into_inner().unwrap()
+    }
+
+    /// Write the in-memory MSI data to the output location
+    pub fn write(self, output_path: &Utf8PathBuf) -> Result<()> {
+        let cursor = self.finish();
+        let mut file = File::create(output_path).context(format!(
+            "Failed to open output path {output_path} for writing"
+        ))?;
+
+        file.write_all(cursor.get_ref()).context(format!(
+            "Failed to write MSI data to location {output_path}"
+        ))?;
+        info!("Wrote MSI to {}", output_path);
+        Ok(())
     }
 }
+
+// impl TryFrom<MsiConfig> for MsiBuilder {
+// type Error = anyhow::Error;
+// fn try_from(config: MsiConfig) -> std::result::Result<Self, Self::Error> {
+//         todo!();
+//         info!("Building MSI at output path {}", config.output_path);
+//         // Validate paths before continuing
+//         validate_paths(config_path, output_path)?;
+//         // Read the config from the passed in path
+//         let raw_config =
+//             read_to_string(config_path).context(format!("Failed to open config {config_path}"))?;
+//         let config: Rc<MsiConfig> = toml::from_str::<MsiConfig>(&raw_config)
+//             .context(format!("Failed to parse config toml {config_path}"))?
+//             .into();
+//
+//         // Check the config for common errors
+//         check_config(&config)?;
+//
+//         // Create an empty MSI that we can populate.
+//         let cursor = Cursor::new(Vec::new());
+//         let mut package =
+//             Package::create(PackageType::Installer, cursor).context("Creating MSI installer")?;
+//
+//         // Set the author
+//         set_author(&mut package, config.clone());
+//
+//         // Add the files from the input directory
+//         let (directories, files) = scan::scan_paths(config.clone(), input_directory)?;
+//
+//         tables::directory::populate_directory_table(&mut package, &directories)?;
+//         tables::component::populate_component_table(&mut package, &files)?;
+//         tables::file::populate_file_table(&mut package, &files)?;
+//
+//         Ok(package)
+//     }
+// }

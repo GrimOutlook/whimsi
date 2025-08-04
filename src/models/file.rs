@@ -1,5 +1,4 @@
-#![allow(unused)]
-
+use anyhow::{Context, Result};
 use camino::Utf8PathBuf;
 use flexstr::LocalStr;
 use getset::Getters;
@@ -26,12 +25,9 @@ use crate::traits::identifier::Identifier;
 /// - `version` This field is the version string for a versioned file. This
 ///   field is blank for non-versioned files.
 /// - `language` A list of decimal language IDs separated by commas.
-/// - `sequence` Sequence position of this file on the media images. This order
-///   must correspond to the order of the files in the cabinet if the files are
-///   compressed. The integers in this field must be equal or greater than 1.
 #[derive(Clone, Debug, Getters)]
 #[getset(get = "pub")]
-pub(crate) struct File {
+pub(crate) struct MsiFile {
     component_id: LocalStr,
     file_id: LocalStr,
     source: Utf8PathBuf,
@@ -40,12 +36,31 @@ pub(crate) struct File {
     vital: bool,
     version: Option<String>,
     language: Option<String>,
-    sequence: u64,
 }
 
-impl File {
-    pub fn new(source: &Utf8PathBuf, sequence_number: u64, size: u64) -> File {
-        File {
+impl MsiFile {
+    pub fn new(source: &Utf8PathBuf) -> Result<MsiFile> {
+        let metadata = source
+            .metadata()
+            .context(format!("Get metadata for {source}"))?;
+
+        let size: u64;
+        #[cfg(target_os = "linux")]
+        {
+            use std::os::unix::fs::MetadataExt;
+            size = metadata.size();
+        }
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::fs::MetadataExt;
+            let size = metadata.file_size();
+        }
+        #[cfg(not(any(target_os = "linux", target_os = "windows")))]
+        {
+            compile_error!("Only Linux and Windows are supported currently.")
+        }
+
+        let file = MsiFile {
             component_id: Uuid::as_identifier(),
             file_id: Uuid::as_identifier(),
             source: source.into(),
@@ -54,7 +69,8 @@ impl File {
             vital: false,
             version: None,
             language: None,
-            sequence: sequence_number,
-        }
+        };
+
+        Ok(file)
     }
 }

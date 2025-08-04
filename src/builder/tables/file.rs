@@ -3,9 +3,9 @@
 use anyhow::{Context, Result};
 use msi::{Category, Column};
 
-use crate::{builder::MsiPackage, models::file::File};
+use crate::{builder::MsiPackage, models::file::MsiFile};
 
-pub fn populate_file_table(package: &mut MsiPackage, files: &[File]) -> Result<()> {
+pub fn populate_file_table(package: &mut MsiPackage, files: &[MsiFile]) -> Result<()> {
     create_file_table(package)?;
     todo!();
 

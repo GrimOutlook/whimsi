@@ -4,11 +4,11 @@ use anyhow::{Context, Result};
 use msi::{Category, Column, Insert, Value};
 use uuid::Uuid;
 
-use crate::{builder::MsiPackage, models::file::File};
+use crate::{builder::MsiPackage, models::file::MsiFile};
 
 const TABLE_NAME: &str = "Component";
 
-pub fn populate_component_table(package: &mut MsiPackage, files: &[File]) -> Result<()> {
+pub fn populate_component_table(package: &mut MsiPackage, files: &[MsiFile]) -> Result<()> {
     create_component_table(package)?;
 
     let query = Insert::into(TABLE_NAME).rows(

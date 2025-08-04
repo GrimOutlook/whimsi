@@ -10,9 +10,8 @@ pub mod enums;
 /// TODO: Deal with config after getting initial functionality working. Getting bogged down
 /// bikeshedding.
 // mod config;
-mod lister;
+mod inspector;
 mod scan;
-pub(crate) mod tables;
 mod models {
     pub(crate) mod directory;
     pub(crate) mod file;
@@ -23,6 +22,7 @@ mod traits {
 }
 
 use anyhow::Result;
+use builder::MsiBuilder;
 use clap::Parser;
 use command_line::{CommandLineParser, Commands, Listable};
 use tracing::info;
@@ -38,25 +38,24 @@ fn main() -> Result<()> {
         .init();
 
     info!("Running WHIMSI...");
-    todo!()
-    // match args.command {
-    //     Commands::Build {
-    //         config_path: config,
-    //         input_directory,
-    //         output_path,
-    //     } => {
-    //         let package = builder::build(&config, &input_directory, &output_path)?;
-    //         builder::write_msi(package, &output_path)?
-    //     }
-    //     Commands::Inspect {
-    //         input_file,
-    //         list_args,
-    //     } => {
-    //         let output = lister::inspect(&input_file, list_args)?;
-    //         println!("{output}");
-    //     }
-    // };
-    //
-    // info!("msipmbuild operation succeeded");
-    // Ok(())
+    match args.command {
+        Commands::Build {
+            config_path: config,
+            input_directory,
+            output_path,
+        } => {
+            // let builder = MsiBuilder::new()?;
+            todo!()
+        }
+        Commands::Inspect {
+            input_file,
+            list_args,
+        } => {
+            let output = inspector::inspect(&input_file, list_args)?;
+            println!("{output}");
+        }
+    };
+
+    info!("whimsi operation succeeded");
+    Ok(())
 }

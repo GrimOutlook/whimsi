@@ -1,0 +1,9 @@
+Product(
+    name = "Hello",
+    version = "0.0.1",
+    manufacturer = "whimsi inc.",
+    language = 1033,
+),
+Summary (
+
+)

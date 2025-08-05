@@ -1,6 +1,11 @@
 // Populates the `Directory` table
 
-use std::{cell::RefCell, io::Cursor, rc::Rc, sync::Arc};
+use std::{
+    cell::{Ref, RefCell},
+    io::Cursor,
+    rc::Rc,
+    sync::Arc,
+};
 
 use anyhow::{Context, Result};
 use camino::{Utf8DirEntry, Utf8PathBuf};
@@ -14,15 +19,12 @@ use crate::{
     models::directory::MsiDirectory,
 };
 
-use super::Tables;
+use super::TableTrait;
 
-pub(crate) struct DirectoryTable {
-    pub(crate) package: Rc<RefCell<MsiPackage>>,
-    directories: Vec<MsiDirectory>,
-}
+pub struct DirectoryTable;
 
 impl DirectoryTable {
-    pub fn add(&mut self, directories: &[MsiDirectory]) -> Result<()> {
+    pub fn add(package: &mut MsiPackage, directories: &[MsiDirectory]) -> Result<()> {
         let rows = directories
             .iter()
             .map(|dir| {
@@ -37,16 +39,16 @@ impl DirectoryTable {
             })
             .collect();
 
-        self.insert(rows)?;
+        Self::insert(package, rows)?;
 
         Ok(())
     }
 }
 
-impl Tables for DirectoryTable {
+impl TableTrait for DirectoryTable {
     /// Column information can be found here:
     /// https://learn.microsoft.com/en-us/windows/win32/msi/directory-table#columns
-    fn columns(&self) -> Vec<Column> {
+    fn columns() -> Vec<Column> {
         vec![
             Column::build("Directory")
                 .primary_key()
@@ -60,15 +62,11 @@ impl Tables for DirectoryTable {
         ]
     }
 
-    fn name(&self) -> &'static str {
+    fn name() -> &'static str {
         "Directory"
     }
 
-    fn package(&self) -> Rc<RefCell<MsiPackage>> {
-        self.package.clone()
-    }
-
-    fn default_data(&self) -> Option<Vec<Vec<Value>>> {
+    fn default_data() -> Option<Vec<Vec<Value>>> {
         todo!()
     }
 }

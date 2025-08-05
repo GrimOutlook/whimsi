@@ -75,7 +75,7 @@ impl MsiBuilder {
     ) -> Result<()> {
         let directory = MsiDirectory::new(&destination_base.to_string(), path)?;
         let directories = directory.flatten_directories();
-        self.directory_table.add(&directories)?;
+        DirectoryTable::add(&mut self.package.borrow_mut(), &directories)?;
         Ok(())
     }
 
@@ -108,7 +108,8 @@ mod test {
     use assert_fs::{NamedTempFile, TempDir};
     use assertables::*;
     use camino::Utf8Path;
-    use msi::Package;
+    use itertools::Itertools;
+    use msi::{Package, Row, Select};
 
     use crate::enums::system_folder::SystemFolder;
 
@@ -139,9 +140,9 @@ mod test {
             .add_path(temp, SystemFolder::TARGETDIR, None)
             .unwrap_or_else(|_| panic!("Failed to add path {temp}"));
         let cursor = builder.finish();
-        let package = Package::open(cursor).unwrap();
-        let table = package
-            .get_table("Directory")
-            .expect("MSI doesn't have 'Directory' table");
+        let mut package = Package::open(cursor).unwrap();
+        let mut rows = package
+            .select_rows(Select::table("Directory"))
+            .expect("Failed getting table rows");
     }
 }

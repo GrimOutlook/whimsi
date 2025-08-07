@@ -1,3 +1,5 @@
+pub mod types;
+
 // This is basically an internal representation of what is contained in the final MSI, just in more
 // manipulatable data types.
 //

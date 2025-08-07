@@ -1,1 +1,2 @@
-pub(crate) struct File;
+pub struct Files;
+pub struct File;

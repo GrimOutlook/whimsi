@@ -1,1 +1,2 @@
-pub(crate) struct Component;
+pub struct Components;
+pub struct Component;

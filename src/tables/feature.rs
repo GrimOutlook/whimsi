@@ -1,1 +1,2 @@
-pub(crate) struct Feature;
+pub struct Features;
+pub struct Feature;

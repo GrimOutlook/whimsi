@@ -1,1 +1,2 @@
-pub(crate) struct Shortcut;
+pub struct Shortcuts;
+pub struct Shortcut;

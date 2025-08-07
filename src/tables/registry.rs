@@ -1,1 +1,2 @@
-pub(crate) struct Registry;
+pub struct RegistryEntries;
+pub struct RegistryEntry;

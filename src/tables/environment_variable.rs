@@ -1,1 +1,2 @@
-pub(crate) struct EnvironmentVariable;
+pub struct EnvironmentVariables;
+pub struct EnvironmentVariable;

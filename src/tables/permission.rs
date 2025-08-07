@@ -1,1 +1,2 @@
-pub(crate) struct Permission;
+pub struct Permissions;
+pub struct Permission;

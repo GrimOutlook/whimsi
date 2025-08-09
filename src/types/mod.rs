@@ -19,3 +19,5 @@ pub mod text;
 pub mod time_date;
 pub mod uppercase;
 pub mod version;
+
+pub mod helpers;

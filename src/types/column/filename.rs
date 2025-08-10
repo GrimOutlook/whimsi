@@ -1,37 +1,35 @@
 use std::str::FromStr;
 
+use anyhow::{Context, bail, ensure};
 use derive_more::{Display, From};
 use itertools::Itertools;
+use thiserror::Error;
 
-use super::helpers::invalid_char::InvalidChar;
+use crate::{constants::*, types::helpers::invalid_char::InvalidChar};
 
 /// Name of a file *or* folder.
 ///
 /// Reference: https://learn.microsoft.com/en-us/windows/win32/msi/filename
 // TODO: Figure out if filenames are allowed to end in a period. Assuming no.
 #[derive(Clone, Debug, Display, From, PartialEq)]
-pub enum Filename {
+pub enum MsiFilename {
     Long(LongFilename),
     Short(ShortFilename),
 }
 
-#[derive(Clone, Debug, Display, From, PartialEq)]
+#[derive(Clone, Debug, From, PartialEq, Error)]
 pub enum FilenameParsingError {
-    ShortFilenameParsingError(ShortFilenameParsingError),
-
-    #[display("Filename input string is blank")]
+    #[error("Filename input string is blank")]
     EmptyString,
 
-    #[display("Filename cannot end in period")]
+    #[error("Filename cannot end in period")]
     EndsWithPeriod,
 
-    #[display(
+    #[error(
         "Filename has invalid characters. Invalid characters: {:?}",
         LongFilename::INVALID_CHARS
     )]
-    InvalidCharacters {
-        characters: Vec<InvalidChar>,
-    },
+    InvalidCharacters { characters: Vec<InvalidChar> },
 }
 
 #[derive(Clone, Debug, Display, PartialEq)]
@@ -43,7 +41,7 @@ impl LongFilename {
 }
 
 impl FromStr for LongFilename {
-    type Err = FilenameParsingError;
+    type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         validate_long_filename(s)?;
@@ -62,9 +60,24 @@ pub struct ShortFilename {
 }
 impl ShortFilename {
     const INVALID_CHARS: &[char] = &['+', ',', ';', '=', '[', ']'];
+
+    pub fn trimmed(input: &str) -> anyhow::Result<Self> {
+        let file = std::path::Path::new(input);
+        let Some(filename) = file.file_stem() else {
+            bail!(ShortFilenameParsingError::NoFilename);
+        };
+        let filename = filename.to_str().context(format!(
+            "Failed to convert filepath os_str {filename:?} to str"
+        ))?;
+
+        let trimmed_filename = filename.get(0..SHORT_FILENAME_MAX_LEN).unwrap_or(filename);
+
+        Self::from_str(trimmed_filename)
+    }
 }
+
 impl FromStr for ShortFilename {
-    type Err = FilenameParsingError;
+    type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         validate_long_filename(s)?;
@@ -77,20 +90,20 @@ impl FromStr for ShortFilename {
 const TOO_LONG_ERR_MESSAGE: &str =
     "Short filename input is too long. Only 8 characters + period (.) + 3 letter extension allowed";
 
-#[derive(Clone, Debug, Display, PartialEq)]
+#[derive(Clone, Debug, From, PartialEq, Error)]
 pub enum ShortFilenameParsingError {
-    #[display(
+    #[error(
         "Short filename has invalid characters. Invalid characters: {:?}",
-        ShortFilename::INVALID_CHARS
+        [ShortFilename::INVALID_CHARS, LongFilename::INVALID_CHARS].concat()
     )]
     InvalidCharacters { characters: Vec<InvalidChar> },
 
-    #[display("{}", TOO_LONG_ERR_MESSAGE)]
+    #[error("{}", TOO_LONG_ERR_MESSAGE)]
     ExtensionTooLong,
-    #[display("{}", TOO_LONG_ERR_MESSAGE)]
+    #[error("{}", TOO_LONG_ERR_MESSAGE)]
     FilenameTooLong,
 
-    #[display("No filename found in short filename input")]
+    #[error("No filename found in short filename input")]
     NoFilename,
 }
 
@@ -102,44 +115,38 @@ fn invalid_chars(invalid: &[char], haystack: &str) -> Vec<InvalidChar> {
         .collect_vec()
 }
 
-fn validate_long_filename(s: &str) -> Result<(), FilenameParsingError> {
-    if s.is_empty() {
-        return Err(FilenameParsingError::EmptyString);
-    }
-    if s.ends_with(".") {
-        return Err(FilenameParsingError::EndsWithPeriod);
-    }
+fn validate_long_filename(s: &str) -> anyhow::Result<()> {
+    ensure!(!s.is_empty(), FilenameParsingError::EmptyString);
+    ensure!(!s.ends_with("."), FilenameParsingError::EndsWithPeriod);
     let invalid_chars = invalid_chars(LongFilename::INVALID_CHARS, s);
-    if !invalid_chars.is_empty() {
-        return Err(FilenameParsingError::InvalidCharacters {
+    ensure!(
+        invalid_chars.is_empty(),
+        FilenameParsingError::InvalidCharacters {
             characters: invalid_chars,
-        });
-    }
+        }
+    );
     Ok(())
 }
 
-fn validate_short_filename(s: &str) -> Result<(), FilenameParsingError> {
+fn validate_short_filename(s: &str) -> anyhow::Result<()> {
     let invalid_chars = invalid_chars(ShortFilename::INVALID_CHARS, s);
-    if !invalid_chars.is_empty() {
-        return Err(FilenameParsingError::ShortFilenameParsingError(
-            ShortFilenameParsingError::InvalidCharacters {
-                characters: invalid_chars,
-            },
-        ));
-    }
+    ensure!(
+        invalid_chars.is_empty(),
+        ShortFilenameParsingError::InvalidCharacters {
+            characters: invalid_chars,
+        }
+    );
     let file = std::path::Path::new(s);
     if let Some(stem) = file.file_stem() {
-        if stem.len() > 8 {
-            return Err(ShortFilenameParsingError::FilenameTooLong.into());
-        }
+        ensure!(stem.len() <= 8, ShortFilenameParsingError::FilenameTooLong);
     } else {
-        return Err(ShortFilenameParsingError::NoFilename.into());
+        bail!(ShortFilenameParsingError::NoFilename);
     };
 
     if let Some(ext) = file.extension()
         && ext.len() > 3
     {
-        return Err(ShortFilenameParsingError::ExtensionTooLong.into());
+        bail!(ShortFilenameParsingError::ExtensionTooLong);
     };
     Ok(())
 }
@@ -151,7 +158,7 @@ mod test {
     use test_case::test_case;
 
     use crate::types::{
-        filename::{LongFilename, ShortFilename, ShortFilenameParsingError},
+        column::filename::{LongFilename, ShortFilename, ShortFilenameParsingError},
         helpers::invalid_char::InvalidChar,
     };
 
@@ -192,15 +199,32 @@ mod test {
     fn invalid_long_and_short(input: &str, expected: FilenameParsingError) {
         let long_actual = LongFilename::from_str(input);
         let short_actual = ShortFilename::from_str(input);
-        assert_eq!(expected, short_actual.expect_err(SHORT_VALID_PANIC_MSG));
-        assert_eq!(expected, long_actual.expect_err(LONG_VALID_PANIC_MSG));
+        assert_eq!(
+            expected,
+            short_actual
+                .expect_err(SHORT_VALID_PANIC_MSG)
+                .downcast()
+                .unwrap()
+        );
+        assert_eq!(
+            expected,
+            long_actual
+                .expect_err(LONG_VALID_PANIC_MSG)
+                .downcast()
+                .unwrap()
+        );
     }
 
-    #[test_case("f,ile", ShortFilenameParsingError::InvalidCharacters { characters: vec![InvalidChar::new(',', 1)] }.into() ; "contains comma")]
-    #[test_case("long_filename", ShortFilenameParsingError::FilenameTooLong.into(); "long filename")]
-    #[test_case("long.extension", ShortFilenameParsingError::ExtensionTooLong.into(); "long extension")]
-    fn invalid_short(input: &str, expected: FilenameParsingError) {
+    #[test_case("f,ile",ShortFilenameParsingError::InvalidCharacters { characters: vec![InvalidChar::new(',', 1)] } ; "contains comma")]
+    #[test_case("long_filename", ShortFilenameParsingError::FilenameTooLong; "long filename")]
+    #[test_case("long.extension", ShortFilenameParsingError::ExtensionTooLong; "long extension")]
+    fn invalid_short(input: &str, expected: ShortFilenameParsingError) {
         let actual = ShortFilename::from_str(input).expect_err(SHORT_VALID_PANIC_MSG);
-        assert_eq!(expected, actual);
+        assert_eq!(
+            expected,
+            actual
+                .downcast()
+                .unwrap_or_else(|_| panic!("ShortFilenameError is incorrect type"))
+        );
     }
 }

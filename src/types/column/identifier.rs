@@ -5,7 +5,8 @@ use std::str::FromStr;
 
 use regex::Regex;
 
-use super::helpers::invalid_char::InvalidChar;
+use crate::types::helpers::invalid_char::InvalidChar;
+
 static INVALID_FIRST_CHARACTER: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[^A-Za-z_]").unwrap());
 static INVALID_CHARACTER: Lazy<Regex> = Lazy::new(|| Regex::new(r"[^A-Za-z0-9_\.]").unwrap());
 
@@ -13,7 +14,7 @@ static INVALID_CHARACTER: Lazy<Regex> = Lazy::new(|| Regex::new(r"[^A-Za-z0-9_\.
 /// Must start with either a letter or underscore.
 ///
 /// Reference: https://learn.microsoft.com/en-us/windows/win32/msi/identifier
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Display, PartialEq)]
 pub struct Identifier {
     inner: String,
 }
@@ -57,7 +58,9 @@ mod test {
 
     use test_case::test_case;
 
-    use crate::types::{helpers::invalid_char::InvalidChar, identifier::IdentifierConversionError};
+    use crate::types::{
+        column::identifier::IdentifierConversionError, helpers::invalid_char::InvalidChar,
+    };
 
     use super::Identifier;
     #[test_case("Test8."; "starts with letter")]

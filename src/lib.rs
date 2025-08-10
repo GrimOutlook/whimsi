@@ -21,16 +21,13 @@
 #![cfg(debug_assertions)]
 #![allow(dead_code)]
 
+pub mod constants;
 mod tables;
 pub mod types;
 
 use getset::Getters;
 use strum::EnumDiscriminants;
-use tables::{
-    component::Components, directory::Directories, environment_variable::EnvironmentVariables,
-    feature::Features, file::Files, permission::Permissions, registry::RegistryEntries,
-    service::Services, shortcut::Shortcuts,
-};
+use tables::directory::DirectoryTable;
 
 /// An in-memory representation of the final MSI to be created.
 #[derive(Getters)]
@@ -61,7 +58,7 @@ pub enum Table {
     ///
     /// Table Information Contained:
     /// - ['Directory'](https://learn.microsoft.com/en-us/windows/win32/msi/directory-table)
-    Directories(Directories),
+    Directories(DirectoryTable),
     // /// Complete list of source files with their attributes.
     // ///
     // /// Table Information Contained:

@@ -5,9 +5,11 @@ use std::str::FromStr;
 use ambassador::Delegate;
 use anyhow::ensure;
 use derive_more::{Display, From};
+use getset::Getters;
 use thiserror::Error;
 
 use crate::types::column::identifier::Identifier;
+use crate::types::properties::systemfolder::SystemFolder;
 
 use super::filename::Filename;
 use super::node::Node;
@@ -64,14 +66,28 @@ macro_rules! implement_directory_kind_simple {
     };
 }
 
-#[derive(Clone, Debug, Display, PartialEq)]
-#[display("{}", directory)]
+#[derive(Clone, Debug, Display, PartialEq, Getters)]
+#[display("{}", id)]
+#[getset(get = "pub")]
 pub struct RootDirectory {
+    #[getset(skip)]
     contained: Vec<Node>,
-    /// ID of this directory
-    directory: Identifier,
+
+    /// ID of this directory. This is always `TARGETDIR`.
+    id: Identifier,
     /// Identifier for the root directory. This is always `SourceDir`.
     name: Identifier,
+}
+
+impl RootDirectory {
+    pub fn insert_system_folder(
+        &mut self,
+        system_folder: SystemFolder,
+    ) -> Rc<RefCell<NonRootDirectory>> {
+        let new_dir = Rc::new(RefCell::new(NonRootDirectory::system_folder(system_folder)));
+        self.contained.push(new_dir.clone().into());
+        new_dir
+    }
 }
 
 implement_directory_kind_simple!(RootDirectory);
@@ -79,24 +95,37 @@ implement_directory_kind_simple!(RootDirectory);
 /// Directory that is a contained within a subdirectory.
 ///
 /// The ID for this directory is created upon insertion into the tables database.
-#[derive(Clone, Debug, Display, PartialEq)]
+#[derive(Clone, Debug, Display, PartialEq, Getters)]
 #[display("{}", name)]
+#[getset(get = "pub")]
 pub struct NonRootDirectory {
+    #[getset(skip)]
     contained: Vec<Node>,
+
+    /// This can either be a system directory or None. If None, this folder
+    /// will not be parsed as a system folder and instead will have an identifier randomly
+    /// generated for it when placing into the MSI database. Otherwise it will use the system
+    /// folder ID as the identifier in the DAO.
+    id: Option<SystemFolder>,
     /// The directory's name (localizable)
     name: Filename,
 }
 
 impl NonRootDirectory {
-    fn new(name: Filename) -> Self {
+    pub fn new(name: Filename) -> Self {
         Self {
             contained: Vec::new(),
+            id: None,
             name,
         }
     }
 
-    pub fn name(&self) -> Filename {
-        self.name.clone()
+    pub fn system_folder(system_folder: SystemFolder) -> Self {
+        Self {
+            contained: Vec::new(),
+            id: Some(system_folder),
+            name: Filename::parse(".").unwrap(),
+        }
     }
 }
 
@@ -119,14 +148,12 @@ pub enum Directory {
 
 impl Directory {
     /// Create a new root directory.
-    pub fn root() -> Directory {
+    pub fn root() -> RootDirectory {
         RootDirectory {
             contained: Vec::new(),
-            directory: Identifier::from_str("TARGETDIR")
-                .expect("Default root directory caused panic"),
+            id: Identifier::from_str("TARGETDIR").expect("Default root directory caused panic"),
             name: Identifier::from_str("SourceDir").expect("Default root dir caused panic"),
         }
-        .into()
     }
 }
 
@@ -142,14 +169,14 @@ pub enum DirectoryConversionError {
 mod test {
     use assertables::assert_contains;
 
-    use crate::types::helpers::directory::DirectoryKind;
+    use crate::types::{helpers::directory::DirectoryKind, properties::systemfolder::SystemFolder};
 
     use super::Directory;
 
     #[test]
     fn add_directory() {
         let mut root = Directory::root();
-        let pf = root.insert_dir("PFiles").unwrap();
+        let pf = root.insert_system_folder(SystemFolder::PROGRAMFILES);
         assert_contains!(root.contained(), &pf.clone().into());
         let man = (*pf.borrow_mut()).insert_dir("MAN").unwrap();
         assert_contains!(pf.borrow().contained(), &man.clone().into());

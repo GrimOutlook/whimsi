@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use anyhow::Context;
 use derive_more::Display;
 
 use crate::{
@@ -24,8 +25,10 @@ impl Filename {
 
     pub fn parse(input: &str) -> anyhow::Result<Self> {
         Ok(Self {
-            short: ShortFilename::from_str(input)?,
-            long: LongFilename::from_str(input)?,
+            short: ShortFilename::from_str(input)
+                .context(format!("Failed parsing short filename from [{input}]"))?,
+            long: LongFilename::from_str(input)
+                .context(format!("Failed parsing long filename from [{input}]"))?,
         })
     }
 }

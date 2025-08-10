@@ -117,7 +117,10 @@ fn invalid_chars(invalid: &[char], haystack: &str) -> Vec<InvalidChar> {
 
 fn validate_long_filename(s: &str) -> anyhow::Result<()> {
     ensure!(!s.is_empty(), FilenameParsingError::EmptyString);
-    ensure!(!s.ends_with("."), FilenameParsingError::EndsWithPeriod);
+    ensure!(
+        !s.ends_with(".") && s != ".",
+        FilenameParsingError::EndsWithPeriod
+    );
     let invalid_chars = invalid_chars(LongFilename::INVALID_CHARS, s);
     ensure!(
         invalid_chars.is_empty(),

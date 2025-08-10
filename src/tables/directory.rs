@@ -1,18 +1,7 @@
 use thiserror::Error;
 
 use crate::types::dao::directory::DirectoryDao;
-use crate::types::helpers::{
-    directory::{Directory, RootDirectory},
-    node::Node,
-};
-
-// TODO: If the `getset` crate ever supports Traits, use them here. I should not have to manually
-// make getters just because they are contained in traits.
-#[ambassador::delegatable_trait]
-pub trait Container {
-    fn contained(&self) -> Vec<Node>;
-    fn contained_mut(&mut self) -> &mut Vec<Node>;
-}
+use crate::types::helpers::directory::{Directory, DirectoryKind, RootDirectory};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct DirectoryTable(Vec<DirectoryDao>);

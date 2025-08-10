@@ -3,17 +3,66 @@ use std::rc::Rc;
 use std::str::FromStr;
 
 use ambassador::Delegate;
+use anyhow::ensure;
 use derive_more::{Display, From};
+use thiserror::Error;
 
-use crate::tables::directory::ambassador_impl_Container;
-
-use crate::{
-    tables::directory::Container,
-    types::column::{filename::MsiFilename, identifier::Identifier},
-};
+use crate::types::column::identifier::Identifier;
 
 use super::filename::Filename;
 use super::node::Node;
+
+// TODO: If the `getset` crate ever supports Traits, use them here. I should not have to manually
+// make getters just because they are contained in traits.
+#[ambassador::delegatable_trait]
+pub trait DirectoryKind {
+    fn contained(&self) -> Vec<Node>;
+    fn contained_mut(&mut self) -> &mut Vec<Node>;
+    fn insert_dir(&mut self, name: &str) -> anyhow::Result<Rc<RefCell<NonRootDirectory>>> {
+        let new_filename = Filename::parse(name)?;
+        self.insert_dir_filename(new_filename)
+    }
+
+    fn insert_dir_with_trim(
+        &mut self,
+        name: &str,
+    ) -> anyhow::Result<Rc<RefCell<NonRootDirectory>>> {
+        let new_filename = Filename::parse_with_trim(name)?;
+        self.insert_dir_filename(new_filename)
+    }
+
+    fn insert_dir_filename(
+        &mut self,
+        filename: Filename,
+    ) -> anyhow::Result<Rc<RefCell<NonRootDirectory>>> {
+        ensure!(
+            !self
+                .contained()
+                .iter()
+                .filter_map(|node| node.try_as_directory_ref())
+                .any(|dir| dir.borrow().name == filename),
+            DirectoryConversionError::DuplicateDirectoryName
+        );
+
+        let wrapped_new_dir = NonRootDirectory::new(filename);
+        let new_dir = Rc::new(RefCell::new(wrapped_new_dir));
+        self.contained_mut().push(new_dir.clone().into());
+        Ok(new_dir)
+    }
+}
+macro_rules! implement_directory_kind_simple {
+    ($struct_name:ty) => {
+        impl DirectoryKind for $struct_name {
+            fn contained(&self) -> Vec<Node> {
+                self.contained.clone()
+            }
+
+            fn contained_mut(&mut self) -> &mut Vec<Node> {
+                &mut self.contained
+            }
+        }
+    };
+}
 
 #[derive(Clone, Debug, Display, PartialEq)]
 #[display("{}", directory)]
@@ -25,15 +74,7 @@ pub struct RootDirectory {
     name: Identifier,
 }
 
-impl Container for RootDirectory {
-    fn contained(&self) -> Vec<Node> {
-        self.contained.clone()
-    }
-
-    fn contained_mut(&mut self) -> &mut Vec<Node> {
-        &mut self.contained
-    }
-}
+implement_directory_kind_simple!(RootDirectory);
 
 /// Directory that is a contained within a subdirectory.
 ///
@@ -54,23 +95,12 @@ impl NonRootDirectory {
         }
     }
 
-    // TODO: Deduplicate this from the `Directory` enum implementation
-    pub fn insert_dir(&mut self, directory: &str) -> anyhow::Result<Rc<RefCell<NonRootDirectory>>> {
-        // TODO: Check if this directory clashes with one that's already contained.
-        let new_dir = Rc::new(RefCell::new(NonRootDirectory::from_str(directory)?));
-        self.contained_mut().push(new_dir.clone().into());
-        Ok(new_dir.into())
+    pub fn name(&self) -> Filename {
+        self.name.clone()
     }
 }
 
-impl Container for NonRootDirectory {
-    fn contained(&self) -> Vec<Node> {
-        self.contained.clone()
-    }
-    fn contained_mut(&mut self) -> &mut Vec<Node> {
-        &mut self.contained
-    }
-}
+implement_directory_kind_simple!(NonRootDirectory);
 
 impl FromStr for NonRootDirectory {
     type Err = anyhow::Error;
@@ -81,7 +111,7 @@ impl FromStr for NonRootDirectory {
 }
 
 #[derive(Clone, Debug, Delegate, Display, From, PartialEq, strum::EnumIs)]
-#[delegate(Container)]
+#[delegate(DirectoryKind)]
 pub enum Directory {
     RootDirectory(RootDirectory),
     NonRootDirectory(NonRootDirectory),
@@ -98,23 +128,21 @@ impl Directory {
         }
         .into()
     }
-    pub fn insert_dir(&mut self, directory: &str) -> anyhow::Result<Rc<RefCell<NonRootDirectory>>> {
-        // TODO: Check if this directory clashes with one that's already contained.
-        let new_dir = Rc::new(RefCell::new(NonRootDirectory::from_str(directory)?));
-        self.contained_mut().push(new_dir.clone().into());
-        Ok(new_dir.into())
-    }
 }
 
+#[derive(Debug, Error, From)]
 pub enum DirectoryConversionError {
-    DirectoryNameTooLong { shortened: Directory },
+    #[error("Given directory name cannot fit in short filename")]
+    DirectoryNameTooLong,
+    #[error("Directory name already exists in parent directory")]
+    DuplicateDirectoryName,
 }
 
 #[cfg(test)]
 mod test {
     use assertables::assert_contains;
 
-    use crate::tables::directory::Container;
+    use crate::types::helpers::directory::DirectoryKind;
 
     use super::Directory;
 
@@ -124,7 +152,7 @@ mod test {
         let pf = root.insert_dir("PFiles").unwrap();
         assert_contains!(root.contained(), &pf.clone().into());
         let man = (*pf.borrow_mut()).insert_dir("MAN").unwrap();
-        assert_contains!(pf.borrow().contained(), &man.into());
-        // assert_eq!(man.get())
+        assert_contains!(pf.borrow().contained(), &man.clone().into());
+        assert_eq!(man.borrow().name().to_string(), "MAN");
     }
 }

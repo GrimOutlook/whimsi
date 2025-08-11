@@ -2,23 +2,31 @@ use thiserror::Error;
 
 use crate::types::dao::directory::DirectoryDao;
 use crate::types::helpers::directory::{DirectoryKind, SubDirectory, SystemDirectory};
+use crate::{Identifiers, Msi};
+
+use super::{Table, TableKind};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct DirectoryTable(Vec<DirectoryDao>);
-impl DirectoryTable {
-    fn add_directory_recursive(
+
+impl Msi {
+    pub fn add_directory_recursive(
         &mut self,
         directory: &SubDirectory,
         parent: &impl DirectoryKind,
     ) -> anyhow::Result<()> {
-        self.0.push(DirectoryDao::new(directory, parent)?);
+        let mut table: DirectoryTable = self.table_or_new(TableKind::Directories).try_into()?;
+        // TODO: Create a directory table if it doesn't exist.
+        // TODO: Add the directory structure recursively.
+        table.0.push(DirectoryDao::new(directory, parent)?);
         self.add_children(directory)?;
         Ok(())
     }
 
     // Root is the only directory that doesn't require a parent
     fn add(&mut self, system_dir: SystemDirectory) -> anyhow::Result<()> {
-        self.0.push((&system_dir).try_into()?);
+        let mut table: DirectoryTable = self.table(TableKind::Directories).unwrap().try_into()?;
+        table.0.push((&system_dir).try_into()?);
         self.add_children(&system_dir)?;
         Ok(())
     }

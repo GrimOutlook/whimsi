@@ -28,22 +28,34 @@ pub mod types;
 use std::collections::HashMap;
 
 use getset::Getters;
-use tables::Table;
+use strum::IntoDiscriminant;
+use tables::{MsiTable, Table, TableKind};
 use types::column::{ColumnValue, identifier::Identifier};
+
+type Identifiers = HashMap<Identifier, ColumnValue>;
 
 /// An in-memory representation of the final MSI to be created.
 #[derive(Getters)]
 #[getset(get = "pub")]
 pub struct Msi {
     /// Tracks identifiers used to relate items between tables.
-    identifiers: HashMap<Identifier, ColumnValue>,
+    identifiers: Identifiers,
     tables: Vec<Table>,
 }
 
 impl Msi {
-    pub fn add_directory_structure(&mut self) {
-        // TODO: Create a directory table if it doesn't exist.
-        // TODO: Add the directory structure recursively.
-        todo!()
+    pub fn table(&self, table: TableKind) -> Option<Table> {
+        self.tables
+            .iter()
+            .find(|t| t.discriminant() == table)
+            .cloned()
+    }
+
+    pub fn table_or_new(&self, table: TableKind) -> Table {
+        if let Some(t) = self.table(table) {
+            return t;
+        }
+
+        todo!("Create new table")
     }
 }

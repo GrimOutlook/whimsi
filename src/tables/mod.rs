@@ -1,3 +1,4 @@
+use derive_more::{From, TryInto};
 use directory::DirectoryTable;
 use strum::EnumDiscriminants;
 
@@ -18,7 +19,7 @@ pub trait MsiTable {
 /// WARN: This is missing many possible tables as seen when checking the above resource. I have
 /// only implemented the tables that I believe will be useful for my usecases at this moment.
 ///
-#[derive(EnumDiscriminants)]
+#[derive(EnumDiscriminants, Clone, Debug, From, TryInto, strum::EnumTryAs)]
 #[strum_discriminants(name(TableKind))]
 pub enum Table {
     /// Directory layout for the application.

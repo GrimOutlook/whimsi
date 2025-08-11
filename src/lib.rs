@@ -25,92 +25,25 @@ pub mod constants;
 mod tables;
 pub mod types;
 
+use std::collections::HashMap;
+
 use getset::Getters;
-use strum::EnumDiscriminants;
-use tables::directory::DirectoryTable;
+use tables::Table;
+use types::column::{ColumnValue, identifier::Identifier};
 
 /// An in-memory representation of the final MSI to be created.
 #[derive(Getters)]
 #[getset(get = "pub")]
 pub struct Msi {
+    /// Tracks identifiers used to relate items between tables.
+    identifiers: HashMap<Identifier, ColumnValue>,
     tables: Vec<Table>,
 }
 
-pub trait MsiTable {
-    type TableValue;
-
-    fn name() -> &'static str;
-    fn init() -> Self;
-    fn default_values() -> Vec<Self::TableValue>;
-    fn values(&self) -> Vec<Self::TableValue>;
-}
-
-/// Enum values are derived from this table:
-/// https://learn.microsoft.com/en-us/windows/win32/msi/database-tables
-///
-/// WARN: This is missing many possible tables as seen when checking the above resource. I have
-/// only implemented the tables that I believe will be useful for my usecases at this moment.
-///
-#[derive(EnumDiscriminants)]
-#[strum_discriminants(name(TableKind))]
-pub enum Table {
-    /// Directory layout for the application.
-    ///
-    /// Table Information Contained:
-    /// - ['Directory'](https://learn.microsoft.com/en-us/windows/win32/msi/directory-table)
-    Directories(DirectoryTable),
-    // /// Complete list of source files with their attributes.
-    // ///
-    // /// Table Information Contained:
-    // /// - ['File'](https://learn.microsoft.com/en-us/windows/win32/msi/file-table)
-    // Files(Files),
-    //
-    // /// Lists installation components.
-    // ///
-    // /// Table Information Contained:
-    // /// - [`Component`](https://learn.microsoft.com/en-us/windows/win32/msi/component-table)
-    // Components(Components),
-    //
-    // /// Defines the logical tree structure of features.
-    // ///
-    // /// Table Information Contained:
-    // /// - ['Feature'](https://learn.microsoft.com/en-us/windows/win32/msi/feature-table)
-    // /// - ['FeatureComponents'](https://learn.microsoft.com/en-us/windows/win32/msi/featurecomponents-table)
-    // ///
-    // /// NOTE: The [feature-components
-    // /// table](https://learn.microsoft.com/en-us/windows/win32/msi/featurecomponents-table) is not used.
-    // /// Instead features have an extra property which is a vec holding references to the components that they contain.
-    // Features(Features),
-    //
-    // /// Lists information needed to create shortcuts.
-    // ///
-    // /// Table Information Contained:
-    // /// - ['Shortcut'](https://learn.microsoft.com/en-us/windows/win32/msi/shortcut-table)
-    // Shortcuts(Shortcuts),
-    //
-    // /// Secures services, files, registry keys, and created folders
-    // ///
-    // /// Table Information Contained:
-    // /// - ['MsiLockPermissionsEx'](https://learn.microsoft.com/en-us/windows/win32/msi/msilockpermissionsex-table)
-    // Permissions(Permissions),
-    //
-    // /// Lists information used to install a service.
-    // ///
-    // /// Table Information Contained:
-    // /// - ['MsiServiceConfig'](https://learn.microsoft.com/en-us/windows/win32/msi/msiserviceconfig-table)
-    // /// - ['ServiceInstall'](https://learn.microsoft.com/en-us/windows/win32/msi/serviceinstall-table)
-    // /// - ['ServiceControl'](https://learn.microsoft.com/en-us/windows/win32/msi/serviceinstall-table)
-    // Services(Services),
-    //
-    // /// Lists registry information for the application.
-    // ///
-    // /// Table Information Contained:
-    // /// - ['Registry'](https://learn.microsoft.com/en-us/windows/win32/msi/registry-table)
-    // RegistryEntries(RegistryEntries),
-    //
-    // /// Lists the environment variables.
-    // ///
-    // /// Table Information Contained:
-    // /// - ['Environment'](https://learn.microsoft.com/en-us/windows/win32/msi/environment-table)
-    // EnvironmentVariables(EnvironmentVariables),
+impl Msi {
+    pub fn add_directory_structure(&mut self) {
+        // TODO: Create a directory table if it doesn't exist.
+        // TODO: Add the directory structure recursively.
+        todo!()
+    }
 }

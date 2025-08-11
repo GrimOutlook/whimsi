@@ -22,7 +22,7 @@ pub trait DirectoryKind: Clone {
     fn contained(&self) -> Vec<Node>;
     fn contained_mut(&mut self) -> &mut Vec<Node>;
 
-    fn contained_directories(&self) -> Vec<Rc<RefCell<NonRootDirectory>>> {
+    fn contained_directories(&self) -> Vec<Rc<RefCell<SubDirectory>>> {
         self.contained()
             .iter()
             .filter_map(|node| node.try_as_directory_ref())
@@ -30,15 +30,12 @@ pub trait DirectoryKind: Clone {
             .collect_vec()
     }
 
-    fn insert_dir(&mut self, name: &str) -> anyhow::Result<Rc<RefCell<NonRootDirectory>>> {
+    fn insert_dir(&mut self, name: &str) -> anyhow::Result<Rc<RefCell<SubDirectory>>> {
         let new_filename = Filename::parse(name)?;
         self.insert_dir_filename(new_filename)
     }
 
-    fn insert_dir_with_trim(
-        &mut self,
-        name: &str,
-    ) -> anyhow::Result<Rc<RefCell<NonRootDirectory>>> {
+    fn insert_dir_with_trim(&mut self, name: &str) -> anyhow::Result<Rc<RefCell<SubDirectory>>> {
         let new_filename = Filename::parse_with_trim(name)?;
         self.insert_dir_filename(new_filename)
     }
@@ -46,7 +43,7 @@ pub trait DirectoryKind: Clone {
     fn insert_dir_filename(
         &mut self,
         filename: Filename,
-    ) -> anyhow::Result<Rc<RefCell<NonRootDirectory>>> {
+    ) -> anyhow::Result<Rc<RefCell<SubDirectory>>> {
         ensure!(
             !self
                 .contained()
@@ -56,7 +53,7 @@ pub trait DirectoryKind: Clone {
             DirectoryConversionError::DuplicateDirectoryName
         );
 
-        let wrapped_new_dir = NonRootDirectory::new(filename);
+        let wrapped_new_dir = SubDirectory::new(filename);
         let new_dir = Rc::new(RefCell::new(wrapped_new_dir));
         self.contained_mut().push(new_dir.clone().into());
         Ok(new_dir)
@@ -79,27 +76,18 @@ macro_rules! implement_directory_kind_simple {
 #[derive(Clone, Debug, Display, PartialEq, Getters)]
 #[display("{}", id)]
 #[getset(get = "pub")]
-pub struct RootDirectory {
+pub struct SystemDirectory {
     #[getset(skip)]
     contained: Vec<Node>,
-    /// ID of this directory. This is always `TARGETDIR`.
+
+    /// ID of this directory.
     id: SystemFolder,
-    /// Identifier for the root directory. This is always `SourceDir`.
-    name: Identifier,
+    /// Name for the system directory. This is automatically derived during installation if `.` is
+    /// used.
+    name: Filename,
 }
 
-impl RootDirectory {
-    pub fn insert_system_folder(
-        &mut self,
-        system_folder: SystemFolder,
-    ) -> Rc<RefCell<NonRootDirectory>> {
-        let new_dir = Rc::new(RefCell::new(NonRootDirectory::system_folder(system_folder)));
-        self.contained.push(new_dir.clone().into());
-        new_dir
-    }
-}
-
-implement_directory_kind_simple!(RootDirectory);
+implement_directory_kind_simple!(SystemDirectory);
 
 /// Directory that is a contained within a subdirectory.
 ///
@@ -107,7 +95,7 @@ implement_directory_kind_simple!(RootDirectory);
 #[derive(Clone, Debug, Display, PartialEq, Getters)]
 #[display("{}", name)]
 #[getset(get = "pub")]
-pub struct NonRootDirectory {
+pub struct SubDirectory {
     #[getset(skip)]
     contained: Vec<Node>,
 
@@ -120,7 +108,7 @@ pub struct NonRootDirectory {
     name: Filename,
 }
 
-impl NonRootDirectory {
+impl SubDirectory {
     pub fn new(name: Filename) -> Self {
         Self {
             contained: Vec::new(),
@@ -138,9 +126,9 @@ impl NonRootDirectory {
     }
 }
 
-implement_directory_kind_simple!(NonRootDirectory);
+implement_directory_kind_simple!(SubDirectory);
 
-impl FromStr for NonRootDirectory {
+impl FromStr for SubDirectory {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -151,17 +139,17 @@ impl FromStr for NonRootDirectory {
 #[derive(Clone, Debug, Delegate, Display, From, PartialEq, strum::EnumIs)]
 #[delegate(DirectoryKind)]
 pub enum Directory {
-    RootDirectory(RootDirectory),
-    NonRootDirectory(NonRootDirectory),
+    SystemDirectory(SystemDirectory),
+    SubDirectory(SubDirectory),
 }
 
 impl Directory {
-    /// Create a new root directory.
-    pub fn root() -> RootDirectory {
-        RootDirectory {
+    /// Create a new system directory under root.
+    pub fn system_directory(system_folder: SystemFolder) -> SystemDirectory {
+        SystemDirectory {
             contained: Vec::new(),
-            id: SystemFolder::TARGETDIR,
-            name: Identifier::from_str("SourceDir").expect("Default root dir caused panic"),
+            id: system_folder.clone(),
+            name: Filename::parse(".").unwrap().clone(),
         }
     }
 }
@@ -184,11 +172,9 @@ mod test {
 
     #[test]
     fn add_directory() {
-        let mut root = Directory::root();
-        let pf = root.insert_system_folder(SystemFolder::ProgramFiles);
-        assert_contains!(root.contained(), &pf.clone().into());
-        let man = (*pf.borrow_mut()).insert_dir("MAN").unwrap();
-        assert_contains!(pf.borrow().contained(), &man.clone().into());
+        let mut pf = Directory::system_directory(SystemFolder::ProgramFiles);
+        let man = pf.insert_dir("MAN").unwrap();
+        assert_contains!(pf.contained(), &man.clone().into());
         assert_eq!(man.borrow().name().to_string(), "MAN");
     }
 }

@@ -1,11 +1,15 @@
+use getset::Getters;
+
 use crate::types::{
     column::{default_dir::DefaultDir, identifier::Identifier},
-    helpers::directory::{DirectoryKind, RootDirectory},
+    helpers::directory::{DirectoryKind, SystemDirectory},
+    properties::systemfolder::SystemFolder,
 };
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Getters)]
+#[getset(get = "pub")]
 pub(crate) struct DirectoryDao {
-    default: DefaultDir,
+    default_dir: DefaultDir,
     directory: Identifier,
     parent: Identifier,
 }
@@ -19,16 +23,41 @@ impl DirectoryDao {
     }
 }
 
-impl From<&RootDirectory> for DirectoryDao {
-    fn from(value: &RootDirectory) -> Self {
-        // The documentation says that only the root directory can have a `directory` and `parent`
-        // field containing the same value. Figured it would be simpler to do this than make the
-        // `parent` field optional and have to unwrap it for every operation not involving the root
-        // directory.
-        Self {
+impl TryFrom<&SystemDirectory> for DirectoryDao {
+    type Error = anyhow::Error;
+    fn try_from(value: &SystemDirectory) -> Result<Self, Self::Error> {
+        let dir = Self {
             directory: value.id().clone().into(),
-            parent: value.id().clone().into(),
-            default: value.name().clone().into(),
-        }
+            parent: SystemFolder::TARGETDIR.into(),
+            default_dir: value.name().clone().into(),
+        };
+        Ok(dir)
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use crate::types::{
+        dao::directory::DirectoryDao,
+        helpers::{
+            directory::{Directory, SystemDirectory},
+            filename::Filename,
+        },
+        properties::systemfolder::SystemFolder::ProgramFiles,
+    };
+
+    #[test]
+    fn try_from() {
+        let dir: SystemDirectory = Directory::system_directory(ProgramFiles);
+        let pf_dao: DirectoryDao = (&dir)
+            .try_into()
+            .expect("Failed to convert program files system folder to DAO");
+        assert_eq!(
+            *pf_dao.default_dir(),
+            Filename::parse(".")
+                .expect("Failed to parse `.` directory name to Identifier for system folder.")
+                .into()
+        )
     }
 }

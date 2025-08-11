@@ -7,6 +7,8 @@ use thiserror::Error;
 
 use crate::{constants::*, types::helpers::invalid_char::InvalidChar};
 
+use super::ColumnValue;
+
 /// Name of a file *or* folder.
 ///
 /// Reference: https://learn.microsoft.com/en-us/windows/win32/msi/filename

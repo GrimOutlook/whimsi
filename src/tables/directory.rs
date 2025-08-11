@@ -1,14 +1,14 @@
 use thiserror::Error;
 
 use crate::types::dao::directory::DirectoryDao;
-use crate::types::helpers::directory::{DirectoryKind, NonRootDirectory, RootDirectory};
+use crate::types::helpers::directory::{DirectoryKind, SubDirectory, SystemDirectory};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct DirectoryTable(Vec<DirectoryDao>);
 impl DirectoryTable {
     fn add_directory_recursive(
         &mut self,
-        directory: &NonRootDirectory,
+        directory: &SubDirectory,
         parent: &impl DirectoryKind,
     ) -> anyhow::Result<()> {
         self.0.push(DirectoryDao::new(directory, parent)?);
@@ -17,9 +17,9 @@ impl DirectoryTable {
     }
 
     // Root is the only directory that doesn't require a parent
-    fn add_root(&mut self, root: RootDirectory) -> anyhow::Result<()> {
-        self.0.push((&root).into());
-        self.add_children(&root)?;
+    fn add(&mut self, system_dir: SystemDirectory) -> anyhow::Result<()> {
+        self.0.push((&system_dir).try_into()?);
+        self.add_children(&system_dir)?;
         Ok(())
     }
 
@@ -28,16 +28,6 @@ impl DirectoryTable {
             self.add_directory_recursive(&child.borrow(), directory)?;
         }
         Ok(())
-    }
-}
-
-impl TryFrom<RootDirectory> for DirectoryTable {
-    type Error = anyhow::Error;
-
-    fn try_from(root_directory: RootDirectory) -> Result<Self, Self::Error> {
-        let mut table = DirectoryTable::default();
-        table.add_root(root_directory)?;
-        Ok(table)
     }
 }
 

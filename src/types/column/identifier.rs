@@ -9,6 +9,8 @@ use regex::Regex;
 
 use crate::types::{helpers::invalid_char::InvalidChar, properties::systemfolder::SystemFolder};
 
+use super::ColumnValue;
+
 static INVALID_FIRST_CHARACTER: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[^A-Za-z_]").unwrap());
 static INVALID_CHARACTER: Lazy<Regex> = Lazy::new(|| Regex::new(r"[^A-Za-z0-9_\.]").unwrap());
 

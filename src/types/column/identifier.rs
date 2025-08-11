@@ -1,11 +1,13 @@
+use anyhow::{Context, bail};
 use derive_more::Display;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use std::str::FromStr;
+use thiserror::Error;
 
 use regex::Regex;
 
-use crate::types::helpers::invalid_char::InvalidChar;
+use crate::types::{helpers::invalid_char::InvalidChar, properties::systemfolder::SystemFolder};
 
 static INVALID_FIRST_CHARACTER: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[^A-Za-z_]").unwrap());
 static INVALID_CHARACTER: Lazy<Regex> = Lazy::new(|| Regex::new(r"[^A-Za-z0-9_\.]").unwrap());
@@ -20,11 +22,11 @@ pub struct Identifier {
 }
 
 impl FromStr for Identifier {
-    type Err = IdentifierConversionError;
+    type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some(hit) = INVALID_FIRST_CHARACTER.find(s) {
-            return Err(IdentifierConversionError::InvalidFirstCharacter {
+            bail!(IdentifierConversionError::InvalidFirstCharacter {
                 first_character: InvalidChar::new(hit.as_str().chars().next().unwrap(), 0),
             });
         }
@@ -35,7 +37,7 @@ impl FromStr for Identifier {
                 .enumerate()
                 .map(|(index, hit)| InvalidChar::new(hit.as_str().chars().next().unwrap(), index))
                 .collect_vec();
-            return Err(IdentifierConversionError::InvalidCharacters { characters });
+            bail!(IdentifierConversionError::InvalidCharacters { characters });
         }
 
         Ok(Identifier {
@@ -44,11 +46,23 @@ impl FromStr for Identifier {
     }
 }
 
-#[derive(Debug, Display, PartialEq)]
+impl From<SystemFolder> for Identifier {
+    fn from(value: SystemFolder) -> Self {
+        value
+            .to_string()
+            .parse()
+            .context(format!(
+                "Failed to parse system folder {value:?} to identifier"
+            ))
+            .unwrap()
+    }
+}
+
+#[derive(Debug, Error, PartialEq)]
 pub enum IdentifierConversionError {
-    #[display("Identifier has invalid first character")]
+    #[error("Identifier has invalid first character: [{first_character}]")]
     InvalidFirstCharacter { first_character: InvalidChar },
-    #[display("Identifier contains invalid characters")]
+    #[error("Identifier contains invalid characters")]
     InvalidCharacters { characters: Vec<InvalidChar> },
 }
 
@@ -76,8 +90,10 @@ mod test {
     #[test_case(".Test"; "starts with period")]
     #[test_case("8Test"; "starts with number")]
     fn invalid_first_character(input: &str) {
-        let actual =
-            Identifier::from_str(input).expect_err("Invalid identifier is returning as valid");
+        let actual = Identifier::from_str(input)
+            .expect_err("Invalid identifier is returning as valid")
+            .downcast()
+            .unwrap();
         let expected = IdentifierConversionError::InvalidFirstCharacter {
             first_character: InvalidChar::new(input.chars().next().unwrap(), 0),
         };

@@ -6,6 +6,7 @@ use ambassador::Delegate;
 use anyhow::ensure;
 use derive_more::{Display, From};
 use getset::Getters;
+use itertools::Itertools;
 use thiserror::Error;
 
 use crate::types::column::identifier::Identifier;
@@ -17,9 +18,18 @@ use super::node::Node;
 // TODO: If the `getset` crate ever supports Traits, use them here. I should not have to manually
 // make getters just because they are contained in traits.
 #[ambassador::delegatable_trait]
-pub trait DirectoryKind {
+pub trait DirectoryKind: Clone {
     fn contained(&self) -> Vec<Node>;
     fn contained_mut(&mut self) -> &mut Vec<Node>;
+
+    fn contained_directories(&self) -> Vec<Rc<RefCell<NonRootDirectory>>> {
+        self.contained()
+            .iter()
+            .filter_map(|node| node.try_as_directory_ref())
+            .cloned()
+            .collect_vec()
+    }
+
     fn insert_dir(&mut self, name: &str) -> anyhow::Result<Rc<RefCell<NonRootDirectory>>> {
         let new_filename = Filename::parse(name)?;
         self.insert_dir_filename(new_filename)
@@ -72,9 +82,8 @@ macro_rules! implement_directory_kind_simple {
 pub struct RootDirectory {
     #[getset(skip)]
     contained: Vec<Node>,
-
     /// ID of this directory. This is always `TARGETDIR`.
-    id: Identifier,
+    id: SystemFolder,
     /// Identifier for the root directory. This is always `SourceDir`.
     name: Identifier,
 }
@@ -151,7 +160,7 @@ impl Directory {
     pub fn root() -> RootDirectory {
         RootDirectory {
             contained: Vec::new(),
-            id: Identifier::from_str("TARGETDIR").expect("Default root directory caused panic"),
+            id: SystemFolder::TARGETDIR,
             name: Identifier::from_str("SourceDir").expect("Default root dir caused panic"),
         }
     }
@@ -176,7 +185,7 @@ mod test {
     #[test]
     fn add_directory() {
         let mut root = Directory::root();
-        let pf = root.insert_system_folder(SystemFolder::PROGRAMFILES);
+        let pf = root.insert_system_folder(SystemFolder::ProgramFiles);
         assert_contains!(root.contained(), &pf.clone().into());
         let man = (*pf.borrow_mut()).insert_dir("MAN").unwrap();
         assert_contains!(pf.borrow().contained(), &man.clone().into());

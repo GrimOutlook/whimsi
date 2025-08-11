@@ -3,10 +3,7 @@ use std::str::FromStr;
 use anyhow::Context;
 use derive_more::Display;
 
-use crate::{
-    constants::*,
-    types::column::filename::{LongFilename, ShortFilename},
-};
+use crate::types::column::filename::{LongFilename, ShortFilename};
 
 #[derive(Clone, Debug, Display, PartialEq)]
 #[display("{}", long)]
@@ -18,8 +15,11 @@ pub struct Filename {
 impl Filename {
     pub fn parse_with_trim(input: &str) -> anyhow::Result<Self> {
         Ok(Self {
-            short: ShortFilename::trimmed(input)?,
-            long: LongFilename::from_str(input)?,
+            short: ShortFilename::trimmed(input).context(format!(
+                "Failed parsing short filename with trim from [{input}]"
+            ))?,
+            long: LongFilename::from_str(input)
+                .context(format!("Failed parsing long filename from [{input}]"))?,
         })
     }
 

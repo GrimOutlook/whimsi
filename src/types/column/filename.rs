@@ -44,7 +44,9 @@ impl FromStr for LongFilename {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        validate_long_filename(s)?;
+        if s != "." {
+            validate_long_filename(s)?;
+        }
 
         Ok(LongFilename { inner: s.into() })
     }
@@ -80,8 +82,10 @@ impl FromStr for ShortFilename {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        validate_long_filename(s)?;
-        validate_short_filename(s)?;
+        if s != "." {
+            validate_long_filename(s)?;
+            validate_short_filename(s)?;
+        }
 
         Ok(ShortFilename { inner: s.into() })
     }
@@ -117,10 +121,7 @@ fn invalid_chars(invalid: &[char], haystack: &str) -> Vec<InvalidChar> {
 
 fn validate_long_filename(s: &str) -> anyhow::Result<()> {
     ensure!(!s.is_empty(), FilenameParsingError::EmptyString);
-    ensure!(
-        !s.ends_with(".") && s != ".",
-        FilenameParsingError::EndsWithPeriod
-    );
+    ensure!(!s.ends_with("."), FilenameParsingError::EndsWithPeriod);
     let invalid_chars = invalid_chars(LongFilename::INVALID_CHARS, s);
     ensure!(
         invalid_chars.is_empty(),

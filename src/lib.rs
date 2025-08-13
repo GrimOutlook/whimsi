@@ -22,25 +22,25 @@
 #![allow(dead_code)]
 
 pub mod constants;
-mod tables;
+pub mod tables;
 pub mod types;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use getset::Getters;
 use strum::IntoDiscriminant;
-use tables::{MsiTable, Table, TableKind};
+use tables::{Table, TableKind};
 use types::column::{ColumnValue, identifier::Identifier};
 
 type Identifiers = HashMap<Identifier, ColumnValue>;
 
 /// An in-memory representation of the final MSI to be created.
-#[derive(Getters)]
+#[derive(Default, Getters)]
 #[getset(get = "pub")]
 pub struct Msi {
     /// Tracks identifiers used to relate items between tables.
     identifiers: Identifiers,
-    tables: Vec<Table>,
+    tables: HashSet<Table>,
 }
 
 impl Msi {
@@ -51,6 +51,8 @@ impl Msi {
             .cloned()
     }
 
+    /// Get the MSI's contained table of the given kind, or create a new one if one does not exist
+    /// currently.
     pub fn table_or_new(&self, table: TableKind) -> Table {
         if let Some(t) = self.table(table) {
             return t;

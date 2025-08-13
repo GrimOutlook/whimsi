@@ -1,27 +1,18 @@
+use derive_more::Constructor;
 use getset::Getters;
 
 use crate::types::{
     column::{default_dir::DefaultDir, identifier::Identifier},
-    helpers::directory::{DirectoryKind, SystemDirectory},
-    properties::systemfolder::SystemFolder,
+    helpers::directory::SystemDirectory,
+    properties::system_folder::SystemFolder,
 };
 
-#[derive(Clone, Debug, PartialEq, Getters)]
+#[derive(Clone, Debug, PartialEq, Getters, Constructor)]
 #[getset(get = "pub")]
 pub(crate) struct DirectoryDao {
     default_dir: DefaultDir,
     directory: Identifier,
     parent: Identifier,
-}
-
-impl DirectoryDao {
-    pub fn new(
-        directory: &impl DirectoryKind,
-        parent: &impl DirectoryKind,
-    ) -> anyhow::Result<DirectoryDao> {
-        // Check if the parent directory identifier is in `Identifiers` or if it is a `SystemFolder`.
-        todo!()
-    }
 }
 
 impl TryFrom<&SystemDirectory> for DirectoryDao {
@@ -45,7 +36,7 @@ mod test {
             directory::{Directory, SystemDirectory},
             filename::Filename,
         },
-        properties::systemfolder::SystemFolder::ProgramFiles,
+        properties::system_folder::SystemFolder::ProgramFiles,
     };
 
     #[test]

@@ -7,7 +7,7 @@ use thiserror::Error;
 
 use regex::Regex;
 
-use crate::types::{helpers::invalid_char::InvalidChar, properties::systemfolder::SystemFolder};
+use crate::types::{helpers::invalid_char::InvalidChar, properties::system_folder::SystemFolder};
 
 use super::ColumnValue;
 

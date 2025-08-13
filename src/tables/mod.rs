@@ -11,6 +11,23 @@ pub trait MsiTable {
     fn init() -> Self;
     fn default_values() -> Vec<Self::TableValue>;
     fn values(&self) -> Vec<Self::TableValue>;
+    fn len(&self) -> usize;
+    fn is_empty(&self) -> bool;
+}
+
+#[macro_export]
+macro_rules! implement_boilerplate_table_kind {
+    ($struct_name:ty) => {
+        use $crate::tables::MsiTable;
+        impl MsiTable for $struct_name {
+            fn len(&self) -> usize {
+                self.0.len()
+            }
+            fn is_empty(&self) -> bool {
+                self.0.is_empty()
+            }
+        }
+    };
 }
 
 /// Enum values are derived from this table:

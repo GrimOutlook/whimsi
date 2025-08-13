@@ -9,8 +9,7 @@ use getset::Getters;
 use itertools::Itertools;
 use thiserror::Error;
 
-use crate::types::column::identifier::Identifier;
-use crate::types::properties::systemfolder::SystemFolder;
+use crate::types::properties::system_folder::SystemFolder;
 
 use super::filename::Filename;
 use super::node::Node;
@@ -166,7 +165,9 @@ pub enum DirectoryConversionError {
 mod test {
     use assertables::assert_contains;
 
-    use crate::types::{helpers::directory::DirectoryKind, properties::systemfolder::SystemFolder};
+    use crate::types::{
+        helpers::directory::DirectoryKind, properties::system_folder::SystemFolder,
+    };
 
     use super::Directory;
 

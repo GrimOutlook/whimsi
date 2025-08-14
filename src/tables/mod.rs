@@ -1,31 +1,31 @@
-use derive_more::{From, TryInto};
 use directory::DirectoryTable;
-use strum::EnumDiscriminants;
+use getset::Getters;
 
 pub mod directory;
 
-pub trait MsiTable {
+pub trait MsiBuilderTable {
     type TableValue;
 
+    /// Utilized when creating the MSI using the `msi` crate.
     fn name() -> &'static str;
     fn init() -> Self;
     fn default_values() -> Vec<Self::TableValue>;
-    fn values(&self) -> Vec<Self::TableValue>;
+    fn values(&self) -> &Vec<Self::TableValue>;
     fn len(&self) -> usize;
     fn is_empty(&self) -> bool;
 }
 
 #[macro_export]
-macro_rules! implement_boilerplate_table_kind {
-    ($struct_name:ty) => {
-        use $crate::tables::MsiTable;
-        impl MsiTable for $struct_name {
-            fn len(&self) -> usize {
-                self.0.len()
-            }
-            fn is_empty(&self) -> bool {
-                self.0.is_empty()
-            }
+macro_rules! msitable_boilerplate {
+    () => {
+        fn values(&self) -> &Vec<Self::TableValue> {
+            &self.0
+        }
+        fn len(&self) -> usize {
+            self.0.len()
+        }
+        fn is_empty(&self) -> bool {
+            self.0.is_empty()
         }
     };
 }
@@ -36,14 +36,14 @@ macro_rules! implement_boilerplate_table_kind {
 /// WARN: This is missing many possible tables as seen when checking the above resource. I have
 /// only implemented the tables that I believe will be useful for my usecases at this moment.
 ///
-#[derive(EnumDiscriminants, Clone, Debug, From, TryInto, strum::EnumTryAs)]
-#[strum_discriminants(name(TableKind))]
-pub enum Table {
+#[derive(Clone, Debug, Default, Getters)]
+#[getset(get = "pub")]
+pub struct MsiBuilderTables {
     /// Directory layout for the application.
     ///
     /// Table Information Contained:
     /// - ['Directory'](https://learn.microsoft.com/en-us/windows/win32/msi/directory-table)
-    Directories(DirectoryTable),
+    directory: DirectoryTable,
     // /// Complete list of source files with their attributes.
     // ///
     // /// Table Information Contained:

@@ -1,29 +1,37 @@
+use std::path::PathBuf;
+
 use derive_more::Constructor;
 use getset::Getters;
 
 use crate::types::{
     column::{default_dir::DefaultDir, identifier::Identifier},
-    helpers::directory::SystemDirectory,
+    helpers::filename::Filename,
     properties::system_folder::SystemFolder,
 };
 
 #[derive(Clone, Debug, PartialEq, Getters, Constructor)]
 #[getset(get = "pub")]
-pub(crate) struct DirectoryDao {
+pub struct DirectoryDao {
     default_dir: DefaultDir,
     directory: Identifier,
     parent: Identifier,
 }
 
-impl TryFrom<&SystemDirectory> for DirectoryDao {
-    type Error = anyhow::Error;
-    fn try_from(value: &SystemDirectory) -> Result<Self, Self::Error> {
-        let dir = Self {
-            directory: value.id().clone().into(),
+impl From<SystemFolder> for DirectoryDao {
+    fn from(value: SystemFolder) -> Self {
+        Self {
+            directory: value.into(),
             parent: SystemFolder::TARGETDIR.into(),
-            default_dir: value.name().clone().into(),
-        };
-        Ok(dir)
+            default_dir: Filename::parse_with_trim(".").unwrap().into(),
+        }
+    }
+}
+
+impl TryFrom<PathBuf> for DirectoryDao {
+    type Error = anyhow::Error;
+
+    fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
+        todo!()
     }
 }
 
@@ -32,19 +40,13 @@ mod test {
 
     use crate::types::{
         dao::directory::DirectoryDao,
-        helpers::{
-            directory::{Directory, SystemDirectory},
-            filename::Filename,
-        },
-        properties::system_folder::SystemFolder::ProgramFiles,
+        helpers::filename::Filename,
+        properties::system_folder::SystemFolder::{self},
     };
 
     #[test]
     fn try_from() {
-        let dir: SystemDirectory = Directory::system_directory(ProgramFiles);
-        let pf_dao: DirectoryDao = (&dir)
-            .try_into()
-            .expect("Failed to convert program files system folder to DAO");
+        let pf_dao: DirectoryDao = SystemFolder::ProgramFiles.into();
         assert_eq!(
             *pf_dao.default_dir(),
             Filename::parse(".")

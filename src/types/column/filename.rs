@@ -66,16 +66,19 @@ impl ShortFilename {
     const INVALID_CHARS: &[char] = &['+', ',', ';', '=', '[', ']'];
 
     pub fn trimmed(input: &str) -> anyhow::Result<Self> {
-        let file = std::path::Path::new(input);
-        let Some(filename) = file.file_stem() else {
-            bail!(ShortFilenameParsingError::NoFilename);
+        let s = if input != "." {
+            let file = std::path::Path::new(input);
+            let Some(filename) = file.file_stem() else {
+                bail!(ShortFilenameParsingError::NoFilename);
+            };
+            let filename = filename.to_str().context(format!(
+                "Failed to convert filepath os_str {filename:?} to str"
+            ))?;
+
+            filename.get(0..SHORT_FILENAME_MAX_LEN).unwrap_or(filename)
+        } else {
+            input
         };
-        let filename = filename.to_str().context(format!(
-            "Failed to convert filepath os_str {filename:?} to str"
-        ))?;
-
-        let trimmed_filename = filename.get(0..SHORT_FILENAME_MAX_LEN).unwrap_or(filename);
-
         Self::from_str(trimmed_filename)
     }
 }

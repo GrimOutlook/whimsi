@@ -1,13 +1,16 @@
-use std::path::PathBuf;
-
+use anyhow::{bail, ensure};
+use itertools::Itertools;
 use thiserror::Error;
 
 use crate::msitable_boilerplate;
+use crate::types::column::default_dir::DefaultDir;
+use crate::types::column::identifier::Identifier;
 use crate::types::dao::directory::DirectoryDao;
+use crate::types::properties::system_folder::SystemFolder;
 
 use super::MsiBuilderTable;
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DirectoryTable(Vec<DirectoryDao>);
 impl MsiBuilderTable for DirectoryTable {
     type TableValue = DirectoryDao;
@@ -19,36 +22,70 @@ impl MsiBuilderTable for DirectoryTable {
         "Directory"
     }
 
-    fn init() -> Self {
-        todo!()
-    }
-
     fn default_values() -> Vec<Self::TableValue> {
         todo!()
     }
 }
 
-impl DirectoryTable {
-    pub fn add_directory(&self, directory: DirectoryDao) -> anyhow::Result<()> {
-        todo!()
+impl Default for DirectoryTable {
+    fn default() -> Self {
+        let v = vec![SystemFolder::TARGETDIR.into()];
+        Self(v)
     }
 }
 
-// TODO: Add error messages
-#[derive(Debug, Error)]
-pub enum DirectoryTableConversionError {
-    #[error("Cannot convert non-root directory to directory table")]
-    NonRootDirectory,
+impl DirectoryTable {
+    pub fn add_directory(&mut self, dao: DirectoryDao) -> anyhow::Result<()> {
+        let parent_id = dao.parent();
+        // Verify that the parent directory is already in the directories table.
+        // If the parent ID is associated with a SystemFolder, make sure that system folder is in
+        // the table.
+        if self.entry_with_id(parent_id).is_none() {
+            if let Some(sys_folder) = parent_id.as_system_folder() {
+                self.add_directory(DirectoryDao::from(sys_folder))?;
+            } else {
+                bail!(DirectoryTableError::ParentDirectoryNotPresent {
+                    parent_id: parent_id.clone()
+                })
+            }
+        }
+
+        // Check that the new item isn't already in the parent directory. Can only check
+        // against the DAO names, as the identifiers are able to be randomly generated.
+        ensure!(
+            !self
+                .entries_with_parent(parent_id)
+                .iter()
+                .any(|d| d.default_dir() == dao.default_dir()),
+            DirectoryTableError::DirectoryNameCollision {
+                parent_id: parent_id.clone(),
+                name: dao.default_dir().clone()
+            }
+        );
+
+        self.0.push(dao);
+        Ok(())
+    }
+
+    pub fn entry_with_id(&self, identifier: &Identifier) -> Option<&DirectoryDao> {
+        self.0.iter().find(|d| d.directory() == identifier)
+    }
+
+    pub fn entries_with_parent(&self, parent_id: &Identifier) -> Vec<&DirectoryDao> {
+        self.0
+            .iter()
+            .filter(|d| d.parent() == parent_id)
+            .collect_vec()
+    }
 }
 
-#[cfg(test)]
-mod test {
-    use std::path::PathBuf;
-
-    // #[test]
-    // fn add_directory() {
-    //     let msi = Msi::default();
-    //     let path = PathBuf::new();
-    //     msi.add_pathe(path, SystemFolder::ProgramFiles);
-    // }
+#[derive(Debug, Error)]
+pub enum DirectoryTableError {
+    #[error("Parent ID {parent_id} is not in DirectoryTable")]
+    ParentDirectoryNotPresent { parent_id: Identifier },
+    #[error("Directory with ID {parent_id} already contains subdirectory with name {name:?}")]
+    DirectoryNameCollision {
+        parent_id: Identifier,
+        name: DefaultDir,
+    },
 }

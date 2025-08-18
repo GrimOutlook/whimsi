@@ -25,13 +25,16 @@ pub mod constants;
 pub mod tables;
 pub mod types;
 
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf, str::FromStr};
 
-use camino::Utf8PathBuf;
+use anyhow::ensure;
 use getset::Getters;
+use rand::distr::{Alphanumeric, SampleString};
 use tables::MsiBuilderTables;
-use types::column::{ColumnValue, identifier::Identifier};
-
+use types::{
+    column::{ColumnValue, identifier::Identifier},
+    dao::directory::DirectoryDao,
+};
 type Identifiers = HashMap<Identifier, ColumnValue>;
 
 /// An in-memory representation of the final MSI to be created.
@@ -39,6 +42,7 @@ type Identifiers = HashMap<Identifier, ColumnValue>;
 #[getset(get = "pub")]
 pub struct MsiBuilder {
     /// Tracks identifiers used to relate items between tables.
+    #[getset(get_mut = "pub(crate)")]
     identifiers: Identifiers,
     tables: MsiBuilderTables,
 }
@@ -50,8 +54,8 @@ impl MsiBuilder {
     ///
     /// - *path* Path to the items you want to be copied to the system on install.
     /// - *install_path_identifier* `Identifier` for the directory where the given path should be
-    /// placed. Identifer should already be present in the `Directory` table or should be a
-    /// `SystemFolder`.
+    ///   placed. Identifer should already be present in the `Directory` table or should be a
+    ///   `SystemFolder`.
     ///
     /// ## Example
     ///
@@ -95,22 +99,44 @@ impl MsiBuilder {
     /// let table = msi.tables().directory();
     /// // 1 entry for each *directory*. 1 entry for ProgramFiles. 1 entry for root directory
     /// // that is always required.
-    /// assert_eq!(table.len(), 4);
+    /// assert_eq!(table, vec!["child_dir1", "child_dir2", "ProgramFiles", "SourceDir"]);
     /// ```
     pub fn add_path<T: Into<PathBuf>, P: Into<Identifier>>(
         &mut self,
         path: T,
         install_path_identifier: P,
     ) -> anyhow::Result<()> {
-        let table = self.tables.directory();
+        let parent_id = install_path_identifier.into();
+
+        // Create an idenfier for the new DAO.
+        let identifier = self.generate_id();
+
+        let table = self.tables.directory_mut();
         let path = path.into();
+
         // TODO: We will handle files later. Just working on directories for now.
-        //
-        // If the path is not a directory, don't add it to the directories table.
         if path.is_dir() {
-            table.add_directory(path.try_into()?)?;
+            table.add_directory(DirectoryDao::from_path(path, identifier, parent_id)?)?;
         }
 
         Ok(())
+    }
+
+    pub fn has_identifier(&self, identifier: &Identifier) -> bool {
+        self.identifiers.keys().any(|i| i == identifier)
+    }
+
+    /// Generate an `Identifier` not already in the `Identifiers` hashmap.
+    /// Identifier is 72 characters to reduce likelihood of collision. 72 Character limit is taken
+    /// from Directory table column max char length.
+    fn generate_id(&self) -> Identifier {
+        loop {
+            let mut id_string = "_".to_string();
+            Alphanumeric.append_string(&mut rand::rng(), &mut id_string, 71);
+            let id = Identifier::from_str(&id_string).unwrap();
+            if !self.has_identifier(&id) {
+                return id;
+            }
+        }
     }
 }

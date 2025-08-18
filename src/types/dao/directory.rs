@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
 
 use derive_more::Constructor;
 use getset::Getters;
@@ -17,21 +17,38 @@ pub struct DirectoryDao {
     parent: Identifier,
 }
 
+impl DirectoryDao {
+    pub(crate) fn from_path(
+        path: PathBuf,
+        path_id: Identifier,
+        parent_id: Identifier,
+    ) -> anyhow::Result<Self> {
+        // Will panic if path terminates in '..' or basename is not valid Unicode.
+        let name = path.file_name().unwrap().to_str().unwrap();
+        Ok(Self {
+            default_dir: DefaultDir::Filename(Filename::parse_with_trim(name)?),
+            directory: path_id,
+            parent: parent_id,
+        })
+    }
+}
+
 impl From<SystemFolder> for DirectoryDao {
     fn from(value: SystemFolder) -> Self {
+        if value == SystemFolder::TARGETDIR {
+            // Documentation says that only the root directory can have the same ID for `parent`
+            // and `directory` fields.
+            return Self {
+                directory: value.into(),
+                parent: value.into(),
+                default_dir: "SourceDir".parse::<Identifier>().unwrap().into(),
+            };
+        }
         Self {
             directory: value.into(),
             parent: SystemFolder::TARGETDIR.into(),
             default_dir: Filename::parse_with_trim(".").unwrap().into(),
         }
-    }
-}
-
-impl TryFrom<PathBuf> for DirectoryDao {
-    type Error = anyhow::Error;
-
-    fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
-        todo!()
     }
 }
 

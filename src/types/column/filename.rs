@@ -79,7 +79,7 @@ impl ShortFilename {
         } else {
             input
         };
-        Self::from_str(trimmed_filename)
+        Self::from_str(s)
     }
 }
 

@@ -1,14 +1,13 @@
 use directory::DirectoryTable;
-use getset::Getters;
+use getset::{Getters, MutGetters};
 
 pub mod directory;
 
-pub trait MsiBuilderTable {
+pub trait MsiBuilderTable: Default {
     type TableValue;
 
     /// Utilized when creating the MSI using the `msi` crate.
     fn name() -> &'static str;
-    fn init() -> Self;
     fn default_values() -> Vec<Self::TableValue>;
     fn values(&self) -> &Vec<Self::TableValue>;
     fn len(&self) -> usize;
@@ -36,8 +35,8 @@ macro_rules! msitable_boilerplate {
 /// WARN: This is missing many possible tables as seen when checking the above resource. I have
 /// only implemented the tables that I believe will be useful for my usecases at this moment.
 ///
-#[derive(Clone, Debug, Default, Getters)]
-#[getset(get = "pub")]
+#[derive(Clone, Debug, Default, Getters, MutGetters)]
+#[getset(get = "pub", get_mut = "pub(crate)")]
 pub struct MsiBuilderTables {
     /// Directory layout for the application.
     ///

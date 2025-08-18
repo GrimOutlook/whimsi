@@ -3,6 +3,7 @@ use derive_more::Display;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use std::str::FromStr;
+use strum::IntoEnumIterator;
 use thiserror::Error;
 
 use regex::Regex;
@@ -21,6 +22,12 @@ static INVALID_CHARACTER: Lazy<Regex> = Lazy::new(|| Regex::new(r"[^A-Za-z0-9_\.
 #[derive(Clone, Debug, Display, PartialEq)]
 pub struct Identifier {
     inner: String,
+}
+
+impl Identifier {
+    pub fn as_system_folder(&self) -> Option<SystemFolder> {
+        SystemFolder::iter().find(|f| f == self)
+    }
 }
 
 impl FromStr for Identifier {

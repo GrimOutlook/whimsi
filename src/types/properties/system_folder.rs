@@ -7,8 +7,16 @@
 // custom system directory is in the `Property` table beforehand as this is where the value for the
 // directory Identifier will come from.
 
-#[derive(Clone, Debug, PartialEq, strum::Display)]
+use crate::types::column::identifier::Identifier;
+
+#[derive(Clone, Copy, Debug, PartialEq, strum::Display, strum::EnumIter)]
 pub enum SystemFolder {
     TARGETDIR,
     ProgramFiles,
+}
+
+impl PartialEq<Identifier> for SystemFolder {
+    fn eq(&self, other: &Identifier) -> bool {
+        other == &Into::<Identifier>::into(*self)
+    }
 }

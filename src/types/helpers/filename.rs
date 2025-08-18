@@ -32,3 +32,9 @@ impl Filename {
         })
     }
 }
+
+impl From<Filename> for String {
+    fn from(value: Filename) -> Self {
+        format!("{}|{}", value.short, value.long)
+    }
+}

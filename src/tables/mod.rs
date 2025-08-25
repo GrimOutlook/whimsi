@@ -2,8 +2,14 @@ use directory::DirectoryTable;
 use getset::{Getters, MutGetters};
 use property::PropertyTable;
 
+use crate::types::dao::directory::DirectoryDao;
+
 pub mod directory;
 pub mod property;
+
+pub enum Identifiable {
+    Directory(DirectoryDao),
+}
 
 pub trait MsiBuilderTable: Default {
     type TableValue;

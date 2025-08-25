@@ -34,7 +34,6 @@ use super::node::Node;
 pub trait DirectoryKind: Clone {
     fn contained(&self) -> Vec<Node>;
     fn contained_mut(&mut self) -> &mut Vec<Node>;
-    fn identifier(&self) -> Option<Identifier>;
 
     fn contained_directories(&self) -> Vec<Rc<RefCell<SubDirectory>>> {
         self.contained()
@@ -96,15 +95,12 @@ pub struct SystemDirectory {
 
 impl DirectoryKind for SystemDirectory {
     implement_directory_kind_boilerplate!();
-
-    fn identifier(&self) -> Option<Identifier> {
-        Some(self.system_folder.into())
-    }
 }
 
 /// Directory that is a contained within a subdirectory.
 ///
-/// The ID for this directory is created upon insertion into the tables database.
+/// NOTE: The user does not have to create an ID for the directory. The ID for the directory is
+/// generated created upon insertion into the `DirectoryTable`.
 #[derive(Clone, Debug, Display, PartialEq, Getters)]
 #[display("{}", name)]
 #[getset(get = "pub")]
@@ -112,26 +108,14 @@ pub struct SubDirectory {
     #[getset(skip)]
     contained: Vec<Node>,
 
-    id: Option<Identifier>,
     /// The directory's name (localizable)
     name: Filename,
-}
-
-impl SubDirectory {
-    pub fn new(name: Filename, identifier: Identifier) -> Self {
-        Self {
-            contained: Vec::new(),
-            id: Some(identifier),
-            name,
-        }
-    }
 }
 
 impl From<Filename> for SubDirectory {
     fn from(value: Filename) -> Self {
         Self {
             contained: Vec::new(),
-            id: None,
             name: value,
         }
     }
@@ -139,10 +123,6 @@ impl From<Filename> for SubDirectory {
 
 impl DirectoryKind for SubDirectory {
     implement_directory_kind_boilerplate!();
-
-    fn identifier(&self) -> Option<Identifier> {
-        self.id.clone()
-    }
 }
 
 impl FromStr for SubDirectory {

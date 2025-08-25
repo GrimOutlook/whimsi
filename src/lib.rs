@@ -25,12 +25,12 @@ pub mod constants;
 pub mod tables;
 pub mod types;
 
-use std::{collections::HashMap, path::PathBuf, str::FromStr};
+use std::{collections::HashMap, path::PathBuf, process::id, str::FromStr};
 
 use anyhow::{bail, ensure};
 use getset::Getters;
 use rand::distr::{Alphanumeric, SampleString};
-use tables::MsiBuilderTables;
+use tables::{Identifiable, MsiBuilderTables};
 use thiserror::Error;
 use types::{
     column::{ColumnValue, identifier::Identifier},
@@ -38,7 +38,7 @@ use types::{
     helpers::directory::{Directory, DirectoryKind, SubDirectory},
     properties::system_folder::SystemFolder,
 };
-type Identifiers = HashMap<Identifier, ColumnValue>;
+type Identifiers = HashMap<Identifier, Identifiable>;
 
 /// An in-memory representation of the final MSI to be created.
 #[derive(Default, Getters)]
@@ -132,7 +132,7 @@ impl MsiBuilder {
             }
         }
 
-        match subject {
+        let (id, dao) = match subject {
             Directory::SystemDirectory(ref system_directory) => {
                 let system_folder = *system_directory.system_folder();
 
@@ -141,23 +141,28 @@ impl MsiBuilder {
                     system_folder != SystemFolder::TARGETDIR,
                     WhimsiError::SubRootDirectory
                 );
-                self.tables
-                    .directory_mut()
-                    .add_directory(system_folder.into())
+
+                (system_folder.into(), system_folder.into())
             }
-            Directory::SubDirectory(subdirectory) => self.add_subdirectory(parent_id, subdirectory),
-        }
+            Directory::SubDirectory(subdirectory) => {
+                self.add_subdirectory(parent_id, subdirectory)?
+            }
+        };
+
+        self.tables.directory_mut().add_directory(dao.clone())?;
+        self.identifiers.insert(id, Identifiable::Directory(dao));
+        Ok(())
     }
 
     fn add_subdirectory<I: Into<Identifier>>(
-        &self,
+        &mut self,
         parent_id: I,
         subdirectory: SubDirectory,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<(Identifier, DirectoryDao)> {
         let parent_id = parent_id.into();
 
         // Create an identifier if one is not already set.
-        let id = subdirectory.identifier().unwrap_or(self.generate_id());
+        let id = self.generate_id();
 
         // Disallow reusing identifiers in the same MSI.
         ensure!(
@@ -171,18 +176,7 @@ impl MsiBuilder {
             WhimsiError::DirectoryIdentifierConflict { identifier: id }
         );
 
-        // If the `parent` is TARGETDIR, we need to verify that `subject` is a allowed to be
-        // placed in it. Valid directories are directories that match Identifiers already defined
-        // in the `Property` table or with names that match a `SystemFolder` variant.
-        if let Ok(parent_sf) = SystemFolder::try_from(parent_id)
-            && parent_sf == SystemFolder::TARGETDIR
-            && !SystemFolder::try_from(id.clone()).is_ok()
-            && !self.has_property(&id)
-        {
-            bail!(WhimsiError::InvalidTargetDirChild { identifier: id })
-        }
-
-        Ok(())
+        todo!()
     }
 
     pub fn has_identifier(&self, identifier: &Identifier) -> bool {
@@ -232,7 +226,10 @@ mod test {
         MsiBuilder, WhimsiError,
         types::{
             column::identifier::Identifier,
-            helpers::directory::{Directory, SubDirectory},
+            helpers::{
+                directory::{Directory, SubDirectory},
+                filename::Filename,
+            },
             properties::system_folder::SystemFolder,
         },
     };
@@ -243,7 +240,8 @@ mod test {
         let parent_id = "nonexistent".parse::<Identifier>().unwrap();
 
         let id: Identifier = "test_id".parse().unwrap();
-        let invalid_dir = SubDirectory::new("test".parse().unwrap(), id.clone()).into();
+        let invalid_dir: SubDirectory = "test".parse::<Filename>().unwrap().into();
+        let invalid_dir: Directory = invalid_dir.into();
 
         let expected = WhimsiError::DirectoryNotFound {
             identifier: parent_id.clone(),

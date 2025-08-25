@@ -19,7 +19,7 @@ static INVALID_CHARACTER: Lazy<Regex> = Lazy::new(|| Regex::new(r"[^A-Za-z0-9_\.
 /// Must start with either a letter or underscore.
 ///
 /// Reference: https://learn.microsoft.com/en-us/windows/win32/msi/identifier
-#[derive(Clone, Debug, Display, PartialEq)]
+#[derive(Clone, Debug, Display, PartialEq, Eq, Hash)]
 pub struct Identifier {
     inner: String,
 }

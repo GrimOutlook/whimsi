@@ -35,7 +35,7 @@ use thiserror::Error;
 use types::{
     column::{ColumnValue, identifier::Identifier},
     dao::directory::DirectoryDao,
-    helpers::directory::{Directory, DirectoryKind},
+    helpers::directory::{Directory, DirectoryKind, SubDirectory},
     properties::system_folder::SystemFolder,
 };
 type Identifiers = HashMap<Identifier, ColumnValue>;
@@ -114,42 +114,87 @@ impl MsiBuilder {
     }
 
     pub fn add_directory<I: Into<Identifier>>(
-        &self,
+        &mut self,
         parent_id: I,
         subject: Directory,
     ) -> anyhow::Result<()> {
         let parent_id = parent_id.into();
 
-        if let Some(id) = subject.identifier() {
-            // Disallow TARGETDIR as the subject directory
-            if let Ok(subject_sf) = SystemFolder::try_from(id.clone())
-                && subject_sf == SystemFolder::TARGETDIR
-            {
-                bail!(WhimsiError::SubRootDirectory)
-            }
-
-            // If the `parent` is TARGETDIR, we need to verify that `subject` is a valid directory to be
-            // placed in it. Valid directories are directories that match Identifiers already defined
-            // in the `Property` table or with names that match a `SystemFolder` variant.
-            // WARN: We currently don't allow non-system folder Identifiers to be placed in TARGETDIR.
-            // TODO: Implement the above. Values defined in the `Property` table are valid for this as
-            // well.
-            if let Ok(parent_sf) = SystemFolder::try_from(parent_id)
-                && parent_sf == SystemFolder::TARGETDIR
-            {
-                ensure!(
-                    self.tables.property().has_property(&id),
-                    WhimsiError::PropertyNotFound { identifier: id }
-                );
-                todo!("Implement non system-folder identifiers in TARGETDIR")
+        // Create the parent directory on-the-fly if it is a `SystemFolder` variant. Throw an error
+        // otherwise.
+        if !self.has_directory_id(&parent_id) {
+            if let Ok(sf) = SystemFolder::try_from(parent_id.clone()) {
+                self.add_directory(SystemFolder::TARGETDIR, sf.try_into()?);
+            } else {
+                bail!(WhimsiError::DirectoryNotFound {
+                    identifier: parent_id.clone()
+                })
             }
         }
 
-        todo!()
+        match subject {
+            Directory::SystemDirectory(ref system_directory) => {
+                let system_folder = *system_directory.system_folder();
+
+                // Disallow TARGETDIR as the subject directory
+                ensure!(
+                    system_folder != SystemFolder::TARGETDIR,
+                    WhimsiError::SubRootDirectory
+                );
+                self.tables
+                    .directory_mut()
+                    .add_directory(system_folder.into())
+            }
+            Directory::SubDirectory(subdirectory) => self.add_subdirectory(parent_id, subdirectory),
+        }
+    }
+
+    fn add_subdirectory<I: Into<Identifier>>(
+        &self,
+        parent_id: I,
+        subdirectory: SubDirectory,
+    ) -> anyhow::Result<()> {
+        let parent_id = parent_id.into();
+
+        // Create an identifier if one is not already set.
+        let id = subdirectory.identifier().unwrap_or(self.generate_id());
+
+        // Disallow reusing identifiers in the same MSI.
+        ensure!(
+            !self.has_identifier(&id),
+            WhimsiError::IdentifierConflict { identifier: id }
+        );
+
+        // Disallow directories using the same identifier.
+        ensure!(
+            !self.has_directory_id(&id),
+            WhimsiError::DirectoryIdentifierConflict { identifier: id }
+        );
+
+        // If the `parent` is TARGETDIR, we need to verify that `subject` is a allowed to be
+        // placed in it. Valid directories are directories that match Identifiers already defined
+        // in the `Property` table or with names that match a `SystemFolder` variant.
+        if let Ok(parent_sf) = SystemFolder::try_from(parent_id)
+            && parent_sf == SystemFolder::TARGETDIR
+            && !SystemFolder::try_from(id.clone()).is_ok()
+            && !self.has_property(&id)
+        {
+            bail!(WhimsiError::InvalidTargetDirChild { identifier: id })
+        }
+
+        Ok(())
     }
 
     pub fn has_identifier(&self, identifier: &Identifier) -> bool {
         self.identifiers.keys().any(|i| i == identifier)
+    }
+
+    pub fn has_directory_id(&self, identifier: &Identifier) -> bool {
+        self.tables.directory().has_directory_id(&identifier)
+    }
+
+    pub fn has_property(&self, identifier: &Identifier) -> bool {
+        self.tables.property().has_property(&identifier)
     }
 
     /// Generate an `Identifier` not already in the `Identifiers` hashmap.
@@ -167,12 +212,18 @@ impl MsiBuilder {
     }
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq)]
 pub enum WhimsiError {
     #[error("Property with identifier {identifier} not found in Property table")]
-    PropertyNotFound { identifier: Identifier },
+    InvalidTargetDirChild { identifier: Identifier },
     #[error("TARGETDIR cannot be a subdirectory")]
     SubRootDirectory,
+    #[error("Directory with identifier {identifier} not found in Directory table")]
+    DirectoryNotFound { identifier: Identifier },
+    #[error("Directory with ID {identifier} already exists in Directory Table")]
+    DirectoryIdentifierConflict { identifier: Identifier },
+    #[error("Identifier {identifier} already exists for MSI. Identifiers must be unique.")]
+    IdentifierConflict { identifier: Identifier },
 }
 
 #[cfg(test)]
@@ -187,14 +238,18 @@ mod test {
     };
 
     #[test]
-    fn undefined_properties_not_allowed_in_TARGETDIR() {
+    fn non_existent_parent_directory() {
         let mut msi = MsiBuilder::default();
-        let root_dir = SystemFolder::TARGETDIR;
+        let parent_id = "nonexistent".parse::<Identifier>().unwrap();
 
         let id: Identifier = "test_id".parse().unwrap();
         let invalid_dir = SubDirectory::new("test".parse().unwrap(), id.clone()).into();
 
-        let expected = WhimsiError::PropertyNotFound { identifier: id };
-        let actual = msi.add_directory(root_dir, invalid_dir);
+        let expected = WhimsiError::DirectoryNotFound {
+            identifier: parent_id.clone(),
+        };
+        let result = msi.add_directory(parent_id, invalid_dir);
+        let actual = result.unwrap_err().downcast().unwrap();
+        assert_eq!(expected, actual);
     }
 }

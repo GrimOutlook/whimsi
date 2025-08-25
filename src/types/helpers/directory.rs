@@ -161,14 +161,6 @@ pub enum Directory {
 }
 
 impl Directory {
-    /// Create a new system directory under root.
-    pub fn system_directory(system_folder: SystemFolder) -> SystemDirectory {
-        SystemDirectory {
-            contained: Vec::new(),
-            system_folder,
-        }
-    }
-
     /// Checks to see if the name can be found in the system folders. If it can then it returns
     /// a SystemDirectory enum variant. If it can't find it then it uses the `name` field contents
     /// as the `name` of the `SubDirectory` variants wrapped object.
@@ -176,11 +168,12 @@ impl Directory {
         let name = name.to_string();
 
         let val = if let Ok(id) = name.parse::<Identifier>()
-            && let Ok(sf) = id.try_into()
+            && let Ok(sf) = TryInto::<SystemFolder>::try_into(id)
         {
-            Directory::system_directory(sf).into()
+            sf.into()
         } else {
-            <Filename as Into<SubDirectory>>::into(name.parse::<Filename>()?).into()
+            let subdir = name.parse::<SubDirectory>()?;
+            subdir.into()
         };
 
         Ok(val)
@@ -199,6 +192,16 @@ impl Directory {
         // but idk.
         if let Ok(sf) = SystemFolder::try_from(root_identifier) {}
         todo!()
+    }
+}
+
+impl From<SystemFolder> for Directory {
+    fn from(value: SystemFolder) -> Self {
+        SystemDirectory {
+            contained: Vec::new(),
+            system_folder: value,
+        }
+        .into()
     }
 }
 
@@ -225,7 +228,7 @@ mod test {
 
     #[test]
     fn add_directory() {
-        let mut pf = Directory::system_directory(SystemFolder::ProgramFiles);
+        let mut pf: Directory = SystemFolder::ProgramFiles.into();
         let man = pf.insert_dir_strict("MAN").unwrap();
         assert_contains!(pf.contained(), &man.clone().into());
         assert_eq!(man.borrow().name().to_string(), "MAN");

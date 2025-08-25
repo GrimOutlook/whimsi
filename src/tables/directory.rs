@@ -77,6 +77,10 @@ impl DirectoryTable {
             .filter(|d| d.parent() == parent_id)
             .collect_vec()
     }
+
+    pub fn has_directory_id(&self, identifier: &Identifier) -> bool {
+        self.entry_with_id(identifier).is_some()
+    }
 }
 
 #[derive(Debug, Error)]

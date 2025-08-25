@@ -26,7 +26,7 @@ impl DirectoryDao {
         // Will panic if path terminates in '..' or basename is not valid Unicode.
         let name = path.file_name().unwrap().to_str().unwrap();
         Ok(Self {
-            default_dir: DefaultDir::Filename(Filename::parse_with_trim(name)?),
+            default_dir: DefaultDir::Filename(Filename::parse(name)?),
             directory: path_id,
             parent: parent_id,
         })
@@ -47,7 +47,7 @@ impl From<SystemFolder> for DirectoryDao {
         Self {
             directory: value.into(),
             parent: SystemFolder::TARGETDIR.into(),
-            default_dir: Filename::parse_with_trim(".").unwrap().into(),
+            default_dir: Filename::parse(".").unwrap().into(),
         }
     }
 }
@@ -66,7 +66,7 @@ mod test {
         let pf_dao: DirectoryDao = SystemFolder::ProgramFiles.into();
         assert_eq!(
             *pf_dao.default_dir(),
-            Filename::parse(".")
+            Filename::strict_parse(".")
                 .expect("Failed to parse `.` directory name to Identifier for system folder.")
                 .into()
         )

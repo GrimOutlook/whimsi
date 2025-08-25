@@ -1,7 +1,9 @@
 use directory::DirectoryTable;
 use getset::{Getters, MutGetters};
+use property::PropertyTable;
 
 pub mod directory;
+pub mod property;
 
 pub trait MsiBuilderTable: Default {
     type TableValue;
@@ -43,6 +45,8 @@ pub struct MsiBuilderTables {
     /// Table Information Contained:
     /// - ['Directory'](https://learn.microsoft.com/en-us/windows/win32/msi/directory-table)
     directory: DirectoryTable,
+
+    property: PropertyTable,
     // /// Complete list of source files with their attributes.
     // ///
     // /// Table Information Contained:

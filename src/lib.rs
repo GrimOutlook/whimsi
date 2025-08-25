@@ -19,7 +19,7 @@
 //     unsafe_code
 // )]
 #![cfg(debug_assertions)]
-#![allow(dead_code)]
+#![allow(warnings)]
 
 pub mod constants;
 pub mod tables;
@@ -27,13 +27,16 @@ pub mod types;
 
 use std::{collections::HashMap, path::PathBuf, str::FromStr};
 
-use anyhow::ensure;
+use anyhow::{bail, ensure};
 use getset::Getters;
 use rand::distr::{Alphanumeric, SampleString};
 use tables::MsiBuilderTables;
+use thiserror::Error;
 use types::{
     column::{ColumnValue, identifier::Identifier},
     dao::directory::DirectoryDao,
+    helpers::directory::{Directory, DirectoryKind},
+    properties::system_folder::SystemFolder,
 };
 type Identifiers = HashMap<Identifier, ColumnValue>;
 
@@ -101,25 +104,48 @@ impl MsiBuilder {
     /// // that is always required.
     /// assert_eq!(table, vec!["child_dir1", "child_dir2", "ProgramFiles", "SourceDir"]);
     /// ```
-    pub fn add_path<T: Into<PathBuf>, P: Into<Identifier>>(
+    pub fn add_path<P: Into<PathBuf>, I: Into<Identifier>>(
         &mut self,
-        path: T,
-        install_path_identifier: P,
+        path: P,
+        install_path_identifier: I,
     ) -> anyhow::Result<()> {
-        let parent_id = install_path_identifier.into();
+        let dir = Directory::from_path(path, install_path_identifier);
+        todo!()
+    }
 
-        // Create an idenfier for the new DAO.
-        let identifier = self.generate_id();
+    pub fn add_directory<I: Into<Identifier>>(
+        &self,
+        parent_id: I,
+        subject: Directory,
+    ) -> anyhow::Result<()> {
+        let parent_id = parent_id.into();
 
-        let table = self.tables.directory_mut();
-        let path = path.into();
+        if let Some(id) = subject.identifier() {
+            // Disallow TARGETDIR as the subject directory
+            if let Ok(subject_sf) = SystemFolder::try_from(id.clone())
+                && subject_sf == SystemFolder::TARGETDIR
+            {
+                bail!(WhimsiError::SubRootDirectory)
+            }
 
-        // TODO: We will handle files later. Just working on directories for now.
-        if path.is_dir() {
-            table.add_directory(DirectoryDao::from_path(path, identifier, parent_id)?)?;
+            // If the `parent` is TARGETDIR, we need to verify that `subject` is a valid directory to be
+            // placed in it. Valid directories are directories that match Identifiers already defined
+            // in the `Property` table or with names that match a `SystemFolder` variant.
+            // WARN: We currently don't allow non-system folder Identifiers to be placed in TARGETDIR.
+            // TODO: Implement the above. Values defined in the `Property` table are valid for this as
+            // well.
+            if let Ok(parent_sf) = SystemFolder::try_from(parent_id)
+                && parent_sf == SystemFolder::TARGETDIR
+            {
+                ensure!(
+                    self.tables.property().has_property(&id),
+                    WhimsiError::PropertyNotFound { identifier: id }
+                );
+                todo!("Implement non system-folder identifiers in TARGETDIR")
+            }
         }
 
-        Ok(())
+        todo!()
     }
 
     pub fn has_identifier(&self, identifier: &Identifier) -> bool {
@@ -138,5 +164,37 @@ impl MsiBuilder {
                 return id;
             }
         }
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum WhimsiError {
+    #[error("Property with identifier {identifier} not found in Property table")]
+    PropertyNotFound { identifier: Identifier },
+    #[error("TARGETDIR cannot be a subdirectory")]
+    SubRootDirectory,
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        MsiBuilder, WhimsiError,
+        types::{
+            column::identifier::Identifier,
+            helpers::directory::{Directory, SubDirectory},
+            properties::system_folder::SystemFolder,
+        },
+    };
+
+    #[test]
+    fn undefined_properties_not_allowed_in_TARGETDIR() {
+        let mut msi = MsiBuilder::default();
+        let root_dir = SystemFolder::TARGETDIR;
+
+        let id: Identifier = "test_id".parse().unwrap();
+        let invalid_dir = SubDirectory::new("test".parse().unwrap(), id.clone()).into();
+
+        let expected = WhimsiError::PropertyNotFound { identifier: id };
+        let actual = msi.add_directory(root_dir, invalid_dir);
     }
 }

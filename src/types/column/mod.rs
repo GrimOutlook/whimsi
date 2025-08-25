@@ -11,4 +11,5 @@ pub enum ColumnValue {
     DefaultDir(DefaultDir),
     Filename(Filename),
     Identifier(Identifier),
+    Text(String),
 }

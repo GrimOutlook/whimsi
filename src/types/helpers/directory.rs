@@ -1,4 +1,16 @@
+//! # Goals
+//!
+//! Operations I want users to be able to do using directories:
+//! - Add files to the directory explicitly.
+//! - Add shortcuts to the directory explicitly.
+//! - Add a directory to the directory explicitly.
+//!     - This is especially needed if the user wants to create empty directories on install.
+//! - Convert a `Path` into a valid `Directory` entry.
+//!     - This will likely require handling identifiers after everthing is parsed.
+
 use std::cell::RefCell;
+use std::option::Option;
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
 
@@ -7,8 +19,10 @@ use anyhow::ensure;
 use derive_more::{Display, From};
 use getset::Getters;
 use itertools::Itertools;
+use strum::IntoEnumIterator;
 use thiserror::Error;
 
+use crate::types::column::identifier::Identifier;
 use crate::types::properties::system_folder::SystemFolder;
 
 use super::filename::Filename;
@@ -20,6 +34,7 @@ use super::node::Node;
 pub trait DirectoryKind: Clone {
     fn contained(&self) -> Vec<Node>;
     fn contained_mut(&mut self) -> &mut Vec<Node>;
+    fn identifier(&self) -> Option<Identifier>;
 
     fn contained_directories(&self) -> Vec<Rc<RefCell<SubDirectory>>> {
         self.contained()
@@ -29,13 +44,13 @@ pub trait DirectoryKind: Clone {
             .collect_vec()
     }
 
-    fn insert_dir(&mut self, name: &str) -> anyhow::Result<Rc<RefCell<SubDirectory>>> {
+    fn insert_dir_strict(&mut self, name: &str) -> anyhow::Result<Rc<RefCell<SubDirectory>>> {
         let new_filename = Filename::parse(name)?;
         self.insert_dir_filename(new_filename)
     }
 
-    fn insert_dir_with_trim(&mut self, name: &str) -> anyhow::Result<Rc<RefCell<SubDirectory>>> {
-        let new_filename = Filename::parse_with_trim(name)?;
+    fn insert_dir(&mut self, name: &str) -> anyhow::Result<Rc<RefCell<SubDirectory>>> {
+        let new_filename = Filename::parse(name)?;
         self.insert_dir_filename(new_filename)
     }
 
@@ -52,41 +67,40 @@ pub trait DirectoryKind: Clone {
             DirectoryConversionError::DuplicateDirectoryName
         );
 
-        let wrapped_new_dir = SubDirectory::new(filename);
-        let new_dir = Rc::new(RefCell::new(wrapped_new_dir));
+        let new_dir = Rc::new(RefCell::new(filename.into()));
         self.contained_mut().push(new_dir.clone().into());
         Ok(new_dir)
     }
 }
-macro_rules! implement_directory_kind_simple {
-    ($struct_name:ty) => {
-        impl DirectoryKind for $struct_name {
-            fn contained(&self) -> Vec<Node> {
-                self.contained.clone()
-            }
 
-            fn contained_mut(&mut self) -> &mut Vec<Node> {
-                &mut self.contained
-            }
+macro_rules! implement_directory_kind_boilerplate {
+    () => {
+        fn contained(&self) -> Vec<Node> {
+            self.contained.clone()
+        }
+
+        fn contained_mut(&mut self) -> &mut Vec<Node> {
+            &mut self.contained
         }
     };
 }
 
 #[derive(Clone, Debug, Display, PartialEq, Getters)]
-#[display("{}", id)]
+#[display("{}", system_folder)]
 #[getset(get = "pub")]
 pub struct SystemDirectory {
     #[getset(skip)]
     contained: Vec<Node>,
-
-    /// ID of this directory.
-    id: SystemFolder,
-    /// Name for the system directory. This is automatically derived during installation if `.` is
-    /// used.
-    name: Filename,
+    system_folder: SystemFolder,
 }
 
-implement_directory_kind_simple!(SystemDirectory);
+impl DirectoryKind for SystemDirectory {
+    implement_directory_kind_boilerplate!();
+
+    fn identifier(&self) -> Option<Identifier> {
+        Some(self.system_folder.into())
+    }
+}
 
 /// Directory that is a contained within a subdirectory.
 ///
@@ -98,40 +112,44 @@ pub struct SubDirectory {
     #[getset(skip)]
     contained: Vec<Node>,
 
-    /// This can either be a system directory or None. If None, this folder
-    /// will not be parsed as a system folder and instead will have an identifier randomly
-    /// generated for it when placing into the MSI database. Otherwise it will use the system
-    /// folder ID as the identifier in the DAO.
-    id: Option<SystemFolder>,
+    id: Option<Identifier>,
     /// The directory's name (localizable)
     name: Filename,
 }
 
 impl SubDirectory {
-    pub fn new(name: Filename) -> Self {
+    pub fn new(name: Filename, identifier: Identifier) -> Self {
         Self {
             contained: Vec::new(),
-            id: None,
+            id: Some(identifier),
             name,
-        }
-    }
-
-    pub fn system_folder(system_folder: SystemFolder) -> Self {
-        Self {
-            contained: Vec::new(),
-            id: Some(system_folder),
-            name: Filename::parse(".").unwrap(),
         }
     }
 }
 
-implement_directory_kind_simple!(SubDirectory);
+impl From<Filename> for SubDirectory {
+    fn from(value: Filename) -> Self {
+        Self {
+            contained: Vec::new(),
+            id: None,
+            name: value,
+        }
+    }
+}
+
+impl DirectoryKind for SubDirectory {
+    implement_directory_kind_boilerplate!();
+
+    fn identifier(&self) -> Option<Identifier> {
+        self.id.clone()
+    }
+}
 
 impl FromStr for SubDirectory {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self::new(Filename::parse(s)?))
+        Ok(Filename::parse(s)?.into())
     }
 }
 
@@ -147,9 +165,40 @@ impl Directory {
     pub fn system_directory(system_folder: SystemFolder) -> SystemDirectory {
         SystemDirectory {
             contained: Vec::new(),
-            id: system_folder.clone(),
-            name: Filename::parse(".").unwrap().clone(),
+            system_folder,
         }
+    }
+
+    /// Checks to see if the name can be found in the system folders. If it can then it returns
+    /// a SystemDirectory enum variant. If it can't find it then it uses the `name` field contents
+    /// as the `name` of the `SubDirectory` variants wrapped object.
+    pub fn new(name: impl ToString) -> anyhow::Result<Self> {
+        let name = name.to_string();
+
+        let val = if let Ok(id) = name.parse::<Identifier>()
+            && let Ok(sf) = id.try_into()
+        {
+            Directory::system_directory(sf).into()
+        } else {
+            <Filename as Into<SubDirectory>>::into(name.parse::<Filename>()?).into()
+        };
+
+        Ok(val)
+    }
+
+    pub fn from_path<P: Into<PathBuf>, I: Into<Identifier>>(
+        path: P,
+        root_identifier: I,
+    ) -> Directory {
+        let path = path.into();
+        let root_identifier = root_identifier.into();
+
+        // TODO: I can't think of a better way to do this off the top of my head but I am almost
+        // certain there is one. Fix this so I don't have to compare it to all the enum values to
+        // determine if it is a system folder or not. Type checking doesn't seem like it would work
+        // but idk.
+        if let Ok(sf) = SystemFolder::try_from(root_identifier) {}
+        todo!()
     }
 }
 
@@ -163,7 +212,10 @@ pub enum DirectoryConversionError {
 
 #[cfg(test)]
 mod test {
+    use std::path::PathBuf;
+
     use assertables::assert_contains;
+    use camino::Utf8PathBuf;
 
     use crate::types::{
         helpers::directory::DirectoryKind, properties::system_folder::SystemFolder,
@@ -174,8 +226,14 @@ mod test {
     #[test]
     fn add_directory() {
         let mut pf = Directory::system_directory(SystemFolder::ProgramFiles);
-        let man = pf.insert_dir("MAN").unwrap();
+        let man = pf.insert_dir_strict("MAN").unwrap();
         assert_contains!(pf.contained(), &man.clone().into());
         assert_eq!(man.borrow().name().to_string(), "MAN");
+    }
+
+    #[test]
+    fn from_utf8_path() {
+        let path = PathBuf::new();
+        Directory::from_path(path, SystemFolder::ProgramFiles);
     }
 }

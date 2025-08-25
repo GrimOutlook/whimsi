@@ -7,6 +7,10 @@
 // custom system directory is in the `Property` table beforehand as this is where the value for the
 // directory Identifier will come from.
 
+use itertools::Itertools;
+use strum::IntoEnumIterator;
+use thiserror::Error;
+
 use crate::types::column::identifier::Identifier;
 
 #[derive(Clone, Copy, Debug, PartialEq, strum::Display, strum::EnumIter)]
@@ -19,4 +23,20 @@ impl PartialEq<Identifier> for SystemFolder {
     fn eq(&self, other: &Identifier) -> bool {
         other == &Into::<Identifier>::into(*self)
     }
+}
+
+impl TryFrom<Identifier> for SystemFolder {
+    type Error = anyhow::Error;
+
+    fn try_from(identifier: Identifier) -> Result<Self, Self::Error> {
+        SystemFolder::iter()
+            .find(|f| identifier == (*f).into())
+            .ok_or(SystemFolderConversionError::InvalidSystemFolder { identifier }.into())
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum SystemFolderConversionError {
+    #[error("Identifer {identifier} didn't match any known system folder")]
+    InvalidSystemFolder { identifier: Identifier },
 }

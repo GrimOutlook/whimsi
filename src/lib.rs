@@ -30,18 +30,18 @@ use std::{collections::HashMap, path::PathBuf, process::id, str::FromStr};
 use anyhow::{bail, ensure};
 use getset::Getters;
 use rand::distr::{Alphanumeric, SampleString};
-use tables::{Identifiable, MsiBuilderTables};
+use tables::{MsiBuilderTables, TableEntry};
 use thiserror::Error;
 use types::{
     column::{ColumnValue, identifier::Identifier},
     dao::directory::DirectoryDao,
-    helpers::directory::{Directory, DirectoryKind, SubDirectory},
+    helpers::directory::{Directory, DirectoryKind, SubDirectory, SystemDirectory},
     properties::system_folder::SystemFolder,
 };
-type Identifiers = HashMap<Identifier, Identifiable>;
+type Identifiers = HashMap<Identifier, TableEntry>;
 
 /// An in-memory representation of the final MSI to be created.
-#[derive(Default, Getters)]
+#[derive(Debug, Default, Getters)]
 #[getset(get = "pub")]
 pub struct MsiBuilder {
     /// Tracks identifiers used to relate items between tables.
@@ -109,22 +109,22 @@ impl MsiBuilder {
         path: P,
         install_path_identifier: I,
     ) -> anyhow::Result<()> {
-        let dir = Directory::from_path(path, install_path_identifier);
+        let dir = Directory::from_path(path);
         todo!()
     }
 
     pub fn add_directory<I: Into<Identifier>>(
-        &mut self,
+        mut self,
         parent_id: I,
         subject: Directory,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Self> {
         let parent_id = parent_id.into();
 
-        // Create the parent directory on-the-fly if it is a `SystemFolder` variant. Throw an error
-        // otherwise.
+        // Create the parent directory on-the-fly if one doesn't exist and it is a `SystemFolder`
+        // variant. Throw an error otherwise if it doesn't exist.
         if !self.has_directory_id(&parent_id) {
             if let Ok(sf) = SystemFolder::try_from(parent_id.clone()) {
-                self.add_directory(SystemFolder::TARGETDIR, sf.try_into()?);
+                self = self.add_directory(SystemFolder::TARGETDIR, sf.try_into()?)?;
             } else {
                 bail!(WhimsiError::DirectoryNotFound {
                     identifier: parent_id.clone()
@@ -134,30 +134,50 @@ impl MsiBuilder {
 
         let (id, dao) = match subject {
             Directory::SystemDirectory(ref system_directory) => {
-                let system_folder = *system_directory.system_folder();
-
-                // Disallow TARGETDIR as the subject directory
-                ensure!(
-                    system_folder != SystemFolder::TARGETDIR,
-                    WhimsiError::SubRootDirectory
-                );
-
-                (system_folder.into(), system_folder.into())
+                self.add_system_directory(&system_directory)?
             }
-            Directory::SubDirectory(subdirectory) => {
+            Directory::SubDirectory(ref subdirectory) => {
                 self.add_subdirectory(parent_id, subdirectory)?
             }
         };
 
+        // Add the new directory to the table.
         self.tables.directory_mut().add_directory(dao.clone())?;
-        self.identifiers.insert(id, Identifiable::Directory(dao));
+        self.identifiers.insert(id, TableEntry::Directory(dao));
+
+        // Add all of the contents to the MSI.
+        self.add_directory_contents(subject)?;
+
+        Ok(self)
+    }
+
+    fn add_directory_contents(&self, subject: Directory) -> anyhow::Result<()> {
+        for item in subject.contents() {
+            todo!()
+        }
+
         Ok(())
+    }
+
+    fn add_system_directory(
+        &mut self,
+        system_directory: &SystemDirectory,
+    ) -> anyhow::Result<(Identifier, DirectoryDao)> {
+        let system_folder = *system_directory.system_folder();
+
+        // Disallow TARGETDIR as the subject directory
+        ensure!(
+            system_folder != SystemFolder::TARGETDIR,
+            WhimsiError::SubRootDirectory
+        );
+
+        Ok((system_folder.into(), system_folder.into()))
     }
 
     fn add_subdirectory<I: Into<Identifier>>(
         &mut self,
         parent_id: I,
-        subdirectory: SubDirectory,
+        subdirectory: &SubDirectory,
     ) -> anyhow::Result<(Identifier, DirectoryDao)> {
         let parent_id = parent_id.into();
 

@@ -7,7 +7,8 @@ use crate::types::dao::directory::DirectoryDao;
 pub mod directory;
 pub mod property;
 
-pub enum Identifiable {
+#[derive(Debug)]
+pub enum TableEntry {
     Directory(DirectoryDao),
 }
 

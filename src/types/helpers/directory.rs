@@ -9,13 +9,15 @@
 //!     - This will likely require handling identifiers after everthing is parsed.
 
 use std::cell::RefCell;
+use std::fs::{self, DirEntry};
 use std::option::Option;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
 
 use ambassador::Delegate;
-use anyhow::ensure;
+use anyhow::{Context, bail, ensure};
+use camino::Utf8PathBuf;
 use derive_more::{Display, From};
 use getset::Getters;
 use itertools::Itertools;
@@ -25,60 +27,61 @@ use thiserror::Error;
 use crate::types::column::identifier::Identifier;
 use crate::types::properties::system_folder::SystemFolder;
 
+use super::directory_node::DirectoryItem;
 use super::filename::Filename;
-use super::node::Node;
 
 // TODO: If the `getset` crate ever supports Traits, use them here. I should not have to manually
 // make getters just because they are contained in traits.
 #[ambassador::delegatable_trait]
 pub trait DirectoryKind: Clone {
-    fn contained(&self) -> Vec<Node>;
-    fn contained_mut(&mut self) -> &mut Vec<Node>;
+    fn contents(&self) -> Vec<DirectoryItem>;
+    fn contents_mut(&mut self) -> &mut Vec<DirectoryItem>;
 
-    fn contained_directories(&self) -> Vec<Rc<RefCell<SubDirectory>>> {
-        self.contained()
+    fn contained_directories(&self) -> Vec<Directory> {
+        self.contents()
             .iter()
             .filter_map(|node| node.try_as_directory_ref())
             .cloned()
             .collect_vec()
     }
 
-    fn insert_dir_strict(&mut self, name: &str) -> anyhow::Result<Rc<RefCell<SubDirectory>>> {
+    fn insert_dir_strict(&mut self, name: &str) -> anyhow::Result<Directory> {
         let new_filename = Filename::parse(name)?;
         self.insert_dir_filename(new_filename)
     }
 
-    fn insert_dir(&mut self, name: &str) -> anyhow::Result<Rc<RefCell<SubDirectory>>> {
+    fn insert_dir(&mut self, name: &str) -> anyhow::Result<Directory> {
         let new_filename = Filename::parse(name)?;
         self.insert_dir_filename(new_filename)
     }
 
-    fn insert_dir_filename(
-        &mut self,
-        filename: Filename,
-    ) -> anyhow::Result<Rc<RefCell<SubDirectory>>> {
+    fn insert_dir_filename(&mut self, filename: Filename) -> anyhow::Result<Directory> {
+        let contents = self.contents();
+        let contained_dirs = contents
+            .iter()
+            .filter_map(|node| node.try_as_directory_ref());
         ensure!(
-            !self
-                .contained()
-                .iter()
-                .filter_map(|node| node.try_as_directory_ref())
-                .any(|dir| dir.borrow().name == filename),
-            DirectoryConversionError::DuplicateDirectoryName
+            !contained_dirs
+                .filter_map(|directory| directory.try_as_sub_directory_ref())
+                .any(|dir| dir.name == filename),
+            DirectoryConversionError::DuplicateDirectory {
+                name: filename.to_string()
+            }
         );
 
-        let new_dir = Rc::new(RefCell::new(filename.into()));
-        self.contained_mut().push(new_dir.clone().into());
+        let new_dir = Directory::SubDirectory(filename.into());
+        self.contents_mut().push(new_dir.clone().into());
         Ok(new_dir)
     }
 }
 
 macro_rules! implement_directory_kind_boilerplate {
     () => {
-        fn contained(&self) -> Vec<Node> {
+        fn contents(&self) -> Vec<DirectoryItem> {
             self.contained.clone()
         }
 
-        fn contained_mut(&mut self) -> &mut Vec<Node> {
+        fn contents_mut(&mut self) -> &mut Vec<DirectoryItem> {
             &mut self.contained
         }
     };
@@ -89,7 +92,7 @@ macro_rules! implement_directory_kind_boilerplate {
 #[getset(get = "pub")]
 pub struct SystemDirectory {
     #[getset(skip)]
-    contained: Vec<Node>,
+    contained: Vec<DirectoryItem>,
     system_folder: SystemFolder,
 }
 
@@ -106,19 +109,10 @@ impl DirectoryKind for SystemDirectory {
 #[getset(get = "pub")]
 pub struct SubDirectory {
     #[getset(skip)]
-    contained: Vec<Node>,
+    contained: Vec<DirectoryItem>,
 
     /// The directory's name (localizable)
     name: Filename,
-}
-
-impl From<Filename> for SubDirectory {
-    fn from(value: Filename) -> Self {
-        Self {
-            contained: Vec::new(),
-            name: value,
-        }
-    }
 }
 
 impl DirectoryKind for SubDirectory {
@@ -133,7 +127,29 @@ impl FromStr for SubDirectory {
     }
 }
 
-#[derive(Clone, Debug, Delegate, Display, From, PartialEq, strum::EnumIs)]
+impl From<Filename> for SubDirectory {
+    fn from(value: Filename) -> Self {
+        Self {
+            contained: Vec::new(),
+            name: value,
+        }
+    }
+}
+
+impl TryFrom<PathBuf> for SubDirectory {
+    type Error = anyhow::Error;
+    fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
+        let path: PathBuf = value.into();
+        path.file_name()
+            .ok_or(DirectoryConversionError::NoDirectoryName { path: path.clone() })?
+            .to_str()
+            .ok_or(DirectoryConversionError::InvalidDirectoryName { path: path.clone() })?
+            .parse()
+            .into()
+    }
+}
+
+#[derive(Clone, Debug, Delegate, Display, From, PartialEq, strum::EnumIs, strum::EnumTryAs)]
 #[delegate(DirectoryKind)]
 pub enum Directory {
     SystemDirectory(SystemDirectory),
@@ -159,18 +175,40 @@ impl Directory {
         Ok(val)
     }
 
-    pub fn from_path<P: Into<PathBuf>, I: Into<Identifier>>(
-        path: P,
-        root_identifier: I,
-    ) -> Directory {
-        let path = path.into();
-        let root_identifier = root_identifier.into();
+    /// Parses throught a path recursively and returns the contents found.
+    ///
+    /// If the `PathBuf` points to a directory, the contents of the directory are returned.
+    /// Contained directories are recursively read and included.
+    /// If the `PathBuf` points to a file, only the file is returned.
+    pub fn from_path<P: Into<PathBuf>>(path: P) -> anyhow::Result<Vec<DirectoryItem>> {
+        let path: Utf8PathBuf = path.into().try_into()?;
+        if path.is_dir() {
+            Self::from_path_to_directory(path)
+        } else if path.is_file() {
+            Ok(vec![Self::from_path_to_file(path)?])
+        } else {
+            bail!("Unknown directory item type: {}", path)
+        }
+    }
 
-        // TODO: I can't think of a better way to do this off the top of my head but I am almost
-        // certain there is one. Fix this so I don't have to compare it to all the enum values to
-        // determine if it is a system folder or not. Type checking doesn't seem like it would work
-        // but idk.
-        if let Ok(sf) = SystemFolder::try_from(root_identifier) {}
+    fn from_path_to_directory(path: Utf8PathBuf) -> anyhow::Result<Vec<DirectoryItem>> {
+        let valid_entries: Vec<DirEntry> = fs::read_dir(&path)?.try_collect()?;
+        let mut items: Vec<DirectoryItem> = valid_entries
+            .iter()
+            .map(|entry| Self::from_path(entry.path()))
+            // This collection allows me to short circuit when parsing thought the paths if an Err
+            // is returned.
+            .collect::<anyhow::Result<Vec<Vec<DirectoryItem>>>>()?
+            .into_iter()
+            .flatten()
+            .collect_vec();
+
+        let dir = Directory::SubDirectory(path.into_std_path_buf().try_into()?);
+        items.push(DirectoryItem::Directory(dir));
+        Ok(items)
+    }
+
+    fn from_path_to_file(path: Utf8PathBuf) -> anyhow::Result<DirectoryItem> {
         todo!()
     }
 }
@@ -185,12 +223,16 @@ impl From<SystemFolder> for Directory {
     }
 }
 
-#[derive(Debug, Error, From)]
+#[derive(Debug, Error)]
 pub enum DirectoryConversionError {
-    #[error("Given directory name cannot fit in short filename")]
-    DirectoryNameTooLong,
-    #[error("Directory name already exists in parent directory")]
-    DuplicateDirectoryName,
+    #[error("Given directory name [{name}] cannot fit in short filename")]
+    DirectoryNameTooLong { name: String },
+    #[error("Directory name [{name}] already exists in parent directory")]
+    DuplicateDirectory { name: String },
+    #[error("No directory name could be found for path [{path}]")]
+    NoDirectoryName { path: PathBuf },
+    #[error("Invalid directory name found for path [{path}]")]
+    InvalidDirectoryName { path: PathBuf },
 }
 
 #[cfg(test)]
@@ -210,13 +252,16 @@ mod test {
     fn add_directory() {
         let mut pf: Directory = SystemFolder::ProgramFiles.into();
         let man = pf.insert_dir_strict("MAN").unwrap();
-        assert_contains!(pf.contained(), &man.clone().into());
-        assert_eq!(man.borrow().name().to_string(), "MAN");
+        assert_contains!(pf.contents(), &man.clone().into());
+        assert_eq!(
+            man.try_as_sub_directory().unwrap().name().to_string(),
+            "MAN"
+        );
     }
 
     #[test]
     fn from_utf8_path() {
         let path = PathBuf::new();
-        Directory::from_path(path, SystemFolder::ProgramFiles);
+        Directory::from_path(path);
     }
 }

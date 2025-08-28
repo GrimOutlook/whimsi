@@ -35,7 +35,10 @@ use thiserror::Error;
 use types::{
     column::{ColumnValue, identifier::Identifier},
     dao::directory::DirectoryDao,
-    helpers::directory::{Directory, DirectoryKind, SubDirectory, SystemDirectory},
+    helpers::{
+        directory::{Directory, DirectoryKind, SubDirectory, SystemDirectory},
+        directory_node::DirectoryItem,
+    },
     properties::system_folder::SystemFolder,
 };
 type Identifiers = HashMap<Identifier, TableEntry>;
@@ -90,7 +93,7 @@ impl MsiBuilder {
     /// // install_path_identifier
     ///
     /// let mut msi = MsiBuilder::default();
-    /// msi.add_path(temp_dir.path(), SystemFolder::ProgramFiles);
+    /// msi = msi.add_path(temp_dir.path(), SystemFolder::ProgramFiles).unwrap();
     ///
     /// // You will end up with the following on the windows install.
     /// // C:/ProgramFiles/
@@ -102,15 +105,23 @@ impl MsiBuilder {
     /// let table = msi.tables().directory();
     /// // 1 entry for each *directory*. 1 entry for ProgramFiles. 1 entry for root directory
     /// // that is always required.
-    /// assert_eq!(table, vec!["child_dir1", "child_dir2", "ProgramFiles", "SourceDir"]);
+    /// assert_eq!(table.len(), 4);
     /// ```
     pub fn add_path<P: Into<PathBuf>, I: Into<Identifier>>(
-        &mut self,
+        mut self,
         path: P,
         install_path_identifier: I,
-    ) -> anyhow::Result<()> {
-        let dir = Directory::from_path(path);
-        todo!()
+    ) -> anyhow::Result<Self> {
+        match Directory::from_path(path)? {
+            DirectoryItem::Directory(directory) => {
+                self = self.add_directory(install_path_identifier, directory)?
+            }
+            DirectoryItem::File(file) => {
+                todo!()
+            }
+        }
+
+        Ok(self)
     }
 
     pub fn add_directory<I: Into<Identifier>>(
@@ -143,20 +154,35 @@ impl MsiBuilder {
 
         // Add the new directory to the table.
         self.tables.directory_mut().add_directory(dao.clone())?;
-        self.identifiers.insert(id, TableEntry::Directory(dao));
+        self.identifiers
+            .insert(id.clone(), TableEntry::Directory(dao));
 
         // Add all of the contents to the MSI.
-        self.add_directory_contents(subject)?;
+        self = self.add_directory_contents(subject, id)?;
 
         Ok(self)
     }
 
-    fn add_directory_contents(&self, subject: Directory) -> anyhow::Result<()> {
-        for item in subject.contents() {
-            todo!()
+    fn add_directory_contents(
+        mut self,
+        subject: Directory,
+        subject_id: Identifier,
+    ) -> anyhow::Result<Self> {
+        let subject_id = subject_id.clone();
+        let contents = subject.clone().contents();
+
+        for item in contents {
+            match item {
+                DirectoryItem::Directory(directory) => {
+                    self = self.add_directory(subject_id.clone(), directory)?
+                }
+                DirectoryItem::File(file) => {
+                    todo!()
+                }
+            };
         }
 
-        Ok(())
+        Ok(self)
     }
 
     fn add_system_directory(

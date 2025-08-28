@@ -28,6 +28,7 @@ use crate::types::column::identifier::Identifier;
 use crate::types::properties::system_folder::SystemFolder;
 
 use super::directory_node::DirectoryItem;
+use super::file::File;
 use super::filename::Filename;
 
 // TODO: If the `getset` crate ever supports Traits, use them here. I should not have to manually
@@ -177,39 +178,47 @@ impl Directory {
 
     /// Parses throught a path recursively and returns the contents found.
     ///
-    /// If the `PathBuf` points to a directory, the contents of the directory are returned.
+    /// If the `PathBuf` points to a directory, a `Directory` object of variant `SubDirectory` will
+    /// be returned where the `contents` attribute of the object will contain the contents of the
+    /// directory in the filesystem
     /// Contained directories are recursively read and included.
     /// If the `PathBuf` points to a file, only the file is returned.
-    pub fn from_path<P: Into<PathBuf>>(path: P) -> anyhow::Result<Vec<DirectoryItem>> {
+    pub fn from_path<P: Into<PathBuf>>(path: P) -> anyhow::Result<DirectoryItem> {
         let path: Utf8PathBuf = path.into().try_into()?;
-        if path.is_dir() {
-            Self::from_path_to_directory(path)
+        let result = if path.is_dir() {
+            Self::from_path_to_directory(path)?.into()
         } else if path.is_file() {
-            Ok(vec![Self::from_path_to_file(path)?])
+            Self::from_path_to_file(path)?.into()
         } else {
             bail!("Unknown directory item type: {}", path)
-        }
+        };
+
+        Ok(result)
     }
 
-    fn from_path_to_directory(path: Utf8PathBuf) -> anyhow::Result<Vec<DirectoryItem>> {
+    fn from_path_to_directory(path: Utf8PathBuf) -> anyhow::Result<Self> {
         let valid_entries: Vec<DirEntry> = fs::read_dir(&path)?.try_collect()?;
         let mut items: Vec<DirectoryItem> = valid_entries
             .iter()
             .map(|entry| Self::from_path(entry.path()))
             // This collection allows me to short circuit when parsing thought the paths if an Err
             // is returned.
-            .collect::<anyhow::Result<Vec<Vec<DirectoryItem>>>>()?
+            .collect::<anyhow::Result<Vec<DirectoryItem>>>()?
             .into_iter()
-            .flatten()
             .collect_vec();
 
-        let dir = Directory::SubDirectory(path.into_std_path_buf().try_into()?);
-        items.push(DirectoryItem::Directory(dir));
-        Ok(items)
+        let subdir = path.into_std_path_buf().try_into()?;
+        Ok(Directory::SubDirectory(subdir).add_contents(items))
     }
 
     fn from_path_to_file(path: Utf8PathBuf) -> anyhow::Result<DirectoryItem> {
-        todo!()
+        let file: File = path.into_std_path_buf().try_into()?;
+        Ok(file.into())
+    }
+
+    fn add_contents(mut self, mut contents: Vec<DirectoryItem>) -> Self {
+        self.contents_mut().append(&mut contents);
+        self
     }
 }
 

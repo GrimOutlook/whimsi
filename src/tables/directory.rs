@@ -81,6 +81,10 @@ impl DirectoryTable {
     pub fn has_directory_id(&self, identifier: &Identifier) -> bool {
         self.entry_with_id(identifier).is_some()
     }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
 }
 
 #[derive(Debug, Error)]

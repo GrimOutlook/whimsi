@@ -25,24 +25,15 @@ impl MsiBuilderTable for DirectoryTable {
     fn default_values() -> Vec<Self::TableValue> {
         todo!()
     }
-}
 
-impl Default for DirectoryTable {
-    fn default() -> Self {
-        let v = vec![SystemFolder::TARGETDIR.into()];
-        Self(v)
-    }
-}
-
-impl DirectoryTable {
-    pub fn add_directory(&mut self, dao: DirectoryDao) -> anyhow::Result<()> {
+    fn add(&mut self, dao: Self::TableValue) -> anyhow::Result<()> {
         let parent_id = dao.parent();
         // Verify that the parent directory is already in the directories table.
         // If the parent ID is associated with a SystemFolder, make sure that system folder is in
         // the table.
         if self.entry_with_id(parent_id).is_none() {
             if let Some(sys_folder) = parent_id.as_system_folder() {
-                self.add_directory(DirectoryDao::from(sys_folder))?;
+                self.add(DirectoryDao::from(sys_folder))?;
             } else {
                 bail!(DirectoryTableError::ParentDirectoryNotPresent {
                     parent_id: parent_id.clone()
@@ -66,7 +57,16 @@ impl DirectoryTable {
         self.0.push(dao);
         Ok(())
     }
+}
 
+impl Default for DirectoryTable {
+    fn default() -> Self {
+        let v = vec![SystemFolder::TARGETDIR.into()];
+        Self(v)
+    }
+}
+
+impl DirectoryTable {
     pub fn entry_with_id(&self, identifier: &Identifier) -> Option<&DirectoryDao> {
         self.0.iter().find(|d| d.directory() == identifier)
     }

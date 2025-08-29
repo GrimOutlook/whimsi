@@ -32,14 +32,19 @@ use crate::tables::directory::helper::SubDirectory;
 use crate::tables::directory::helper::SystemDirectory;
 use crate::tables::file::helper::File;
 use crate::tables::table_entry::TableEntry;
-use crate::types::helpers::directory_node::DirectoryItem;
+use crate::types::helpers::directory_item::DirectoryItem;
 use std::{collections::HashMap, path::PathBuf, process::id, str::FromStr};
 
 use anyhow::{bail, ensure};
 use getset::Getters;
 use rand::distr::{Alphanumeric, SampleString};
 use tables::MsiBuilderTables;
+use tables::builder_table::MsiBuilderTable;
+use tables::component::dao::ComponentDao;
+use tables::component::helper::Component;
+use tables::file::dao::FileDao;
 use thiserror::Error;
+use types::column::sequence::Sequence;
 use types::{
     column::{ColumnValue, identifier::Identifier},
     properties::system_folder::SystemFolder,
@@ -155,7 +160,7 @@ impl MsiBuilder {
         };
 
         // Add the new directory to the table.
-        self.tables.directory_mut().add_directory(dao.clone())?;
+        self.tables.directory_mut().add(dao.clone())?;
         self.identifiers
             .insert(id.clone(), TableEntry::Directory(dao));
 
@@ -187,7 +192,6 @@ impl MsiBuilder {
     ) -> anyhow::Result<(Identifier, DirectoryDao)> {
         let parent_id = parent_id.into();
 
-        // Create an identifier if one is not already set.
         let id = self.generate_id();
 
         // Disallow reusing identifiers in the same MSI.
@@ -234,14 +238,38 @@ impl MsiBuilder {
             DirectoryItem::Directory(directory) => {
                 self = self.add_directory(parent_id.clone(), directory)?
             }
-            DirectoryItem::File(file) => self = self.add_file(file)?,
+            DirectoryItem::File(file) => self = self.add_file(file, parent_id)?,
         };
 
         Ok(self)
     }
 
-    pub fn add_file(mut self, file: File) -> anyhow::Result<Self> {
-        todo!("Implement adding files to MSI")
+    pub fn add_file(mut self, file: File, parent_id: &Identifier) -> anyhow::Result<Self> {
+        let file_id = self.generate_id();
+        let component_id = self.add_component_for_file(&file, &file_id, parent_id)?;
+        let sequence = self.add_file_to_media(&file)?;
+        let file_dao = FileDao::from_file(&file, &file_id, &component_id, sequence)?;
+        self.tables.file_mut().add(file_dao.clone())?;
+        self.identifiers
+            .insert(file_id.clone(), TableEntry::File((file_dao, component_id)));
+        Ok(self)
+    }
+
+    pub fn add_component_for_file(
+        &mut self,
+        file: &File,
+        file_id: &Identifier,
+        directory_id: &Identifier,
+    ) -> anyhow::Result<Identifier> {
+        let component_id = self.generate_id();
+        let dao = ComponentDao::from_file(component_id.clone(), file, file_id, directory_id);
+        self.tables.component_mut().add(dao.clone())?;
+
+        Ok(component_id)
+    }
+
+    pub fn add_file_to_media(&mut self, file: &File) -> anyhow::Result<Sequence> {
+        todo!("add_file_to_media")
     }
 
     pub fn has_identifier(&self, identifier: &Identifier) -> bool {

@@ -1,17 +1,25 @@
 use std::path::PathBuf;
 
-use anyhow::ensure;
+use anyhow::{Context, ensure};
+use getset::Getters;
 
-#[derive(Clone, Debug, PartialEq)]
+use crate::{
+    tables::component::helper::Component,
+    types::{column::identifier::Identifier, helpers::filename::Filename},
+};
+
+#[derive(Clone, Debug, derive_more::Display, PartialEq, Getters)]
+#[getset(get = "pub")]
+#[display("{}", name)]
 pub struct File {
-    name: String,
-    parent_directory: PathBuf,
+    name: Filename,
     size: u64,
+    component: Component,
 }
 
 impl TryFrom<PathBuf> for File {
     type Error = anyhow::Error;
-    fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
+    fn try_from(value: PathBuf) -> anyhow::Result<Self> {
         let path: PathBuf = value.into();
         ensure!(
             path.is_file(),
@@ -23,7 +31,7 @@ impl TryFrom<PathBuf> for File {
             .ok_or(FileConversionError::NoFileName { path: path.clone() })?
             .to_str()
             .ok_or(FileConversionError::InvalidFileName { path: path.clone() })?
-            .to_owned();
+            .parse()?;
 
         // Should be able to just unwrap, since this has already been checked to be a valid file
         // and valid files must reside in a directory of some kind.
@@ -47,10 +55,12 @@ impl TryFrom<PathBuf> for File {
             compile_error!("Only Linux and Windows are supported currently.")
         }
 
+        let component = Component::default();
+
         Ok(Self {
             name,
-            parent_directory,
             size,
+            component,
         })
     }
 }

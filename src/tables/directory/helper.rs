@@ -25,7 +25,7 @@ use strum::IntoEnumIterator;
 use thiserror::Error;
 
 use crate::types::column::identifier::Identifier;
-use crate::types::helpers::directory_node::DirectoryItem;
+use crate::types::helpers::directory_item::DirectoryItem;
 use crate::types::helpers::filename::Filename;
 use crate::types::properties::system_folder::SystemFolder;
 

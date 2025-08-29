@@ -7,6 +7,7 @@ pub trait MsiBuilderTable: Default {
     fn values(&self) -> &Vec<Self::TableValue>;
     fn len(&self) -> usize;
     fn is_empty(&self) -> bool;
+    fn add(&mut self, dao: Self::TableValue) -> anyhow::Result<()>;
 }
 
 #[macro_export]

@@ -1,4 +1,5 @@
 pub(crate) mod builder_table;
+pub mod component;
 pub mod directory;
 pub mod file;
 pub mod property;
@@ -6,6 +7,8 @@ pub mod table_entry;
 
 use crate::tables::directory::table::DirectoryTable;
 use crate::tables::property::table::PropertyTable;
+use component::table::ComponentTable;
+use file::table::FileTable;
 use getset::{Getters, MutGetters};
 
 /// Enum values are derived from this table:
@@ -24,17 +27,17 @@ pub struct MsiBuilderTables {
     directory: DirectoryTable,
 
     property: PropertyTable,
-    // /// Complete list of source files with their attributes.
-    // ///
-    // /// Table Information Contained:
-    // /// - ['File'](https://learn.microsoft.com/en-us/windows/win32/msi/file-table)
-    // Files(Files),
-    //
-    // /// Lists installation components.
-    // ///
-    // /// Table Information Contained:
-    // /// - [`Component`](https://learn.microsoft.com/en-us/windows/win32/msi/component-table)
-    // Components(Components),
+    /// Complete list of source files with their attributes.
+    ///
+    /// Table Information Contained:
+    /// - ['File'](https://learn.microsoft.com/en-us/windows/win32/msi/file-table)
+    file: FileTable,
+
+    /// Lists installation components.
+    ///
+    /// Table Information Contained:
+    /// - [`Component`](https://learn.microsoft.com/en-us/windows/win32/msi/component-table)
+    component: ComponentTable,
     //
     // /// Defines the logical tree structure of features.
     // ///

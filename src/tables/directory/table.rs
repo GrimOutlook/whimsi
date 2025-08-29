@@ -3,12 +3,12 @@ use itertools::Itertools;
 use thiserror::Error;
 
 use crate::msitable_boilerplate;
+use crate::tables::builder_table::MsiBuilderTable;
 use crate::types::column::default_dir::DefaultDir;
 use crate::types::column::identifier::Identifier;
-use crate::types::dao::directory::DirectoryDao;
 use crate::types::properties::system_folder::SystemFolder;
 
-use super::MsiBuilderTable;
+use super::dao::DirectoryDao;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DirectoryTable(Vec<DirectoryDao>);

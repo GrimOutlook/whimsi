@@ -55,11 +55,8 @@ impl From<SystemFolder> for DirectoryDao {
 #[cfg(test)]
 mod test {
 
-    use crate::types::{
-        dao::directory::DirectoryDao,
-        helpers::filename::Filename,
-        properties::system_folder::SystemFolder::{self},
-    };
+    use crate::DirectoryDao;
+    use crate::types::{helpers::filename::Filename, properties::system_folder::SystemFolder};
 
     #[test]
     fn try_from() {

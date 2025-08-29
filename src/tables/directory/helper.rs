@@ -25,11 +25,9 @@ use strum::IntoEnumIterator;
 use thiserror::Error;
 
 use crate::types::column::identifier::Identifier;
+use crate::types::helpers::directory_node::DirectoryItem;
+use crate::types::helpers::filename::Filename;
 use crate::types::properties::system_folder::SystemFolder;
-
-use super::directory_node::DirectoryItem;
-use super::file::File;
-use super::filename::Filename;
 
 // TODO: If the `getset` crate ever supports Traits, use them here. I should not have to manually
 // make getters just because they are contained in traits.
@@ -64,7 +62,7 @@ pub trait DirectoryKind: Clone {
         ensure!(
             !contained_dirs
                 .filter_map(|directory| directory.try_as_sub_directory_ref())
-                .any(|dir| dir.name == filename),
+                .any(|dir| *dir.name() == filename),
             DirectoryConversionError::DuplicateDirectory {
                 name: filename.to_string()
             }
@@ -176,49 +174,27 @@ impl Directory {
         Ok(val)
     }
 
-    /// Parses throught a path recursively and returns the contents found.
-    ///
-    /// If the `PathBuf` points to a directory, a `Directory` object of variant `SubDirectory` will
-    /// be returned where the `contents` attribute of the object will contain the contents of the
-    /// directory in the filesystem
-    /// Contained directories are recursively read and included.
-    /// If the `PathBuf` points to a file, only the file is returned.
-    pub fn from_path<P: Into<PathBuf>>(path: P) -> anyhow::Result<DirectoryItem> {
-        let path: Utf8PathBuf = path.into().try_into()?;
-        let result = if path.is_dir() {
-            Self::from_path_to_directory(path)?.into()
-        } else if path.is_file() {
-            Self::from_path_to_file(path)?.into()
-        } else {
-            bail!("Unknown directory item type: {}", path)
-        };
-
-        Ok(result)
+    fn add_contents(mut self, mut contents: Vec<DirectoryItem>) -> Self {
+        self.contents_mut().append(&mut contents);
+        self
     }
+}
 
-    fn from_path_to_directory(path: Utf8PathBuf) -> anyhow::Result<Self> {
-        let valid_entries: Vec<DirEntry> = fs::read_dir(&path)?.try_collect()?;
+impl TryFrom<PathBuf> for Directory {
+    type Error = anyhow::Error;
+    fn try_from(path: PathBuf) -> anyhow::Result<Self> {
+        let valid_entries: Vec<DirEntry> = std::fs::read_dir(&path)?.try_collect()?;
         let mut items: Vec<DirectoryItem> = valid_entries
             .iter()
-            .map(|entry| Self::from_path(entry.path()))
+            .map(|entry| DirectoryItem::try_from(entry.path()))
             // This collection allows me to short circuit when parsing thought the paths if an Err
             // is returned.
             .collect::<anyhow::Result<Vec<DirectoryItem>>>()?
             .into_iter()
             .collect_vec();
 
-        let subdir = path.into_std_path_buf().try_into()?;
+        let subdir = path.to_path_buf().try_into()?;
         Ok(Directory::SubDirectory(subdir).add_contents(items))
-    }
-
-    fn from_path_to_file(path: Utf8PathBuf) -> anyhow::Result<DirectoryItem> {
-        let file: File = path.into_std_path_buf().try_into()?;
-        Ok(file.into())
-    }
-
-    fn add_contents(mut self, mut contents: Vec<DirectoryItem>) -> Self {
-        self.contents_mut().append(&mut contents);
-        self
     }
 }
 
@@ -251,8 +227,8 @@ mod test {
     use assertables::assert_contains;
     use camino::Utf8PathBuf;
 
-    use crate::types::{
-        helpers::directory::DirectoryKind, properties::system_folder::SystemFolder,
+    use crate::{
+        tables::directory::helper::DirectoryKind, types::properties::system_folder::SystemFolder,
     };
 
     use super::Directory;
@@ -266,11 +242,5 @@ mod test {
             man.try_as_sub_directory().unwrap().name().to_string(),
             "MAN"
         );
-    }
-
-    #[test]
-    fn from_utf8_path() {
-        let path = PathBuf::new();
-        Directory::from_path(path);
     }
 }

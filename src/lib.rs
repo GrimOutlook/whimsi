@@ -25,20 +25,23 @@ pub mod constants;
 pub mod tables;
 pub mod types;
 
+use crate::tables::directory::dao::DirectoryDao;
+use crate::tables::directory::helper::Directory;
+use crate::tables::directory::helper::DirectoryKind;
+use crate::tables::directory::helper::SubDirectory;
+use crate::tables::directory::helper::SystemDirectory;
+use crate::tables::file::helper::File;
+use crate::tables::table_entry::TableEntry;
+use crate::types::helpers::directory_node::DirectoryItem;
 use std::{collections::HashMap, path::PathBuf, process::id, str::FromStr};
 
 use anyhow::{bail, ensure};
 use getset::Getters;
 use rand::distr::{Alphanumeric, SampleString};
-use tables::{MsiBuilderTables, TableEntry};
+use tables::MsiBuilderTables;
 use thiserror::Error;
 use types::{
     column::{ColumnValue, identifier::Identifier},
-    dao::directory::DirectoryDao,
-    helpers::{
-        directory::{Directory, DirectoryKind, SubDirectory, SystemDirectory},
-        directory_node::DirectoryItem,
-    },
     properties::system_folder::SystemFolder,
 };
 type Identifiers = HashMap<Identifier, TableEntry>;
@@ -54,20 +57,25 @@ pub struct MsiBuilder {
 }
 
 impl MsiBuilder {
-    /// Insert a given filesystem path's contents into the Msi for installation.
+    /// Insert a given filesystem path's contents into the MSI for installation.
+    ///
+    /// If the path leads to a directory, the directory and all contents will be recursively added
+    /// to the MSI.
+    ///
+    /// If the path leads to a file, only the file will be added to the MSI.
     ///
     /// ## Arguments
     ///
     /// - *path* Path to the items you want to be copied to the system on install.
     /// - *install_path_identifier* `Identifier` for the directory where the given path should be
     ///   placed. Identifer should already be present in the `Directory` table or should be a
-    ///   `SystemFolder`.
+    ///   `SystemFolder`. Most commonly you will want to use `SystemFolder::VARIANT` for this
+    ///   parameter.
     ///
     /// ## Example
     ///
     /// ```
     /// # use whimsi_lib::MsiBuilder;
-    /// # use whimsi_lib::tables::MsiBuilderTable;
     /// # use whimsi_lib::types::properties::system_folder::SystemFolder;
     ///
     /// # use assert_fs::TempDir;
@@ -112,16 +120,10 @@ impl MsiBuilder {
         path: P,
         install_path_identifier: I,
     ) -> anyhow::Result<Self> {
-        match Directory::from_path(path)? {
-            DirectoryItem::Directory(directory) => {
-                self = self.add_directory(install_path_identifier, directory)?
-            }
-            DirectoryItem::File(file) => {
-                todo!()
-            }
-        }
-
-        Ok(self)
+        Ok(self.add_directory_item(
+            DirectoryItem::try_from(path.into())?,
+            &install_path_identifier.into(),
+        )?)
     }
 
     pub fn add_directory<I: Into<Identifier>>(
@@ -163,28 +165,6 @@ impl MsiBuilder {
         Ok(self)
     }
 
-    fn add_directory_contents(
-        mut self,
-        subject: Directory,
-        subject_id: Identifier,
-    ) -> anyhow::Result<Self> {
-        let subject_id = subject_id.clone();
-        let contents = subject.clone().contents();
-
-        for item in contents {
-            match item {
-                DirectoryItem::Directory(directory) => {
-                    self = self.add_directory(subject_id.clone(), directory)?
-                }
-                DirectoryItem::File(file) => {
-                    todo!()
-                }
-            };
-        }
-
-        Ok(self)
-    }
-
     fn add_system_directory(
         &mut self,
         system_directory: &SystemDirectory,
@@ -222,7 +202,46 @@ impl MsiBuilder {
             WhimsiError::DirectoryIdentifierConflict { identifier: id }
         );
 
-        todo!()
+        Ok((
+            id.clone(),
+            DirectoryDao::new(subdirectory.name().to_owned().into(), id, parent_id),
+        ))
+    }
+
+    /// Add the contents of a directory to the Msi for installation
+    fn add_directory_contents(
+        mut self,
+        subject: Directory,
+        subject_id: Identifier,
+    ) -> anyhow::Result<Self> {
+        let subject_id = subject_id.clone();
+        let contents = subject.clone().contents();
+
+        for item in contents {
+            self = self.add_directory_item(item, &subject_id)?;
+        }
+
+        Ok(self)
+    }
+
+    /// Add a given directory item to the Msi for installation
+    fn add_directory_item(
+        mut self,
+        item: DirectoryItem,
+        parent_id: &Identifier,
+    ) -> anyhow::Result<Self> {
+        match item {
+            DirectoryItem::Directory(directory) => {
+                self = self.add_directory(parent_id.clone(), directory)?
+            }
+            DirectoryItem::File(file) => self = self.add_file(file)?,
+        };
+
+        Ok(self)
+    }
+
+    pub fn add_file(mut self, file: File) -> anyhow::Result<Self> {
+        todo!("Implement adding files to MSI")
     }
 
     pub fn has_identifier(&self, identifier: &Identifier) -> bool {
@@ -270,12 +289,9 @@ pub enum WhimsiError {
 mod test {
     use crate::{
         MsiBuilder, WhimsiError,
+        tables::directory::helper::{Directory, SubDirectory},
         types::{
-            column::identifier::Identifier,
-            helpers::{
-                directory::{Directory, SubDirectory},
-                filename::Filename,
-            },
+            column::identifier::Identifier, helpers::filename::Filename,
             properties::system_folder::SystemFolder,
         },
     };

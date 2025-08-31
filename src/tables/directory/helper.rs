@@ -24,144 +24,15 @@ use itertools::Itertools;
 use strum::IntoEnumIterator;
 use thiserror::Error;
 
+use super::kind::DirectoryKind;
+use super::kind::ambassador_impl_DirectoryKind;
+use super::subdirectory::SubDirectory;
+use super::system_directory::SystemDirectory;
+use crate::tables::file::helper::File;
 use crate::types::column::identifier::Identifier;
 use crate::types::helpers::directory_item::DirectoryItem;
 use crate::types::helpers::filename::Filename;
 use crate::types::properties::system_folder::SystemFolder;
-
-// TODO: If the `getset` crate ever supports Traits, use them here. I should not have to manually
-// make getters just because they are contained in traits.
-#[ambassador::delegatable_trait]
-pub trait DirectoryKind: Clone {
-    fn contents(&self) -> Vec<DirectoryItem>;
-    fn contents_mut(&mut self) -> &mut Vec<DirectoryItem>;
-    fn add_item(&mut self, item: DirectoryItem) -> anyhow::Result<()> {
-        match item {
-            DirectoryItem::File(file) => {
-                ensure!(
-                    !self.file_conflict(file),
-                    DirectoryError::DuplicateFile {
-                        path: *file.full_path()
-                    }
-                )
-            }
-            DirectoryItem::Directory(directory) => todo!(),
-        }
-        self.contents_mut().push(item);
-        Ok(())
-    }
-
-    fn contained_directories(&self) -> Vec<Directory> {
-        self.contents()
-            .iter()
-            .filter_map(|node| node.try_as_directory_ref())
-            .cloned()
-            .collect_vec()
-    }
-
-    fn insert_dir_strict(&mut self, name: &str) -> anyhow::Result<Directory> {
-        let new_filename = Filename::parse(name)?;
-        self.insert_dir_filename(new_filename)
-    }
-
-    fn insert_dir(&mut self, name: &str) -> anyhow::Result<Directory> {
-        let new_filename = Filename::parse(name)?;
-        self.insert_dir_filename(new_filename)
-    }
-
-    fn insert_dir_filename(&mut self, filename: Filename) -> anyhow::Result<Directory> {
-        let contents = self.contents();
-        let contained_dirs = contents
-            .iter()
-            .filter_map(|node| node.try_as_directory_ref());
-        ensure!(
-            !contained_dirs
-                .filter_map(|directory| directory.try_as_sub_directory_ref())
-                .any(|dir| *dir.name() == filename),
-            DirectoryError::DuplicateDirectory {
-                name: filename.to_string()
-            }
-        );
-
-        let new_dir = Directory::SubDirectory(filename.into());
-        self.contents_mut().push(new_dir.clone().into());
-        Ok(new_dir)
-    }
-}
-
-macro_rules! implement_directory_kind_boilerplate {
-    () => {
-        fn contents(&self) -> Vec<DirectoryItem> {
-            self.contained.clone()
-        }
-
-        fn contents_mut(&mut self) -> &mut Vec<DirectoryItem> {
-            &mut self.contained
-        }
-    };
-}
-
-#[derive(Clone, Debug, Display, PartialEq, Getters)]
-#[display("{}", system_folder)]
-#[getset(get = "pub")]
-pub struct SystemDirectory {
-    #[getset(skip)]
-    contained: Vec<DirectoryItem>,
-    system_folder: SystemFolder,
-}
-
-impl DirectoryKind for SystemDirectory {
-    implement_directory_kind_boilerplate!();
-}
-
-/// Directory that is a contained within a subdirectory.
-///
-/// NOTE: The user does not have to create an ID for the directory. The ID for the directory is
-/// generated created upon insertion into the `DirectoryTable`.
-#[derive(Clone, Debug, Display, PartialEq, Getters)]
-#[display("{}", name)]
-#[getset(get = "pub")]
-pub struct SubDirectory {
-    #[getset(skip)]
-    contained: Vec<DirectoryItem>,
-
-    /// The directory's name (localizable)
-    name: Filename,
-}
-
-impl DirectoryKind for SubDirectory {
-    implement_directory_kind_boilerplate!();
-}
-
-impl FromStr for SubDirectory {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Filename::parse(s)?.into())
-    }
-}
-
-impl From<Filename> for SubDirectory {
-    fn from(value: Filename) -> Self {
-        Self {
-            contained: Vec::new(),
-            name: value,
-        }
-    }
-}
-
-impl TryFrom<PathBuf> for SubDirectory {
-    type Error = anyhow::Error;
-    fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
-        let path: PathBuf = value.into();
-        path.file_name()
-            .ok_or(DirectoryError::NoDirectoryName { path: path.clone() })?
-            .to_str()
-            .ok_or(DirectoryError::InvalidDirectoryName { path: path.clone() })?
-            .parse()
-            .into()
-    }
-}
 
 #[derive(Clone, Debug, Delegate, Display, From, PartialEq, strum::EnumIs, strum::EnumTryAs)]
 #[delegate(DirectoryKind)]
@@ -177,21 +48,39 @@ impl Directory {
     pub fn new(name: impl ToString) -> anyhow::Result<Self> {
         let name = name.to_string();
 
-        let val = if let Ok(id) = name.parse::<Identifier>()
-            && let Ok(sf) = TryInto::<SystemFolder>::try_into(id)
+        let val = if let Ok(id) = Identifier::from_str(&name)
+            && let Ok(sf) = SystemFolder::from_identifier(&id)
         {
             sf.into()
         } else {
-            let subdir = name.parse::<SubDirectory>()?;
+            let subdir = SubDirectory::from_str(&name)?;
             subdir.into()
         };
 
         Ok(val)
     }
 
+    pub fn conflict(&self, other: &Self) -> bool {
+        if let Some(source) = self.try_as_system_directory_ref()
+            && let Some(target) = other.try_as_system_directory_ref()
+        {
+            source.system_folder() == target.system_folder()
+        } else if let Some(source) = self.try_as_sub_directory_ref()
+            && let Some(target) = other.try_as_sub_directory_ref()
+        {
+            source.name() == target.name()
+        } else {
+            false
+        }
+    }
+
     fn add_contents(mut self, mut contents: Vec<DirectoryItem>) -> Self {
         self.contents_mut().append(&mut contents);
         self
+    }
+
+    pub fn from_system_folder(value: SystemFolder) -> Self {
+        value.into()
     }
 }
 
@@ -215,26 +104,9 @@ impl TryFrom<PathBuf> for Directory {
 
 impl From<SystemFolder> for Directory {
     fn from(value: SystemFolder) -> Self {
-        SystemDirectory {
-            contained: Vec::new(),
-            system_folder: value,
-        }
-        .into()
+        let sd: SystemDirectory = value.into();
+        sd.into()
     }
-}
-
-#[derive(Debug, Error)]
-pub enum DirectoryError {
-    #[error("Given directory name [{name}] cannot fit in short filename")]
-    DirectoryNameTooLong { name: String },
-    #[error("Directory name [{name}] already exists in parent directory")]
-    DuplicateDirectory { name: String },
-    #[error("No directory name could be found for path [{path}]")]
-    NoDirectoryName { path: PathBuf },
-    #[error("Invalid directory name found for path [{path}]")]
-    InvalidDirectoryName { path: PathBuf },
-    #[error("File [{path}] already exists in directory")]
-    DuplicateFile { path: PathBuf },
 }
 
 #[cfg(test)]

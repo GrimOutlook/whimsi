@@ -1,0 +1,103 @@
+use anyhow::ensure;
+use itertools::Itertools;
+
+use crate::{
+    tables::{directory::DirectoryError, file::helper::File},
+    types::helpers::{directory_item::DirectoryItem, filename::Filename},
+};
+
+use super::helper::Directory;
+
+// TODO: If the `getset` crate ever supports Traits, use them here. I should not have to manually
+// make getters just because they are contained in traits.
+#[ambassador::delegatable_trait]
+pub trait DirectoryKind: Clone {
+    fn contents(&self) -> Vec<DirectoryItem>;
+    fn contents_mut(&mut self) -> &mut Vec<DirectoryItem>;
+    fn add_item(&mut self, item: DirectoryItem) -> anyhow::Result<()> {
+        match item {
+            DirectoryItem::File(ref file) => {
+                ensure!(
+                    self.contained_files()
+                        .iter()
+                        .find(|other| other.name() == file.name())
+                        .is_none(),
+                    DirectoryError::DuplicateFile {
+                        name: file.name().to_string()
+                    }
+                )
+            }
+            DirectoryItem::Directory(ref directory) => {
+                ensure!(
+                    self.contained_directories()
+                        .iter()
+                        .find(|other| directory.conflict(other))
+                        .is_none(),
+                    DirectoryError::DuplicateDirectory {
+                        name: directory.to_string()
+                    }
+                )
+            }
+        }
+        self.contents_mut().push(item);
+        Ok(())
+    }
+
+    fn contained_directories(&self) -> Vec<Directory> {
+        self.contents()
+            .iter()
+            .filter_map(|node| node.try_as_directory_ref())
+            .cloned()
+            .collect_vec()
+    }
+
+    fn contained_files(&self) -> Vec<File> {
+        self.contents()
+            .iter()
+            .filter_map(|node| node.try_as_file_ref())
+            .cloned()
+            .collect_vec()
+    }
+
+    fn insert_dir_strict(&mut self, name: &str) -> anyhow::Result<Directory> {
+        let new_filename = Filename::parse(name)?;
+        self.insert_dir_filename(new_filename)
+    }
+
+    fn insert_dir(&mut self, name: &str) -> anyhow::Result<Directory> {
+        let new_filename = Filename::parse(name)?;
+        self.insert_dir_filename(new_filename)
+    }
+
+    fn insert_dir_filename(&mut self, filename: Filename) -> anyhow::Result<Directory> {
+        let contents = self.contents();
+        let contained_dirs = contents
+            .iter()
+            .filter_map(|node| node.try_as_directory_ref());
+        ensure!(
+            !contained_dirs
+                .filter_map(|directory| directory.try_as_sub_directory_ref())
+                .any(|dir| *dir.name() == filename),
+            DirectoryError::DuplicateDirectory {
+                name: filename.to_string()
+            }
+        );
+
+        let new_dir = Directory::SubDirectory(filename.into());
+        self.contents_mut().push(new_dir.clone().into());
+        Ok(new_dir)
+    }
+}
+
+#[macro_export]
+macro_rules! implement_directory_kind_boilerplate {
+    () => {
+        fn contents(&self) -> Vec<DirectoryItem> {
+            self.contained.clone()
+        }
+
+        fn contents_mut(&mut self) -> &mut Vec<DirectoryItem> {
+            &mut self.contained
+        }
+    };
+}

@@ -27,9 +27,6 @@ pub mod types;
 
 use crate::tables::directory::dao::DirectoryDao;
 use crate::tables::directory::helper::Directory;
-use crate::tables::directory::helper::DirectoryKind;
-use crate::tables::directory::helper::SubDirectory;
-use crate::tables::directory::helper::SystemDirectory;
 use crate::tables::file::helper::File;
 use crate::tables::media::helper::Media;
 use crate::tables::table_entry::TableEntry;
@@ -44,6 +41,8 @@ use tables::MsiBuilderTables;
 use tables::builder_table::MsiBuilderTable;
 use tables::component::dao::ComponentDao;
 use tables::component::helper::Component;
+use tables::directory::kind::DirectoryKind;
+use tables::directory::subdirectory::SubDirectory;
 use tables::file::dao::FileDao;
 use thiserror::Error;
 use types::column::sequence::Sequence;
@@ -54,7 +53,7 @@ use types::{
 type Identifiers = Vec<Identifier>;
 
 /// An in-memory representation of the final MSI to be created.
-#[derive(Debug, Default, Getters)]
+#[derive(Debug, Getters)]
 #[getset(get = "pub")]
 pub struct MsiBuilder {
     /// Tracks identifiers used to relate items between tables.
@@ -67,7 +66,7 @@ pub struct MsiBuilder {
     ///
     /// TODO: Determine if a separate list for `File`s and other things are needed if it's possible
     /// for them to not be contained in a `Directory`.
-    directories: Vec<Directory>,
+    root_dir: Directory,
 }
 
 impl MsiBuilder {
@@ -90,6 +89,7 @@ impl MsiBuilder {
     ///
     /// ```
     /// # use whimsi_lib::MsiBuilder;
+    /// # use whimsi_lib::tables::directory::kind::DirectoryKind;
     /// # use whimsi_lib::types::properties::system_folder::SystemFolder;
     ///
     /// # use assert_fs::TempDir;
@@ -124,82 +124,67 @@ impl MsiBuilder {
     /// // | child_dir2/
     /// //   | - file2.pdf
     ///
-    /// let table = msi.tables().directory();
-    /// // 1 entry for each *directory*. 1 entry for ProgramFiles. 1 entry for root directory
-    /// // that is always required.
-    /// assert_eq!(table.len(), 4);
+    /// let root_dir = msi.root_dir();
+    /// // The root directory is constructed automatically when the MsiBuilder is instantiated.
+    /// assert_eq!(root_dir.try_as_system_directory_ref().unwrap().system_folder(), &SystemFolder::TARGETDIR, "Root folder constructed incorrectly");
+    /// let root_contents = root_dir.contents();
+    /// // 1 entry for the system folder
+    /// assert_eq!(root_contents.len(), 1, "Number of root folder contents incorrect");
+    /// // 2 directories that were parsed from the path and placed in the system folder that was
+    /// // given
+    /// let system_directory = root_contents.get(0).unwrap().try_as_directory_ref().unwrap();
+    /// assert_eq!(system_directory.try_as_system_directory_ref().unwrap().system_folder(), &SystemFolder::ProgramFiles, "System folder constructed incorrectly");
+    /// assert_eq!(system_directory.contents().len(), 3, "Number of system folder contents incorrect");
+    /// assert_eq!(system_directory.contained_directories().len(), 2, "Number of directories in system folder incorrect");
+    /// assert_eq!(system_directory.contained_files().len(), 1, "Number of files in system folder incorrect");
     /// ```
-    pub fn add_path<P: Into<PathBuf>, I: Into<Identifier>>(
+    pub fn add_path<P: Into<PathBuf>>(
         mut self,
         path: P,
-        install_path_identifier: I,
+        parent: SystemFolder,
     ) -> anyhow::Result<Self> {
-        Ok(self.add_directory_item(
-            DirectoryItem::try_from(path.into())?,
-            &install_path_identifier.into(),
-        )?)
+        let parsed_path = DirectoryItem::try_from(path.into())?;
+
+        let directory = match parsed_path {
+            DirectoryItem::Directory(directory) => directory,
+            DirectoryItem::File(file) => todo!("Create error for file"),
+        };
+
+        let mut parent_dir = Directory::from_system_folder(parent);
+        for item in directory.contents() {
+            parent_dir.add_item(item);
+        }
+        self = self.add_directory(parent_dir)?;
+        Ok(self)
     }
 
-    /// Add a given directory item to the Msi for installation
-    fn add_directory_item(
-        mut self,
-        item: DirectoryItem,
-        parent_id: &Identifier,
-    ) -> anyhow::Result<Self> {
-        match item {
-            DirectoryItem::Directory(directory) => {
-                self = self.add_directory(parent_id.clone(), directory)?
-            }
-            DirectoryItem::File(file) => self = self.add_file(file, parent_id)?,
-        };
+    pub fn add_directory(mut self, subject: Directory) -> anyhow::Result<Self> {
+        ensure!(
+            subject.try_as_system_directory_ref().is_some(),
+            "Create error for non system directories"
+        );
+
+        if self
+            .root_dir
+            .contained_directories()
+            .iter()
+            .find(|other| other.conflict(&subject))
+            .is_some()
+        {
+            todo!("Create error for when the system directory already exists")
+        }
+
+        self.root_dir.add_item(subject.into());
 
         Ok(self)
     }
 
-    fn add_directory<I: Into<Identifier>>(
-        mut self,
-        parent_id: I,
-        subject: Directory,
-    ) -> anyhow::Result<Self> {
-        let parent_id = parent_id.into();
-
-        // Create the parent directory on-the-fly if one doesn't exist and it is a `SystemFolder`
-        // variant. Throw an error otherwise if it doesn't exist.
-        let directory = match self.directory_mut_by_id(&parent_id) {
-            Some(directory) => directory,
-            None => {
-                if let Ok(sf) = SystemFolder::try_from(parent_id.clone()) {
-                    self = self.add_directory(SystemFolder::TARGETDIR, sf.try_into()?)?;
-                    self.directory_mut_by_id(&parent_id).unwrap()
-                } else {
-                    bail!(WhimsiError::DirectoryNotFound {
-                        identifier: parent_id.clone()
-                    })
-                }
-            }
-        };
-
-        directory.add(subject);
-
-        Ok(self)
-    }
-
-    pub fn add_file(&self, file: File) -> anyhow::Result<Self> {
+    pub fn add_file(&self, file: File, parent_id: &Identifier) -> anyhow::Result<Self> {
         todo!()
     }
 
     pub fn has_identifier(&self, identifier: &Identifier) -> bool {
         self.identifiers.iter().any(|i| i == identifier)
-    }
-
-    pub fn directory_mut_by_id(&self, identifer: &Identifier) -> Option<&Directory> {
-        self.directories.iter().find(|dir| {
-            if let Some(system_dir) = dir.try_as_system_directory_ref() {
-                *identifer == system_dir.system_folder().into()
-            } else {
-                false
-            }
-        })
     }
 
     /// Generate an `Identifier` not already in the `Identifiers` hashmap.
@@ -217,6 +202,16 @@ impl MsiBuilder {
     }
 }
 
+impl Default for MsiBuilder {
+    fn default() -> Self {
+        Self {
+            identifiers: vec![SystemFolder::TARGETDIR.into()],
+            tables: Default::default(),
+            root_dir: Directory::from_system_folder(SystemFolder::TARGETDIR),
+        }
+    }
+}
+
 #[derive(Debug, Error, PartialEq)]
 pub enum WhimsiError {
     #[error("Property with identifier {identifier} not found in Property table")]
@@ -229,33 +224,4 @@ pub enum WhimsiError {
     DirectoryIdentifierConflict { identifier: Identifier },
     #[error("Identifier {identifier} already exists for MSI. Identifiers must be unique.")]
     IdentifierConflict { identifier: Identifier },
-}
-
-#[cfg(test)]
-mod test {
-    use crate::{
-        MsiBuilder, WhimsiError,
-        tables::directory::helper::{Directory, SubDirectory},
-        types::{
-            column::identifier::Identifier, helpers::filename::Filename,
-            properties::system_folder::SystemFolder,
-        },
-    };
-
-    #[test]
-    fn non_existent_parent_directory() {
-        let mut msi = MsiBuilder::default();
-        let parent_id = "nonexistent".parse::<Identifier>().unwrap();
-
-        let id: Identifier = "test_id".parse().unwrap();
-        let invalid_dir: SubDirectory = "test".parse::<Filename>().unwrap().into();
-        let invalid_dir: Directory = invalid_dir.into();
-
-        let expected = WhimsiError::DirectoryNotFound {
-            identifier: parent_id.clone(),
-        };
-        let result = msi.add_directory_to_tables(parent_id, invalid_dir);
-        let actual = result.unwrap_err().downcast().unwrap();
-        assert_eq!(expected, actual);
-    }
 }

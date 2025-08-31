@@ -19,6 +19,12 @@ pub enum SystemFolder {
     ProgramFiles,
 }
 
+impl SystemFolder {
+    pub fn from_identifier(identifier: &Identifier) -> anyhow::Result<Self> {
+        identifier.clone().try_into()
+    }
+}
+
 impl PartialEq<Identifier> for SystemFolder {
     fn eq(&self, other: &Identifier) -> bool {
         other == &self.into()

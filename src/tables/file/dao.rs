@@ -28,7 +28,6 @@ impl FileDao {
     pub(crate) fn from_file(
         file: &File,
         id: &Identifier,
-        component_id: &Identifier,
         sequence: Sequence,
     ) -> anyhow::Result<FileDao> {
         todo!("from_file")

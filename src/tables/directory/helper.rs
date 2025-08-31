@@ -35,6 +35,21 @@ use crate::types::properties::system_folder::SystemFolder;
 pub trait DirectoryKind: Clone {
     fn contents(&self) -> Vec<DirectoryItem>;
     fn contents_mut(&mut self) -> &mut Vec<DirectoryItem>;
+    fn add_item(&mut self, item: DirectoryItem) -> anyhow::Result<()> {
+        match item {
+            DirectoryItem::File(file) => {
+                ensure!(
+                    !self.file_conflict(file),
+                    DirectoryError::DuplicateFile {
+                        path: *file.full_path()
+                    }
+                )
+            }
+            DirectoryItem::Directory(directory) => todo!(),
+        }
+        self.contents_mut().push(item);
+        Ok(())
+    }
 
     fn contained_directories(&self) -> Vec<Directory> {
         self.contents()
@@ -63,7 +78,7 @@ pub trait DirectoryKind: Clone {
             !contained_dirs
                 .filter_map(|directory| directory.try_as_sub_directory_ref())
                 .any(|dir| *dir.name() == filename),
-            DirectoryConversionError::DuplicateDirectory {
+            DirectoryError::DuplicateDirectory {
                 name: filename.to_string()
             }
         );
@@ -140,9 +155,9 @@ impl TryFrom<PathBuf> for SubDirectory {
     fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
         let path: PathBuf = value.into();
         path.file_name()
-            .ok_or(DirectoryConversionError::NoDirectoryName { path: path.clone() })?
+            .ok_or(DirectoryError::NoDirectoryName { path: path.clone() })?
             .to_str()
-            .ok_or(DirectoryConversionError::InvalidDirectoryName { path: path.clone() })?
+            .ok_or(DirectoryError::InvalidDirectoryName { path: path.clone() })?
             .parse()
             .into()
     }
@@ -209,7 +224,7 @@ impl From<SystemFolder> for Directory {
 }
 
 #[derive(Debug, Error)]
-pub enum DirectoryConversionError {
+pub enum DirectoryError {
     #[error("Given directory name [{name}] cannot fit in short filename")]
     DirectoryNameTooLong { name: String },
     #[error("Directory name [{name}] already exists in parent directory")]
@@ -218,6 +233,8 @@ pub enum DirectoryConversionError {
     NoDirectoryName { path: PathBuf },
     #[error("Invalid directory name found for path [{path}]")]
     InvalidDirectoryName { path: PathBuf },
+    #[error("File [{path}] already exists in directory")]
+    DuplicateFile { path: PathBuf },
 }
 
 #[cfg(test)]

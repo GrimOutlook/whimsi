@@ -4,7 +4,7 @@ use anyhow::{Context, ensure};
 use getset::Getters;
 
 use crate::{
-    tables::component::helper::Component,
+    tables::{component::helper::Component, media::helper::Media},
     types::{column::identifier::Identifier, helpers::filename::Filename},
 };
 
@@ -13,14 +13,20 @@ use crate::{
 #[display("{}", name)]
 pub struct File {
     name: Filename,
+    full_path: PathBuf,
     size: u64,
     component: Component,
+
+    /// The source media that this file should be added to.
+    ///
+    /// If one is not provided, one will be created automatically.
+    media: Option<Identifier>,
 }
 
 impl TryFrom<PathBuf> for File {
     type Error = anyhow::Error;
     fn try_from(value: PathBuf) -> anyhow::Result<Self> {
-        let path: PathBuf = value.into();
+        let path: PathBuf = value.clone().into();
         ensure!(
             path.is_file(),
             FileConversionError::NotAFile { path: path.clone() }
@@ -58,9 +64,11 @@ impl TryFrom<PathBuf> for File {
         let component = Component::default();
 
         Ok(Self {
+            full_path: value,
             name,
             size,
             component,
+            media: None,
         })
     }
 }

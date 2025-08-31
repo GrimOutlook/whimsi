@@ -31,7 +31,9 @@ use crate::tables::directory::helper::DirectoryKind;
 use crate::tables::directory::helper::SubDirectory;
 use crate::tables::directory::helper::SystemDirectory;
 use crate::tables::file::helper::File;
+use crate::tables::media::helper::Media;
 use crate::tables::table_entry::TableEntry;
+use crate::types::column::identifier::ToIdentifier;
 use crate::types::helpers::directory_item::DirectoryItem;
 use std::{collections::HashMap, path::PathBuf, process::id, str::FromStr};
 
@@ -49,7 +51,7 @@ use types::{
     column::{ColumnValue, identifier::Identifier},
     properties::system_folder::SystemFolder,
 };
-type Identifiers = HashMap<Identifier, TableEntry>;
+type Identifiers = Vec<Identifier>;
 
 /// An in-memory representation of the final MSI to be created.
 #[derive(Debug, Default, Getters)]
@@ -59,6 +61,13 @@ pub struct MsiBuilder {
     #[getset(get_mut = "pub(crate)")]
     identifiers: Identifiers,
     tables: MsiBuilderTables,
+
+    /// Contains the directory structure that will be written to the MSI. Includes files and other
+    /// components that are contained within directories.
+    ///
+    /// TODO: Determine if a separate list for `File`s and other things are needed if it's possible
+    /// for them to not be contained in a `Directory`.
+    directories: Vec<Directory>,
 }
 
 impl MsiBuilder {
@@ -131,103 +140,6 @@ impl MsiBuilder {
         )?)
     }
 
-    pub fn add_directory<I: Into<Identifier>>(
-        mut self,
-        parent_id: I,
-        subject: Directory,
-    ) -> anyhow::Result<Self> {
-        let parent_id = parent_id.into();
-
-        // Create the parent directory on-the-fly if one doesn't exist and it is a `SystemFolder`
-        // variant. Throw an error otherwise if it doesn't exist.
-        if !self.has_directory_id(&parent_id) {
-            if let Ok(sf) = SystemFolder::try_from(parent_id.clone()) {
-                self = self.add_directory(SystemFolder::TARGETDIR, sf.try_into()?)?;
-            } else {
-                bail!(WhimsiError::DirectoryNotFound {
-                    identifier: parent_id.clone()
-                })
-            }
-        }
-
-        let (id, dao) = match subject {
-            Directory::SystemDirectory(ref system_directory) => {
-                self.add_system_directory(&system_directory)?
-            }
-            Directory::SubDirectory(ref subdirectory) => {
-                self.add_subdirectory(parent_id, subdirectory)?
-            }
-        };
-
-        // Add the new directory to the table.
-        self.tables.directory_mut().add(dao.clone())?;
-        self.identifiers
-            .insert(id.clone(), TableEntry::Directory(dao));
-
-        // Add all of the contents to the MSI.
-        self = self.add_directory_contents(subject, id)?;
-
-        Ok(self)
-    }
-
-    fn add_system_directory(
-        &mut self,
-        system_directory: &SystemDirectory,
-    ) -> anyhow::Result<(Identifier, DirectoryDao)> {
-        let system_folder = *system_directory.system_folder();
-
-        // Disallow TARGETDIR as the subject directory
-        ensure!(
-            system_folder != SystemFolder::TARGETDIR,
-            WhimsiError::SubRootDirectory
-        );
-
-        Ok((system_folder.into(), system_folder.into()))
-    }
-
-    fn add_subdirectory<I: Into<Identifier>>(
-        &mut self,
-        parent_id: I,
-        subdirectory: &SubDirectory,
-    ) -> anyhow::Result<(Identifier, DirectoryDao)> {
-        let parent_id = parent_id.into();
-
-        let id = self.generate_id();
-
-        // Disallow reusing identifiers in the same MSI.
-        ensure!(
-            !self.has_identifier(&id),
-            WhimsiError::IdentifierConflict { identifier: id }
-        );
-
-        // Disallow directories using the same identifier.
-        ensure!(
-            !self.has_directory_id(&id),
-            WhimsiError::DirectoryIdentifierConflict { identifier: id }
-        );
-
-        Ok((
-            id.clone(),
-            DirectoryDao::new(subdirectory.name().to_owned().into(), id, parent_id),
-        ))
-    }
-
-    /// Add the contents of a directory to the Msi for installation
-    fn add_directory_contents(
-        mut self,
-        subject: Directory,
-        subject_id: Identifier,
-    ) -> anyhow::Result<Self> {
-        let subject_id = subject_id.clone();
-        let contents = subject.clone().contents();
-
-        for item in contents {
-            self = self.add_directory_item(item, &subject_id)?;
-        }
-
-        Ok(self)
-    }
-
     /// Add a given directory item to the Msi for installation
     fn add_directory_item(
         mut self,
@@ -244,44 +156,50 @@ impl MsiBuilder {
         Ok(self)
     }
 
-    pub fn add_file(mut self, file: File, parent_id: &Identifier) -> anyhow::Result<Self> {
-        let file_id = self.generate_id();
-        let component_id = self.add_component_for_file(&file, &file_id, parent_id)?;
-        let sequence = self.add_file_to_media(&file)?;
-        let file_dao = FileDao::from_file(&file, &file_id, &component_id, sequence)?;
-        self.tables.file_mut().add(file_dao.clone())?;
-        self.identifiers
-            .insert(file_id.clone(), TableEntry::File((file_dao, component_id)));
+    fn add_directory<I: Into<Identifier>>(
+        mut self,
+        parent_id: I,
+        subject: Directory,
+    ) -> anyhow::Result<Self> {
+        let parent_id = parent_id.into();
+
+        // Create the parent directory on-the-fly if one doesn't exist and it is a `SystemFolder`
+        // variant. Throw an error otherwise if it doesn't exist.
+        let directory = match self.directory_mut_by_id(&parent_id) {
+            Some(directory) => directory,
+            None => {
+                if let Ok(sf) = SystemFolder::try_from(parent_id.clone()) {
+                    self = self.add_directory(SystemFolder::TARGETDIR, sf.try_into()?)?;
+                    self.directory_mut_by_id(&parent_id).unwrap()
+                } else {
+                    bail!(WhimsiError::DirectoryNotFound {
+                        identifier: parent_id.clone()
+                    })
+                }
+            }
+        };
+
+        directory.add(subject);
+
         Ok(self)
     }
 
-    pub fn add_component_for_file(
-        &mut self,
-        file: &File,
-        file_id: &Identifier,
-        directory_id: &Identifier,
-    ) -> anyhow::Result<Identifier> {
-        let component_id = self.generate_id();
-        let dao = ComponentDao::from_file(component_id.clone(), file, file_id, directory_id);
-        self.tables.component_mut().add(dao.clone())?;
-
-        Ok(component_id)
-    }
-
-    pub fn add_file_to_media(&mut self, file: &File) -> anyhow::Result<Sequence> {
-        todo!("add_file_to_media")
+    pub fn add_file(&self, file: File) -> anyhow::Result<Self> {
+        todo!()
     }
 
     pub fn has_identifier(&self, identifier: &Identifier) -> bool {
-        self.identifiers.keys().any(|i| i == identifier)
+        self.identifiers.iter().any(|i| i == identifier)
     }
 
-    pub fn has_directory_id(&self, identifier: &Identifier) -> bool {
-        self.tables.directory().has_directory_id(&identifier)
-    }
-
-    pub fn has_property(&self, identifier: &Identifier) -> bool {
-        self.tables.property().has_property(&identifier)
+    pub fn directory_mut_by_id(&self, identifer: &Identifier) -> Option<&Directory> {
+        self.directories.iter().find(|dir| {
+            if let Some(system_dir) = dir.try_as_system_directory_ref() {
+                *identifer == system_dir.system_folder().into()
+            } else {
+                false
+            }
+        })
     }
 
     /// Generate an `Identifier` not already in the `Identifiers` hashmap.
@@ -336,7 +254,7 @@ mod test {
         let expected = WhimsiError::DirectoryNotFound {
             identifier: parent_id.clone(),
         };
-        let result = msi.add_directory(parent_id, invalid_dir);
+        let result = msi.add_directory_to_tables(parent_id, invalid_dir);
         let actual = result.unwrap_err().downcast().unwrap();
         assert_eq!(expected, actual);
     }

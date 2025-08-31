@@ -19,10 +19,8 @@ static INVALID_CHARACTER: Lazy<Regex> = Lazy::new(|| Regex::new(r"[^A-Za-z0-9_\.
 /// Must start with either a letter or underscore.
 ///
 /// Reference: https://learn.microsoft.com/en-us/windows/win32/msi/identifier
-#[derive(Clone, Debug, Display, PartialEq, Eq, Hash)]
-pub struct Identifier {
-    inner: String,
-}
+#[derive(Clone, Debug, Display, Default, PartialEq, Eq, Hash)]
+pub struct Identifier(String);
 
 impl Identifier {
     pub fn as_system_folder(&self) -> Option<SystemFolder> {
@@ -49,14 +47,12 @@ impl FromStr for Identifier {
             bail!(IdentifierConversionError::InvalidCharacters { characters });
         }
 
-        Ok(Identifier {
-            inner: s.to_string(),
-        })
+        Ok(Identifier(s.to_string()))
     }
 }
 
-impl From<SystemFolder> for Identifier {
-    fn from(value: SystemFolder) -> Self {
+impl From<&SystemFolder> for Identifier {
+    fn from(value: &SystemFolder) -> Self {
         value
             .to_string()
             .parse()
@@ -67,12 +63,22 @@ impl From<SystemFolder> for Identifier {
     }
 }
 
+impl From<SystemFolder> for Identifier {
+    fn from(value: SystemFolder) -> Self {
+        (&value).into()
+    }
+}
+
 #[derive(Debug, Error, PartialEq)]
 pub enum IdentifierConversionError {
     #[error("Identifier has invalid first character: [{first_character}]")]
     InvalidFirstCharacter { first_character: InvalidChar },
     #[error("Identifier contains invalid characters")]
     InvalidCharacters { characters: Vec<InvalidChar> },
+}
+
+pub trait ToIdentifier {
+    fn to_identifier(&self) -> Identifier;
 }
 
 #[cfg(test)]
@@ -89,9 +95,7 @@ mod test {
     #[test_case("Test8."; "starts with letter")]
     #[test_case("_Test8."; "starts with underscore")]
     fn valid_identifier(input: &str) {
-        let expected = Identifier {
-            inner: input.to_owned(),
-        };
+        let expected = Identifier(input.to_owned());
         let actual = Identifier::from_str(input).expect("Valid identifier returning as invalid");
         assert_eq!(expected, actual);
     }

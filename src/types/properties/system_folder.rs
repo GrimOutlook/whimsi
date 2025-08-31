@@ -11,7 +11,7 @@ use itertools::Itertools;
 use strum::IntoEnumIterator;
 use thiserror::Error;
 
-use crate::types::column::identifier::Identifier;
+use crate::types::column::identifier::{Identifier, ToIdentifier};
 
 #[derive(Clone, Copy, Debug, PartialEq, strum::Display, strum::EnumIter)]
 pub enum SystemFolder {
@@ -21,7 +21,7 @@ pub enum SystemFolder {
 
 impl PartialEq<Identifier> for SystemFolder {
     fn eq(&self, other: &Identifier) -> bool {
-        other == &Into::<Identifier>::into(*self)
+        other == &self.into()
     }
 }
 
@@ -30,8 +30,14 @@ impl TryFrom<Identifier> for SystemFolder {
 
     fn try_from(identifier: Identifier) -> Result<Self, Self::Error> {
         SystemFolder::iter()
-            .find(|f| identifier == (*f).into())
+            .find(|f| identifier == f.into())
             .ok_or(SystemFolderConversionError::InvalidSystemFolder { identifier }.into())
+    }
+}
+
+impl ToIdentifier for SystemFolder {
+    fn to_identifier(&self) -> Identifier {
+        self.into()
     }
 }
 

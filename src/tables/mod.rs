@@ -2,11 +2,12 @@ pub(crate) mod builder_table;
 pub mod component;
 pub mod directory;
 pub mod file;
+pub mod media;
 pub mod property;
 pub mod table_entry;
 
-use crate::tables::directory::table::DirectoryTable;
 use crate::tables::property::table::PropertyTable;
+use crate::tables::{directory::table::DirectoryTable, media::table::MediaTable};
 use component::table::ComponentTable;
 use file::table::FileTable;
 use getset::{Getters, MutGetters};
@@ -20,65 +21,9 @@ use getset::{Getters, MutGetters};
 #[derive(Clone, Debug, Default, Getters, MutGetters)]
 #[getset(get = "pub", get_mut = "pub(crate)")]
 pub struct MsiBuilderTables {
-    /// Directory layout for the application.
-    ///
-    /// Table Information Contained:
-    /// - ['Directory'](https://learn.microsoft.com/en-us/windows/win32/msi/directory-table)
-    directory: DirectoryTable,
-
-    property: PropertyTable,
-    /// Complete list of source files with their attributes.
-    ///
-    /// Table Information Contained:
-    /// - ['File'](https://learn.microsoft.com/en-us/windows/win32/msi/file-table)
-    file: FileTable,
-
-    /// Lists installation components.
-    ///
-    /// Table Information Contained:
-    /// - [`Component`](https://learn.microsoft.com/en-us/windows/win32/msi/component-table)
     component: ComponentTable,
-    //
-    // /// Defines the logical tree structure of features.
-    // ///
-    // /// Table Information Contained:
-    // /// - ['Feature'](https://learn.microsoft.com/en-us/windows/win32/msi/feature-table)
-    // /// - ['FeatureComponents'](https://learn.microsoft.com/en-us/windows/win32/msi/featurecomponents-table)
-    // ///
-    // /// NOTE: The [feature-components
-    // /// table](https://learn.microsoft.com/en-us/windows/win32/msi/featurecomponents-table) is not used.
-    // /// Instead features have an extra property which is a vec holding references to the components that they contain.
-    // Features(Features),
-    //
-    // /// Lists information needed to create shortcuts.
-    // ///
-    // /// Table Information Contained:
-    // /// - ['Shortcut'](https://learn.microsoft.com/en-us/windows/win32/msi/shortcut-table)
-    // Shortcuts(Shortcuts),
-    //
-    // /// Secures services, files, registry keys, and created folders
-    // ///
-    // /// Table Information Contained:
-    // /// - ['MsiLockPermissionsEx'](https://learn.microsoft.com/en-us/windows/win32/msi/msilockpermissionsex-table)
-    // Permissions(Permissions),
-    //
-    // /// Lists information used to install a service.
-    // ///
-    // /// Table Information Contained:
-    // /// - ['MsiServiceConfig'](https://learn.microsoft.com/en-us/windows/win32/msi/msiserviceconfig-table)
-    // /// - ['ServiceInstall'](https://learn.microsoft.com/en-us/windows/win32/msi/serviceinstall-table)
-    // /// - ['ServiceControl'](https://learn.microsoft.com/en-us/windows/win32/msi/serviceinstall-table)
-    // Services(Services),
-    //
-    // /// Lists registry information for the application.
-    // ///
-    // /// Table Information Contained:
-    // /// - ['Registry'](https://learn.microsoft.com/en-us/windows/win32/msi/registry-table)
-    // RegistryEntries(RegistryEntries),
-    //
-    // /// Lists the environment variables.
-    // ///
-    // /// Table Information Contained:
-    // /// - ['Environment'](https://learn.microsoft.com/en-us/windows/win32/msi/environment-table)
-    // EnvironmentVariables(EnvironmentVariables),
+    directory: DirectoryTable,
+    file: FileTable,
+    media: MediaTable,
+    property: PropertyTable,
 }

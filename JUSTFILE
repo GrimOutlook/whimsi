@@ -11,3 +11,7 @@ streams:
     msiinfo streams {{EXAMPLE}} | sort
 stream STREAM:
     msiinfo extract {{EXAMPLE}} {{STREAM}} > {{STREAM}}.cab
+
+alias tp: test-print
+test-print:
+    cargo test -- --nocapture

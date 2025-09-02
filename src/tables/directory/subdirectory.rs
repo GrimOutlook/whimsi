@@ -1,5 +1,6 @@
 use std::{path::PathBuf, str::FromStr};
 
+use derivative::Derivative;
 use getset::Getters;
 
 use crate::{
@@ -13,11 +14,13 @@ use super::{DirectoryError, kind::DirectoryKind};
 ///
 /// NOTE: The user does not have to create an ID for the directory. The ID for the directory is
 /// generated created upon insertion into the `DirectoryTable`.
-#[derive(Clone, Debug, derive_more::Display, PartialEq, Getters)]
+#[derive(Clone, Debug, derive_more::Display, PartialEq, Getters, Derivative)]
 #[display("{}", name)]
 #[getset(get = "pub")]
+#[derivative(PartialOrd, Ord, Eq)]
 pub struct SubDirectory {
     #[getset(skip)]
+    #[derivative(PartialOrd = "ignore", Ord = "ignore")]
     contained: Vec<DirectoryItem>,
 
     /// The directory's name (localizable)

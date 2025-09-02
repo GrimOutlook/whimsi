@@ -48,3 +48,17 @@ impl From<Filename> for String {
         format!("{}|{}", value.short, value.long)
     }
 }
+
+impl PartialOrd for Filename {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.to_string().partial_cmp(&other.to_string())
+    }
+}
+
+impl Ord for Filename {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.to_string().cmp(&other.to_string())
+    }
+}
+
+impl Eq for Filename {}

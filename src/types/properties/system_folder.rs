@@ -13,7 +13,7 @@ use thiserror::Error;
 
 use crate::types::column::identifier::{Identifier, ToIdentifier};
 
-#[derive(Clone, Copy, Debug, PartialEq, strum::Display, strum::EnumIter)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, strum::Display, strum::EnumIter, Ord, Eq)]
 pub enum SystemFolder {
     TARGETDIR,
     ProgramFiles,

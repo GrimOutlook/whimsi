@@ -127,6 +127,7 @@ impl MsiBuilder {
     /// //   | - file2.pdf
     ///
     /// let root_dir = msi.root_dir();
+    /// root_dir.print_structure();
     /// // The root directory is constructed automatically when the MsiBuilder is instantiated.
     /// assert_eq!(root_dir.try_as_system_directory_ref().unwrap().system_folder(), &SystemFolder::TARGETDIR, "Root folder constructed incorrectly");
     /// let root_contents = root_dir.contents();

@@ -19,6 +19,7 @@ use std::str::FromStr;
 use ambassador::Delegate;
 use anyhow::{Context, bail, ensure};
 use camino::Utf8PathBuf;
+use derivative::Derivative;
 use derive_more::{Display, From};
 use getset::Getters;
 use itertools::Itertools;
@@ -35,7 +36,19 @@ use crate::types::helpers::directory_item::DirectoryItem;
 use crate::types::helpers::filename::Filename;
 use crate::types::properties::system_folder::SystemFolder;
 
-#[derive(Clone, Debug, Delegate, Display, From, PartialEq, strum::EnumIs, strum::EnumTryAs)]
+#[derive(
+    Clone,
+    Debug,
+    Delegate,
+    Display,
+    From,
+    PartialEq,
+    PartialOrd,
+    strum::EnumIs,
+    strum::EnumTryAs,
+    Ord,
+    Eq,
+)]
 #[delegate(DirectoryKind)]
 pub enum Directory {
     SystemDirectory(SystemDirectory),
@@ -85,43 +98,25 @@ impl Directory {
     }
 
     pub fn print_structure(&self) {
-        self.print_structure_with_offset(0);
+        self.content_structure(0)
     }
 
-    fn print_structure_with_offset(&self, offset: usize) {
-        println!("{}", self.only_directory_name(&format!("{}", self)))
-    }
-
-    // Helper function for when printing the directory structure.
-    // Makes it so the directory structure is printed as
-    // dir1/dir2/dir3 rather than
-    // dir1/
-    // | - dir2/
-    //     | - dir3/
-    // when it's just a chain of empty directories.
-    fn only_directory_name(&self, parent_directory: &str) -> String {
-        let directories = self.contained_directories();
-        if self.contained_files().len() == 0
-            && directories.len() == 1
-            && let Some(only_directory) = directories.get(0)
-        {
-            self.only_directory_name(&format!("{parent_directory}/{only_directory}"))
+    fn content_structure(&self, depth: usize) {
+        let delimiter = "|- ";
+        let depth_str = |x| " ".repeat(x * delimiter.len());
+        if depth == 0 {
+            println!("{self}/");
         } else {
-            format!("{parent_directory}/")
+            println!("{}{delimiter}{self}/", depth_str(depth))
         }
-    }
-
-    fn content_structure(&self) -> String {
-        let mut output = String::new();
-        let files = self.contained_files();
-        let directories = self.contained_directories();
+        let files = self.contained_files().into_iter().sorted();
+        let directories = self.contained_directories().into_iter().sorted();
         for file in files {
-            output.push_str(&format!("  |- {}", file));
+            println!("{}{delimiter}{file}", depth_str(depth + 1));
         }
         for directory in directories {
-            output.push_str(&format!("  |- {}/", directory));
+            directory.content_structure(depth + 1);
         }
-        output
     }
 }
 

@@ -1,3 +1,4 @@
+use derivative::Derivative;
 use getset::Getters;
 
 use crate::{
@@ -7,11 +8,13 @@ use crate::{
 
 use super::kind::DirectoryKind;
 
-#[derive(Clone, Debug, derive_more::Display, PartialEq, Getters)]
+#[derive(Clone, Debug, derive_more::Display, PartialEq, Getters, Derivative)]
 #[display("{}", system_folder)]
 #[getset(get = "pub")]
+#[derivative(PartialOrd, Ord, Eq)]
 pub struct SystemDirectory {
     #[getset(skip)]
+    #[derivative(PartialOrd = "ignore", Ord = "ignore")]
     contained: Vec<DirectoryItem>,
     system_folder: SystemFolder,
 }

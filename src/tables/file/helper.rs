@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::{Context, ensure};
+use derivative::Derivative;
 use getset::Getters;
 
 use crate::{
@@ -8,18 +9,23 @@ use crate::{
     types::{column::identifier::Identifier, helpers::filename::Filename},
 };
 
-#[derive(Clone, Debug, derive_more::Display, PartialEq, Getters)]
+#[derive(Clone, Debug, derive_more::Display, PartialEq, Getters, Derivative)]
 #[getset(get = "pub")]
 #[display("{}", name)]
+#[derivative(PartialOrd, Ord, Eq)]
 pub struct File {
     name: Filename,
+    #[derivative(PartialOrd = "ignore", Ord = "ignore")]
     full_path: PathBuf,
+    #[derivative(PartialOrd = "ignore", Ord = "ignore")]
     size: u64,
+    #[derivative(PartialOrd = "ignore", Ord = "ignore")]
     component: Component,
 
     /// The source media that this file should be added to.
     ///
     /// If one is not provided, one will be created automatically.
+    #[derivative(PartialOrd = "ignore", Ord = "ignore")]
     media: Option<Identifier>,
 }
 

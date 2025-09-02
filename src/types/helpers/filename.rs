@@ -2,11 +2,13 @@ use std::str::FromStr;
 
 use anyhow::Context;
 use derive_more::Display;
+use getset::Getters;
 
 use crate::types::column::filename::{LongFilename, ShortFilename};
 
-#[derive(Clone, Debug, Display, PartialEq)]
+#[derive(Clone, Debug, Display, Getters, PartialEq)]
 #[display("{}", long)]
+#[get = "pub"]
 pub struct Filename {
     short: ShortFilename,
     long: LongFilename,

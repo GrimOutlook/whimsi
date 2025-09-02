@@ -106,6 +106,8 @@ impl MsiBuilder {
     /// # file_1.touch().unwrap();
     /// # let file_2 = child_dir1.child("file2.pdf");
     /// # file_2.touch().unwrap();
+    /// # let temp_dir_path = temp_dir.path();
+    ///
     /// // path/to/temp_dir/
     /// // | - file1.txt
     /// // | child_dir1/
@@ -115,7 +117,7 @@ impl MsiBuilder {
     /// // install_path_identifier
     ///
     /// let mut msi = MsiBuilder::default();
-    /// msi = msi.add_path(temp_dir.path(), SystemFolder::ProgramFiles).unwrap();
+    /// msi = msi.add_path(temp_dir_path, SystemFolder::ProgramFiles).unwrap();
     ///
     /// // You will end up with the following on the windows install.
     /// // C:/ProgramFiles/
@@ -137,6 +139,14 @@ impl MsiBuilder {
     /// assert_eq!(system_directory.contents().len(), 3, "Number of system folder contents incorrect");
     /// assert_eq!(system_directory.contained_directories().len(), 2, "Number of directories in system folder incorrect");
     /// assert_eq!(system_directory.contained_files().len(), 1, "Number of files in system folder incorrect");
+    /// let child_dir1 = system_directory.contained_directory_by_name("child_dir1").unwrap();
+    /// assert_eq!(child_dir1.contents().len(), 0, "child_dir1 contents incorrect");
+    /// assert_eq!(child_dir1.contained_directories().len(), 0, "Number of directories in child_dir1 incorrect");
+    /// assert_eq!(child_dir1.contained_files().len(), 0, "Number of files in child_dir1 incorrect");
+    /// let child_dir2 = system_directory.contained_directory_by_name("child_dir2").unwrap();
+    /// assert_eq!(child_dir2.contents().len(), 1, "child_dir2 contents incorrect");
+    /// assert_eq!(child_dir2.contained_directories().len(), 0, "Number of directories in child_dir2 incorrect");
+    /// assert_eq!(child_dir2.contained_files().len(), 1, "Number of files in child_dir2 incorrect");
     /// ```
     pub fn add_path<P: Into<PathBuf>>(
         mut self,
@@ -152,7 +162,7 @@ impl MsiBuilder {
 
         let mut parent_dir = Directory::from_system_folder(parent);
         for item in directory.contents() {
-            parent_dir.add_item(item);
+            parent_dir.add_item(item.clone());
         }
         self = self.add_directory(parent_dir)?;
         Ok(self)

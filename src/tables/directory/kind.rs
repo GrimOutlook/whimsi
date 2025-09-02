@@ -12,7 +12,7 @@ use super::helper::Directory;
 // make getters just because they are contained in traits.
 #[ambassador::delegatable_trait]
 pub trait DirectoryKind: Clone {
-    fn contents(&self) -> Vec<DirectoryItem>;
+    fn contents(&self) -> &Vec<DirectoryItem>;
     fn contents_mut(&mut self) -> &mut Vec<DirectoryItem>;
     fn add_item(&mut self, item: DirectoryItem) -> anyhow::Result<()> {
         match item {
@@ -43,11 +43,10 @@ pub trait DirectoryKind: Clone {
         Ok(())
     }
 
-    fn contained_directories(&self) -> Vec<Directory> {
+    fn contained_directories(&self) -> Vec<&Directory> {
         self.contents()
             .iter()
             .filter_map(|node| node.try_as_directory_ref())
-            .cloned()
             .collect_vec()
     }
 
@@ -57,6 +56,16 @@ pub trait DirectoryKind: Clone {
             .filter_map(|node| node.try_as_file_ref())
             .cloned()
             .collect_vec()
+    }
+
+    fn contained_directory_by_name(&self, name: &str) -> Option<&Directory> {
+        self.contained_directories().into_iter().find(|dir| {
+            if let Some(dir) = dir.try_as_sub_directory_ref() {
+                dir.name().long().to_string() == name
+            } else {
+                false
+            }
+        })
     }
 
     fn insert_dir_strict(&mut self, name: &str) -> anyhow::Result<Directory> {
@@ -92,8 +101,8 @@ pub trait DirectoryKind: Clone {
 #[macro_export]
 macro_rules! implement_directory_kind_boilerplate {
     () => {
-        fn contents(&self) -> Vec<DirectoryItem> {
-            self.contained.clone()
+        fn contents(&self) -> &Vec<DirectoryItem> {
+            &self.contained
         }
 
         fn contents_mut(&mut self) -> &mut Vec<DirectoryItem> {

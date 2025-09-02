@@ -104,7 +104,7 @@ impl MsiBuilder {
     /// # child_dir2.create_dir_all().unwrap();
     /// # let file_1 = temp_dir.child("file1.txt");
     /// # file_1.touch().unwrap();
-    /// # let file_2 = child_dir1.child("file2.pdf");
+    /// # let file_2 = child_dir2.child("file2.pdf");
     /// # file_2.touch().unwrap();
     /// # let temp_dir_path = temp_dir.path();
     ///

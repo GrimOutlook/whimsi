@@ -32,10 +32,12 @@ use crate::tables::media::helper::Media;
 use crate::tables::table_entry::TableEntry;
 use crate::types::column::identifier::ToIdentifier;
 use crate::types::helpers::directory_item::DirectoryItem;
-use std::{collections::HashMap, path::PathBuf, process::id, str::FromStr};
+use std::io::{Read, Seek, Write};
+use std::{collections::HashMap, path::PathBuf, str::FromStr};
 
 use anyhow::{bail, ensure};
 use getset::Getters;
+use msi::Package;
 use rand::distr::{Alphanumeric, SampleString};
 use tables::MsiBuilderTables;
 use tables::builder_table::MsiBuilderTable;
@@ -44,6 +46,7 @@ use tables::component::helper::Component;
 use tables::directory::kind::DirectoryKind;
 use tables::directory::subdirectory::SubDirectory;
 use tables::file::dao::FileDao;
+use tables::meta::MetaInformation;
 use thiserror::Error;
 use types::column::sequence::Sequence;
 use types::{
@@ -60,6 +63,10 @@ pub struct MsiBuilder {
     #[getset(get_mut = "pub(crate)")]
     identifiers: Identifiers,
     tables: MsiBuilderTables,
+
+    /// Information about the whole package. Tracks both information for creating the MSI and
+    /// information that is tracked in the _SummaryInformation table.
+    meta: MetaInformation,
 
     /// Contains the directory structure that will be written to the MSI. Includes files and other
     /// components that are contained within directories.
@@ -117,7 +124,7 @@ impl MsiBuilder {
     /// // install_path_identifier
     ///
     /// let mut msi = MsiBuilder::default();
-    /// msi = msi.add_path(temp_dir_path, SystemFolder::ProgramFiles).unwrap();
+    /// msi = msi.add_path(temp_dir_path, SystemFolder::ProgramFilesFolder).unwrap();
     ///
     /// // You will end up with the following on the windows install.
     /// // C:/ProgramFiles/
@@ -136,7 +143,7 @@ impl MsiBuilder {
     /// // 2 directories that were parsed from the path and placed in the system folder that was
     /// // given
     /// let system_directory = root_contents.get(0).unwrap().try_as_directory_ref().unwrap();
-    /// assert_eq!(system_directory.try_as_system_directory_ref().unwrap().system_folder(), &SystemFolder::ProgramFiles, "System folder constructed incorrectly");
+    /// assert_eq!(system_directory.try_as_system_directory_ref().unwrap().system_folder(), &SystemFolder::ProgramFilesFolder, "System folder constructed incorrectly");
     /// assert_eq!(system_directory.contents().len(), 3, "Number of system folder contents incorrect");
     /// assert_eq!(system_directory.contained_directories().len(), 2, "Number of directories in system folder incorrect");
     /// assert_eq!(system_directory.contained_files().len(), 1, "Number of files in system folder incorrect");
@@ -154,13 +161,7 @@ impl MsiBuilder {
         path: P,
         parent: SystemFolder,
     ) -> anyhow::Result<Self> {
-        let parsed_path = DirectoryItem::try_from(path.into())?;
-
-        let directory = match parsed_path {
-            DirectoryItem::Directory(directory) => directory,
-            DirectoryItem::File(file) => todo!("Create error for file"),
-        };
-
+        let directory = Directory::try_from(path.into())?;
         let mut parent_dir = Directory::from_system_folder(parent);
         for item in directory.contents() {
             parent_dir.add_item(item.clone());
@@ -190,8 +191,11 @@ impl MsiBuilder {
         Ok(self)
     }
 
-    pub fn add_file(&self, file: File, parent_id: &Identifier) -> anyhow::Result<Self> {
-        todo!()
+    /// Build the MSI from all information given to MSIBuilder.
+    pub fn build<F: Read + Write + Seek>(self, container: F) -> anyhow::Result<Package<F>> {
+        let mut package = Package::create(*self.meta.package_type(), container)?;
+        self.tables.write_to_package(&mut package);
+        Ok(package)
     }
 
     pub fn has_identifier(&self, identifier: &Identifier) -> bool {
@@ -219,6 +223,7 @@ impl Default for MsiBuilder {
             identifiers: vec![SystemFolder::TARGETDIR.into()],
             tables: Default::default(),
             root_dir: Directory::from_system_folder(SystemFolder::TARGETDIR),
+            meta: MetaInformation::default(),
         }
     }
 }

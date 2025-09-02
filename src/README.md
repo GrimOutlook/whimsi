@@ -13,3 +13,8 @@ modifications by the user have been made. The 3rd part is handled by the `msi`
 crate.
 
 
+## Testing Areas
+
+1. User intent is translated into intermediary representation correctly.
+2. Intermediary representation is translated into `msi` crate table information correctly.
+3. User intent is translated into final output MSI.

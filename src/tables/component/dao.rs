@@ -1,6 +1,7 @@
 use anyhow::Context;
 
 use crate::{
+    int_val, opt_str_val, str_val,
     tables::file::helper::File,
     types::column::{condition::Condition, guid::Guid, identifier::Identifier},
 };
@@ -10,7 +11,7 @@ pub struct ComponentDao {
     component: Identifier,
     component_id: Option<Guid>,
     directory: Identifier,
-    attributes: u32,
+    attributes: i16,
     condition: Option<Condition>,
     key_path: Option<Identifier>,
 }
@@ -23,20 +24,24 @@ impl ComponentDao {
         directory_id: &Identifier,
     ) -> Self {
         let component = file.component().clone();
-        let attributes = component.attributes().bits();
         Self {
             component: component_id,
             key_path: Some(file_id.clone()),
             directory: directory_id.clone(),
-            attributes: attributes
-                .try_into()
-                .context(format!(
-                    "Attributes value [{}] for file [{}] component is too large",
-                    attributes, file
-                ))
-                .unwrap(),
+            attributes: component.attributes().clone(),
             component_id: component.guid().map(|uuid| uuid.into()),
             condition: component.condition().clone(),
         }
+    }
+
+    pub fn to_row(&self) -> Vec<msi::Value> {
+        vec![
+            str_val!(self.component.to_string()),
+            opt_str_val!(self.component_id),
+            str_val!(self.directory),
+            int_val!(self.attributes),
+            opt_str_val!(self.condition),
+            opt_str_val!(self.key_path),
+        ]
     }
 }

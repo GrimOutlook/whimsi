@@ -53,11 +53,14 @@ impl TryFrom<PathBuf> for SubDirectory {
 
     fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
         let path: PathBuf = value.into();
-        path.file_name()
+        let directory_name = path
+            .file_name()
             .ok_or(DirectoryError::NoDirectoryName { path: path.clone() })?
             .to_str()
-            .ok_or(DirectoryError::InvalidDirectoryName { path: path.clone() })?
-            .parse()
-            .into()
+            .ok_or(DirectoryError::InvalidDirectoryName { path: path.clone() })?;
+        // Yes the directory name is stored as a `Filename`. That's just what the datatype is
+        // called in the MSI documentation.
+        let name = Filename::from_str(directory_name)?;
+        Ok(SubDirectory::from(name))
     }
 }

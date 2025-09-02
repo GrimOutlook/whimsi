@@ -25,6 +25,7 @@ rand = "0.9.2"
 bitmask-enum = "2.2.5"
 cab = "0.6.0"
 derivative = "2.2.0"
+pastey = "0.1.1"
 
 [dev-dependencies]
 assert_fs = "1.1.3"

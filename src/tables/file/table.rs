@@ -13,15 +13,27 @@ impl MsiBuilderTable for FileTable {
     // Boilderplate needed to access information on the inner object
     msitable_boilerplate!();
 
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "ComponentDao"
     }
 
-    fn default_values() -> Vec<Self::TableValue> {
-        todo!()
-    }
     fn add(&mut self, dao: Self::TableValue) -> anyhow::Result<()> {
         self.0.push(dao);
         Ok(())
+    }
+
+    fn columns(&self) -> Vec<msi::Column> {
+        todo!()
+    }
+
+    fn write_to_package<F: std::io::Read + std::io::Write + std::io::Seek>(
+        &self,
+        package: &mut msi::Package<F>,
+    ) -> anyhow::Result<()> {
+        todo!()
+    }
+
+    fn rows(&self) -> Vec<Vec<msi::Value>> {
+        todo!()
     }
 }

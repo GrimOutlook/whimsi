@@ -12,7 +12,6 @@ pub mod default_dir;
 pub mod filename;
 pub mod guid;
 pub mod identifier;
-pub mod integer;
 pub mod sequence;
 pub mod version;
 

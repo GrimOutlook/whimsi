@@ -16,7 +16,7 @@ use crate::types::column::identifier::{Identifier, ToIdentifier};
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, strum::Display, strum::EnumIter, Ord, Eq)]
 pub enum SystemFolder {
     TARGETDIR,
-    ProgramFiles,
+    ProgramFilesFolder,
 }
 
 impl SystemFolder {

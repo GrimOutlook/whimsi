@@ -3,10 +3,13 @@ use std::{path::PathBuf, str::FromStr};
 use derive_more::Constructor;
 use getset::Getters;
 
-use crate::types::{
-    column::{default_dir::DefaultDir, identifier::Identifier},
-    helpers::filename::Filename,
-    properties::system_folder::SystemFolder,
+use crate::{
+    str_val,
+    types::{
+        column::{default_dir::DefaultDir, identifier::Identifier},
+        helpers::filename::Filename,
+        properties::system_folder::SystemFolder,
+    },
 };
 
 #[derive(Clone, Debug, PartialEq, Getters, Constructor)]
@@ -30,6 +33,14 @@ impl DirectoryDao {
             directory: path_id,
             parent: parent_id,
         })
+    }
+
+    pub fn to_row(&self) -> Vec<msi::Value> {
+        vec![
+            str_val!(self.directory),
+            str_val!(self.parent),
+            str_val!(self.default_dir),
+        ]
     }
 }
 
@@ -60,12 +71,34 @@ mod test {
 
     #[test]
     fn try_from() {
-        let pf_dao: DirectoryDao = SystemFolder::ProgramFiles.into();
+        let pf_dao: DirectoryDao = SystemFolder::ProgramFilesFolder.into();
         assert_eq!(
             *pf_dao.default_dir(),
             Filename::strict_parse(".")
                 .expect("Failed to parse `.` directory name to Identifier for system folder.")
                 .into()
         )
+    }
+
+    #[test]
+    fn to_row() {
+        let pf_dao: DirectoryDao = SystemFolder::ProgramFilesFolder.into();
+        let row = pf_dao.to_row();
+        assert_eq!(row.len(), 3, "Directory DAO row number mismatch");
+        assert_eq!(
+            *row.get(0).unwrap(),
+            msi::Value::from("ProgramFilesFolder"),
+            "Directory DAO directory name mismatch"
+        );
+        assert_eq!(
+            *row.get(1).unwrap(),
+            msi::Value::from("TARGETDIR"),
+            "Directory DAO parent name mismatch"
+        );
+        assert_eq!(
+            *row.get(2).unwrap(),
+            msi::Value::from("."),
+            "Directory DAO default dir name mismatch"
+        );
     }
 }

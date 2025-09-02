@@ -36,6 +36,8 @@ use crate::types::helpers::directory_item::DirectoryItem;
 use crate::types::helpers::filename::Filename;
 use crate::types::properties::system_folder::SystemFolder;
 
+/// All directory information is gathered during the user-input period. No information about
+/// directories is generated when traslating to `msi` crate `Package` type.
 #[derive(
     Clone,
     Debug,
@@ -159,7 +161,7 @@ mod test {
 
     #[test]
     fn add_directory() {
-        let mut pf: Directory = SystemFolder::ProgramFiles.into();
+        let mut pf: Directory = SystemFolder::ProgramFilesFolder.into();
         let man = pf.insert_dir_strict("MAN").unwrap();
         assert_contains!(pf.contents(), &man.clone().into());
         assert_eq!(

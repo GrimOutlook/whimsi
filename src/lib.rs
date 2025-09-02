@@ -186,7 +186,7 @@ impl MsiBuilder {
             todo!("Create error for when the system directory already exists")
         }
 
-        self.root_dir.add_item(subject.into());
+        self.root_dir.add_item(subject);
 
         Ok(self)
     }

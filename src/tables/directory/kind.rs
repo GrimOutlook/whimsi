@@ -14,7 +14,8 @@ use super::helper::Directory;
 pub trait DirectoryKind: Clone {
     fn contents(&self) -> &Vec<DirectoryItem>;
     fn contents_mut(&mut self) -> &mut Vec<DirectoryItem>;
-    fn add_item(&mut self, item: DirectoryItem) -> anyhow::Result<()> {
+    fn add_item(&mut self, item: impl Into<DirectoryItem>) -> anyhow::Result<()> {
+        let item = item.into();
         match item {
             DirectoryItem::File(ref file) => {
                 ensure!(
@@ -39,7 +40,7 @@ pub trait DirectoryKind: Clone {
                 )
             }
         }
-        self.contents_mut().push(item);
+        self.contents_mut().push(item.into());
         Ok(())
     }
 

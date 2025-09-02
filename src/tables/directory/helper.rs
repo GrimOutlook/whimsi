@@ -9,6 +9,7 @@
 //!     - This will likely require handling identifiers after everthing is parsed.
 
 use std::cell::RefCell;
+use std::fmt::Display;
 use std::fs::{self, DirEntry};
 use std::option::Option;
 use std::path::PathBuf;
@@ -82,6 +83,46 @@ impl Directory {
     pub fn from_system_folder(value: SystemFolder) -> Self {
         value.into()
     }
+
+    pub fn print_structure(&self) {
+        self.print_structure_with_offset(0);
+    }
+
+    fn print_structure_with_offset(&self, offset: usize) {
+        println!("{}", self.only_directory_name(&format!("{}", self)))
+    }
+
+    // Helper function for when printing the directory structure.
+    // Makes it so the directory structure is printed as
+    // dir1/dir2/dir3 rather than
+    // dir1/
+    // | - dir2/
+    //     | - dir3/
+    // when it's just a chain of empty directories.
+    fn only_directory_name(&self, parent_directory: &str) -> String {
+        let directories = self.contained_directories();
+        if self.contained_files().len() == 0
+            && directories.len() == 1
+            && let Some(only_directory) = directories.get(0)
+        {
+            self.only_directory_name(&format!("{parent_directory}/{only_directory}"))
+        } else {
+            format!("{parent_directory}/")
+        }
+    }
+
+    fn content_structure(&self) -> String {
+        let mut output = String::new();
+        let files = self.contained_files();
+        let directories = self.contained_directories();
+        for file in files {
+            output.push_str(&format!("  |- {}", file));
+        }
+        for directory in directories {
+            output.push_str(&format!("  |- {}/", directory));
+        }
+        output
+    }
 }
 
 impl TryFrom<PathBuf> for Directory {
@@ -108,7 +149,6 @@ impl From<SystemFolder> for Directory {
         sd.into()
     }
 }
-
 #[cfg(test)]
 mod test {
     use std::path::PathBuf;

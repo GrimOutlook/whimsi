@@ -12,38 +12,25 @@ use super::helper::Directory;
 
 // TODO: If the `getset` crate ever supports Traits, use them here. I should not have to manually
 // make getters just because they are contained in traits.
-//
-// TODO: Find a way to allow methods that return `Self` in a trait to be compatible with
-// `ambassador`. I had to move all content adding functions to the `Directory` enum.
-// The problem is in the internal code that gets generated for the delegate enum
-// does
-// ```
-// fn func(&self) -> Self {
-//     match val {
-//         Value1(val1) => val1.func(),
-//         Value2(val2) => val2.func(),
-//     }
-// }
-// ```
-// but val1.func() and and val2.func() will return the subtypes contained in the enum rather than
-// the enum itself which is expected by enum.func().
 #[ambassador::delegatable_trait]
-pub trait DirectoryKind: Clone {
+pub trait DirectoryKind: Clone + std::fmt::Display {
+    fn name_conflict(&self, other: &Self) -> bool;
     fn contents(&self) -> &Vec<DirectoryItem>;
     fn contents_mut(&mut self) -> &mut Vec<DirectoryItem>;
 
-    // fn with_contents(mut self, contents: &mut Vec<DirectoryItem>) -> Self {
-    //     self.add_contents(contents);
-    //     self
-    // }
+    fn with_contents(mut self, contents: &mut Vec<DirectoryItem>) -> Self {
+        self.add_contents(contents);
+        self
+    }
+
     fn add_contents(&mut self, contents: &mut Vec<DirectoryItem>) {
         self.contents_mut().append(contents);
     }
 
-    // fn with_item(mut self, item: impl Into<DirectoryItem>) -> anyhow::Result<Self> {
-    //     self.add_item(item);
-    //     Ok(self)
-    // }
+    fn with_item(mut self, item: impl Into<DirectoryItem>) -> anyhow::Result<Self> {
+        self.add_item(item);
+        Ok(self)
+    }
 
     fn add_item(&mut self, item: impl Into<DirectoryItem>) -> anyhow::Result<()> {
         let item = item.into();
@@ -63,7 +50,7 @@ pub trait DirectoryKind: Clone {
                 ensure!(
                     self.contained_directories()
                         .iter()
-                        .find(|other| directory.conflict(other))
+                        .find(|other| directory.name_conflict(other))
                         .is_none(),
                     DirectoryError::DuplicateDirectory {
                         name: directory.to_string()
@@ -75,10 +62,10 @@ pub trait DirectoryKind: Clone {
         Ok(())
     }
 
-    // fn with_path_contents(mut self, path: PathBuf) -> anyhow::Result<Self> {
-    //     self.add_path_contents(path)?;
-    //     Ok(self)
-    // }
+    fn with_path_contents(mut self, path: PathBuf) -> anyhow::Result<Self> {
+        self.add_path_contents(path)?;
+        Ok(self)
+    }
 
     fn add_path_contents(&mut self, path: PathBuf) -> anyhow::Result<()> {
         let dir = Directory::try_from(path)?;
@@ -103,13 +90,9 @@ pub trait DirectoryKind: Clone {
     }
 
     fn contained_directory_by_name(&self, name: &str) -> Option<&Directory> {
-        self.contained_directories().into_iter().find(|dir| {
-            if let Some(dir) = dir.try_as_sub_directory_ref() {
-                dir.name().long().to_string() == name
-            } else {
-                false
-            }
-        })
+        self.contained_directories()
+            .into_iter()
+            .find(|dir| dir.name().long().to_string() == name)
     }
 
     fn insert_dir_strict(&mut self, name: &str) -> anyhow::Result<Directory> {
@@ -128,17 +111,38 @@ pub trait DirectoryKind: Clone {
             .iter()
             .filter_map(|node| node.try_as_directory_ref());
         ensure!(
-            !contained_dirs
-                .filter_map(|directory| directory.try_as_sub_directory_ref())
-                .any(|dir| *dir.name() == filename),
+            // TODO: This clone might be able to be removed with some reordering.
+            !contained_dirs.clone().any(|dir| *dir.name() == filename),
             DirectoryError::DuplicateDirectory {
                 name: filename.to_string()
             }
         );
 
-        let new_dir = Directory::SubDirectory(filename.into());
+        let new_dir = Directory::from(filename);
         self.contents_mut().push(new_dir.clone().into());
         Ok(new_dir)
+    }
+
+    fn print_structure(&self) {
+        self.print_content_structure(0)
+    }
+
+    fn print_content_structure(&self, depth: usize) {
+        let delimiter = "|- ";
+        let depth_str = |x| " ".repeat(x * delimiter.len());
+        if depth == 0 {
+            println!("{self}/");
+        } else {
+            println!("{}{delimiter}{self}/", depth_str(depth))
+        }
+        let files = self.contained_files().into_iter().sorted();
+        let directories = self.contained_directories().into_iter().sorted();
+        for file in files {
+            println!("{}{delimiter}{file}", depth_str(depth + 1));
+        }
+        for directory in directories {
+            directory.print_content_structure(depth + 1);
+        }
     }
 }
 

@@ -140,15 +140,15 @@ pub enum FileConversionError {
 #[cfg(test)]
 mod test {
     use assert_fs::{
-        TempDir,
+        NamedTempFile, TempDir,
         fixture::ChildPath,
         prelude::{FileTouch, PathChild},
     };
 
     use super::File;
 
-    fn create_test_file() -> ChildPath {
-        let file_1 = ChildPath::new("file1.txt");
+    fn create_test_file() -> NamedTempFile {
+        let file_1 = NamedTempFile::new("file1.txt").unwrap();
         file_1.touch().unwrap();
 
         file_1

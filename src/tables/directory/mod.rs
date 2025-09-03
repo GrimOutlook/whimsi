@@ -3,7 +3,6 @@ use std::path::PathBuf;
 pub(crate) mod dao;
 pub mod helper;
 pub mod kind;
-pub mod subdirectory;
 pub mod system_directory;
 pub mod table;
 

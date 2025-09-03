@@ -44,7 +44,7 @@ use tables::builder_table::MsiBuilderTable;
 use tables::component::dao::ComponentDao;
 use tables::component::helper::Component;
 use tables::directory::kind::DirectoryKind;
-use tables::directory::subdirectory::SubDirectory;
+use tables::directory::system_directory::SystemDirectory;
 use tables::file::dao::FileDao;
 use tables::meta::MetaInformation;
 use thiserror::Error;
@@ -73,7 +73,7 @@ pub struct MsiBuilder {
     ///
     /// TODO: Determine if a separate list for `File`s and other things are needed if it's possible
     /// for them to not be contained in a `Directory`.
-    root_dir: Directory,
+    system_directories: Vec<SystemDirectory>,
 }
 
 impl MsiBuilder {
@@ -97,6 +97,7 @@ impl MsiBuilder {
     /// ```
     /// # use whimsi_lib::MsiBuilder;
     /// # use whimsi_lib::tables::directory::kind::DirectoryKind;
+    /// # use whimsi_lib::tables::directory::system_directory::SystemDirectory;
     /// # use whimsi_lib::types::properties::system_folder::SystemFolder;
     ///
     /// # use assert_fs::TempDir;
@@ -123,8 +124,7 @@ impl MsiBuilder {
     /// // With a file system that looks like the above and using ProgramFiles for the
     /// // install_path_identifier
     ///
-    /// let mut msi = MsiBuilder::default();
-    /// msi = msi.add_path(temp_dir_path, SystemFolder::ProgramFilesFolder).unwrap();
+    /// let mut msi = MsiBuilder::default().with_path(temp_dir_path, SystemFolder::ProgramFilesFolder).unwrap();
     ///
     /// // You will end up with the following on the windows install.
     /// // C:/ProgramFiles/
@@ -133,17 +133,14 @@ impl MsiBuilder {
     /// // | child_dir2/
     /// //   | - file2.pdf
     ///
-    /// let root_dir = msi.root_dir();
-    /// root_dir.print_structure();
-    /// // The root directory is constructed automatically when the MsiBuilder is instantiated.
-    /// assert_eq!(root_dir.try_as_system_directory_ref().unwrap().system_folder(), &SystemFolder::TARGETDIR, "Root folder constructed incorrectly");
-    /// let root_contents = root_dir.contents();
+    /// let sys_dirs = msi.system_directories();
+    /// sys_dirs.iter().for_each(SystemDirectory::print_structure);
     /// // 1 entry for the system folder
-    /// assert_eq!(root_contents.len(), 1, "Number of root folder contents incorrect");
+    /// assert_eq!(sys_dirs.len(), 1, "Number of system directories incorrect");
     /// // 2 directories that were parsed from the path and placed in the system folder that was
     /// // given
-    /// let system_directory = root_contents.get(0).unwrap().try_as_directory_ref().unwrap();
-    /// assert_eq!(system_directory.try_as_system_directory_ref().unwrap().system_folder(), &SystemFolder::ProgramFilesFolder, "System folder constructed incorrectly");
+    /// let system_directory = sys_dirs.get(0).unwrap();
+    /// assert_eq!(system_directory.system_folder(), &SystemFolder::ProgramFilesFolder, "System folder constructed incorrectly");
     /// assert_eq!(system_directory.contents().len(), 3, "Number of system folder contents incorrect");
     /// assert_eq!(system_directory.contained_directories().len(), 2, "Number of directories in system folder incorrect");
     /// assert_eq!(system_directory.contained_files().len(), 1, "Number of files in system folder incorrect");
@@ -156,37 +153,31 @@ impl MsiBuilder {
     /// assert_eq!(child_dir2.contained_directories().len(), 0, "Number of directories in child_dir2 incorrect");
     /// assert_eq!(child_dir2.contained_files().len(), 1, "Number of files in child_dir2 incorrect");
     /// ```
-    pub fn add_path<P: Into<PathBuf>>(
+    pub fn with_path<P: Into<PathBuf>>(
         mut self,
         path: P,
         parent: SystemFolder,
     ) -> anyhow::Result<Self> {
         let directory = Directory::try_from(path.into())?;
-        let mut parent_dir = Directory::from_system_folder(parent);
+        let mut parent_dir = SystemDirectory::from(parent);
         for item in directory.contents() {
             parent_dir.add_item(item.clone());
         }
-        self = self.add_directory(parent_dir)?;
+        self = self.with_directory(parent_dir)?;
         Ok(self)
     }
 
-    pub fn add_directory(mut self, subject: Directory) -> anyhow::Result<Self> {
-        ensure!(
-            subject.try_as_system_directory_ref().is_some(),
-            "Create error for non system directories"
-        );
-
+    pub fn with_directory(mut self, subject: SystemDirectory) -> anyhow::Result<Self> {
         if self
-            .root_dir
-            .contained_directories()
+            .system_directories()
             .iter()
-            .find(|other| other.conflict(&subject))
+            .find(|other| subject.name_conflict(other))
             .is_some()
         {
             todo!("Create error for when the system directory already exists")
         }
 
-        self.root_dir.add_item(subject);
+        self.system_directories.push(subject);
 
         Ok(self)
     }
@@ -196,6 +187,12 @@ impl MsiBuilder {
         let mut package = Package::create(*self.meta.package_type(), container)?;
         self.tables.write_to_package(&mut package);
         Ok(package)
+    }
+
+    pub fn get_system_directory(&self, folder: SystemFolder) -> Option<&SystemDirectory> {
+        self.system_directories
+            .iter()
+            .find(|dir| *dir.system_folder() == folder)
     }
 
     pub fn has_identifier(&self, identifier: &Identifier) -> bool {
@@ -220,9 +217,9 @@ impl MsiBuilder {
 impl Default for MsiBuilder {
     fn default() -> Self {
         Self {
-            identifiers: vec![SystemFolder::TARGETDIR.into()],
+            identifiers: vec![Identifier::from(SystemFolder::TARGETDIR)],
             tables: Default::default(),
-            root_dir: Directory::from_system_folder(SystemFolder::TARGETDIR),
+            system_directories: Vec::new(),
             meta: MetaInformation::default(),
         }
     }

@@ -26,10 +26,11 @@ use itertools::Itertools;
 use strum::IntoEnumIterator;
 use thiserror::Error;
 
+use super::DirectoryError;
 use super::kind::DirectoryKind;
 use super::kind::ambassador_impl_DirectoryKind;
-use super::subdirectory::SubDirectory;
 use super::system_directory::SystemDirectory;
+use crate::implement_directory_kind_boilerplate;
 use crate::tables::file::helper::File;
 use crate::types::column::identifier::Identifier;
 use crate::types::helpers::directory_item::DirectoryItem;
@@ -38,23 +39,47 @@ use crate::types::properties::system_folder::SystemFolder;
 
 /// All directory information is gathered during the user-input period. No information about
 /// directories is generated when traslating to `msi` crate `Package` type.
-#[derive(
-    Delegate,
-    Clone,
-    Debug,
-    Display,
-    Eq,
-    From,
-    Ord,
-    PartialEq,
-    PartialOrd,
-    strum::EnumIs,
-    strum::EnumTryAs,
-)]
-#[delegate(DirectoryKind)]
-pub enum Directory {
-    SystemDirectory(SystemDirectory),
-    SubDirectory(SubDirectory),
+
+/// Directory that is a contained within a subdirectory.
+///
+/// NOTE: The user does not have to create an ID for the directory. The ID for the directory is
+/// generated created upon insertion into the `DirectoryTable`.
+#[derive(Clone, Debug, Derivative, derive_more::Display, From, Getters, PartialEq)]
+#[display("{}", name)]
+#[getset(get = "pub")]
+#[derivative(PartialOrd, Ord, Eq)]
+pub struct Directory {
+    #[getset(skip)]
+    #[derivative(PartialOrd = "ignore", Ord = "ignore")]
+    contained: Vec<DirectoryItem>,
+
+    /// The directory's name (localizable)
+    name: Filename,
+}
+
+impl DirectoryKind for Directory {
+    implement_directory_kind_boilerplate!();
+
+    fn name_conflict(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+
+impl FromStr for Directory {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Filename::parse(s)?.into())
+    }
+}
+
+impl From<Filename> for Directory {
+    fn from(value: Filename) -> Self {
+        Self {
+            contained: Vec::new(),
+            name: value,
+        }
+    }
 }
 
 impl Directory {
@@ -63,57 +88,7 @@ impl Directory {
     /// as the `name` of the `SubDirectory` variants wrapped object.
     pub fn new(name: impl ToString) -> anyhow::Result<Self> {
         let name = name.to_string();
-
-        let val = if let Ok(id) = Identifier::from_str(&name)
-            && let Ok(sf) = SystemFolder::from_identifier(&id)
-        {
-            sf.into()
-        } else {
-            let subdir = SubDirectory::from_str(&name)?;
-            subdir.into()
-        };
-
-        Ok(val)
-    }
-
-    pub fn conflict(&self, other: &Self) -> bool {
-        if let Some(source) = self.try_as_system_directory_ref()
-            && let Some(target) = other.try_as_system_directory_ref()
-        {
-            source.system_folder() == target.system_folder()
-        } else if let Some(source) = self.try_as_sub_directory_ref()
-            && let Some(target) = other.try_as_sub_directory_ref()
-        {
-            source.name() == target.name()
-        } else {
-            false
-        }
-    }
-
-    pub fn from_system_folder(value: SystemFolder) -> Self {
-        Directory::from(value)
-    }
-
-    pub fn print_structure(&self) {
-        self.print_content_structure(0)
-    }
-
-    fn print_content_structure(&self, depth: usize) {
-        let delimiter = "|- ";
-        let depth_str = |x| " ".repeat(x * delimiter.len());
-        if depth == 0 {
-            println!("{self}/");
-        } else {
-            println!("{}{delimiter}{self}/", depth_str(depth))
-        }
-        let files = self.contained_files().into_iter().sorted();
-        let directories = self.contained_directories().into_iter().sorted();
-        for file in files {
-            println!("{}{delimiter}{file}", depth_str(depth + 1));
-        }
-        for directory in directories {
-            directory.print_content_structure(depth + 1);
-        }
+        Ok(Directory::from_str(&name)?)
     }
 }
 
@@ -130,18 +105,19 @@ impl TryFrom<PathBuf> for Directory {
             .into_iter()
             .collect_vec();
 
-        let mut subdir: SubDirectory = path.to_path_buf().try_into()?;
-        subdir.add_contents(&mut items);
-        Ok(Directory::SubDirectory(subdir))
+        let directory_name = path
+            .file_name()
+            .ok_or(DirectoryError::NoDirectoryName { path: path.clone() })?
+            .to_str()
+            .ok_or(DirectoryError::InvalidDirectoryName { path: path.clone() })?;
+        // Yes the directory name is stored as a `Filename`. That's just what the datatype is
+        // called in the MSI documentation.
+        let name = Filename::from_str(directory_name)?;
+
+        Ok(Directory::from(name).with_contents(&mut items))
     }
 }
 
-impl From<SystemFolder> for Directory {
-    fn from(value: SystemFolder) -> Self {
-        let sd = SystemDirectory::from(value);
-        Directory::from(sd)
-    }
-}
 #[cfg(test)]
 mod test {
     use std::path::PathBuf;
@@ -150,19 +126,17 @@ mod test {
     use camino::Utf8PathBuf;
 
     use crate::{
-        tables::directory::helper::DirectoryKind, types::properties::system_folder::SystemFolder,
+        tables::directory::{helper::DirectoryKind, system_directory::SystemDirectory},
+        types::properties::system_folder::SystemFolder,
     };
 
     use super::Directory;
 
     #[test]
     fn add_directory() {
-        let mut pf: Directory = SystemFolder::ProgramFilesFolder.into();
+        let mut pf = SystemDirectory::from(SystemFolder::ProgramFilesFolder);
         let man = pf.insert_dir_strict("MAN").unwrap();
         assert_contains!(pf.contents(), &man.clone().into());
-        assert_eq!(
-            man.try_as_sub_directory().unwrap().name().to_string(),
-            "MAN"
-        );
+        assert_eq!(man.name().to_string(), "MAN");
     }
 }

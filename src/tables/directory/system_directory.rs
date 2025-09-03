@@ -21,6 +21,10 @@ pub struct SystemDirectory {
 
 impl DirectoryKind for SystemDirectory {
     implement_directory_kind_boilerplate!();
+
+    fn name_conflict(&self, other: &Self) -> bool {
+        self.system_folder == other.system_folder
+    }
 }
 
 impl From<SystemFolder> for SystemDirectory {

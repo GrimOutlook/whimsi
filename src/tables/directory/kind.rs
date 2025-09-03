@@ -12,23 +12,38 @@ use super::helper::Directory;
 
 // TODO: If the `getset` crate ever supports Traits, use them here. I should not have to manually
 // make getters just because they are contained in traits.
+//
+// TODO: Find a way to allow methods that return `Self` in a trait to be compatible with
+// `ambassador`. I had to move all content adding functions to the `Directory` enum.
+// The problem is in the internal code that gets generated for the delegate enum
+// does
+// ```
+// fn func(&self) -> Self {
+//     match val {
+//         Value1(val1) => val1.func(),
+//         Value2(val2) => val2.func(),
+//     }
+// }
+// ```
+// but val1.func() and and val2.func() will return the subtypes contained in the enum rather than
+// the enum itself which is expected by enum.func().
 #[ambassador::delegatable_trait]
 pub trait DirectoryKind: Clone {
     fn contents(&self) -> &Vec<DirectoryItem>;
     fn contents_mut(&mut self) -> &mut Vec<DirectoryItem>;
 
-    fn with_contents(mut self, contents: &mut Vec<DirectoryItem>) -> Self {
-        self.add_contents(contents);
-        self
-    }
+    // fn with_contents(mut self, contents: &mut Vec<DirectoryItem>) -> Self {
+    //     self.add_contents(contents);
+    //     self
+    // }
     fn add_contents(&mut self, contents: &mut Vec<DirectoryItem>) {
         self.contents_mut().append(contents);
     }
 
-    fn with_item(mut self, item: impl Into<DirectoryItem>) -> anyhow::Result<Self> {
-        self.add_item(item);
-        Ok(self)
-    }
+    // fn with_item(mut self, item: impl Into<DirectoryItem>) -> anyhow::Result<Self> {
+    //     self.add_item(item);
+    //     Ok(self)
+    // }
 
     fn add_item(&mut self, item: impl Into<DirectoryItem>) -> anyhow::Result<()> {
         let item = item.into();
@@ -60,10 +75,10 @@ pub trait DirectoryKind: Clone {
         Ok(())
     }
 
-    fn with_path_contents(mut self, path: PathBuf) -> anyhow::Result<Self> {
-        self.add_path_contents(path)?;
-        Ok(self)
-    }
+    // fn with_path_contents(mut self, path: PathBuf) -> anyhow::Result<Self> {
+    //     self.add_path_contents(path)?;
+    //     Ok(self)
+    // }
 
     fn add_path_contents(&mut self, path: PathBuf) -> anyhow::Result<()> {
         let dir = Directory::try_from(path)?;

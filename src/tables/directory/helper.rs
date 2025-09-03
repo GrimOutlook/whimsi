@@ -130,8 +130,9 @@ impl TryFrom<PathBuf> for Directory {
             .into_iter()
             .collect_vec();
 
-        let subdir = path.to_path_buf().try_into()?;
-        Ok(Directory::SubDirectory(subdir).with_contents(&mut items))
+        let mut subdir: SubDirectory = path.to_path_buf().try_into()?;
+        subdir.add_contents(&mut items);
+        Ok(Directory::SubDirectory(subdir))
     }
 }
 

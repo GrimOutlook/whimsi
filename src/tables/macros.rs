@@ -1,4 +1,15 @@
 #[macro_export]
+macro_rules! opt_val {
+    ($var:expr) => {
+        (if let Some(binding) = &$var {
+            msi::Value::from(*binding)
+        } else {
+            msi::Value::Null
+        })
+    };
+}
+
+#[macro_export]
 macro_rules! opt_str_val {
     ($var:expr) => {
         (if let Some(binding) = &$var {
@@ -20,5 +31,12 @@ macro_rules! str_val {
 macro_rules! int_val {
     ($var:expr) => {
         msi::Value::from(Into::<i16>::into($var))
+    };
+}
+
+#[macro_export]
+macro_rules! dint_val {
+    ($var:expr) => {
+        msi::Value::from(Into::<i32>::into($var))
     };
 }

@@ -15,3 +15,6 @@ stream STREAM:
 alias tp: test-print
 test-print:
     cargo test -- --nocapture
+
+example-reference:
+    cargo run --example reference

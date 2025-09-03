@@ -18,6 +18,7 @@ use component::table::ComponentTable;
 use file::table::FileTable;
 use getset::{Getters, MutGetters};
 use msi::Package;
+use tracing::info;
 
 /// Enum values are derived from this table:
 /// https://learn.microsoft.com/en-us/windows/win32/msi/database-tables
@@ -38,6 +39,10 @@ pub struct MsiBuilderTables {
 }
 
 impl MsiBuilderTables {
+    pub(crate) fn new() -> Self {
+        Self::default()
+    }
+
     /// Just writes the information stored in each of the table properties to the package tables.
     ///
     /// Information is written based on a predetermined order so that information that doesn't
@@ -46,9 +51,10 @@ impl MsiBuilderTables {
         &self,
         package: &mut Package<F>,
     ) -> anyhow::Result<()> {
-        self.directory.write_to_package(package);
-        self.component.write_to_package(package);
-        self.file.write_to_package(package);
+        info!("Writing tables to package");
+        self.directory.write_to_package(package)?;
+        self.component.write_to_package(package)?;
+        self.file.write_to_package(package)?;
         // self.media.write_to_package(package);
         // self.property.write_to_package(package);
         Ok(())

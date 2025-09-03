@@ -16,11 +16,6 @@ impl MsiBuilderTable for ComponentTable {
         "Component"
     }
 
-    fn add(&mut self, dao: Self::TableValue) -> anyhow::Result<()> {
-        self.0.push(dao);
-        Ok(())
-    }
-
     fn columns(&self) -> Vec<msi::Column> {
         vec![
             msi::Column::build("Component")

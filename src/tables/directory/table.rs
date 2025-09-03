@@ -23,38 +23,6 @@ impl MsiBuilderTable for DirectoryTable {
         "Directory"
     }
 
-    fn add(&mut self, dao: Self::TableValue) -> anyhow::Result<()> {
-        let parent_id = dao.parent();
-        // Verify that the parent directory is already in the directories table.
-        // If the parent ID is associated with a SystemFolder, make sure that system folder is in
-        // the table.
-        if self.entry_with_id(parent_id).is_none() {
-            if let Some(sys_folder) = parent_id.as_system_folder() {
-                self.add(DirectoryDao::from(sys_folder))?;
-            } else {
-                bail!(DirectoryTableError::ParentDirectoryNotPresent {
-                    parent_id: parent_id.clone()
-                })
-            }
-        }
-
-        // Check that the new item isn't already in the parent directory. Can only check
-        // against the DAO names, as the identifiers are able to be randomly generated.
-        ensure!(
-            !self
-                .entries_with_parent(parent_id)
-                .iter()
-                .any(|d| d.default_dir() == dao.default_dir()),
-            DirectoryTableError::DirectoryNameCollision {
-                parent_id: parent_id.clone(),
-                name: dao.default_dir().clone()
-            }
-        );
-
-        self.0.push(dao);
-        Ok(())
-    }
-
     fn columns(&self) -> Vec<msi::Column> {
         vec![
             msi::Column::build("Directory")
@@ -82,6 +50,10 @@ impl Default for DirectoryTable {
 }
 
 impl DirectoryTable {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn entry_with_id(&self, identifier: &Identifier) -> Option<&DirectoryDao> {
         self.0.iter().find(|d| d.directory() == identifier)
     }
@@ -136,7 +108,6 @@ mod test {
             msi::Package::create(PackageType::Installer, Cursor::new(Vec::new())).unwrap();
         let mut table = DirectoryTable::default();
         let parent = SystemFolder::ProgramFilesFolder;
-        table.add(SystemFolder::TARGETDIR.into());
         table.add(parent.into());
         table.add(DirectoryDao::new(
             DefaultDir::Filename(Filename::from_str("test").unwrap()),
@@ -159,6 +130,7 @@ mod test {
             "MSI Directory Table doesn't have `DefaultDir` column"
         );
         let rows = package.select_rows(Select::table("Directory")).unwrap();
-        assert_eq!(rows.len(), 3, "Directory table row count mismatch");
+        // TARGETDIR is always in the table by default so add 1 to the total we expect
+        assert_eq!(rows.len(), 2 + 1, "Directory table row count mismatch");
     }
 }

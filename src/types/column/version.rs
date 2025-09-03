@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use anyhow::{Context, ensure};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, derive_more::Display)]
 pub struct Version(String);
 impl FromStr for Version {
     type Err = anyhow::Error;

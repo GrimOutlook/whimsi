@@ -2,11 +2,14 @@ use derive_more::Constructor;
 use getset::Getters;
 use msi::Language;
 
-use crate::types::{
-    column::{
-        attributes::Attributes, identifier::Identifier, sequence::Sequence, version::Version,
+use crate::{
+    dint_val, int_val, opt_str_val, opt_val, str_val,
+    types::{
+        column::{
+            attributes::Attributes, identifier::Identifier, sequence::Sequence, version::Version,
+        },
+        helpers::filename::Filename,
     },
-    helpers::filename::Filename,
 };
 
 use super::helper::File;
@@ -15,12 +18,12 @@ use super::helper::File;
 #[getset(get = "pub")]
 pub struct FileDao {
     file: Identifier,
-    Component_: Identifier,
+    component: Identifier,
     name: Filename,
-    size: u32,
+    size: i32,
     version: Option<Version>,
     language: Option<Language>,
-    attributes: Option<Attributes>,
+    attributes: Option<i16>,
     sequence: Sequence,
 }
 
@@ -31,5 +34,18 @@ impl FileDao {
         sequence: Sequence,
     ) -> anyhow::Result<FileDao> {
         todo!("from_file")
+    }
+
+    pub fn to_row(&self) -> Vec<msi::Value> {
+        vec![
+            str_val!(self.file),
+            str_val!(self.component),
+            str_val!(self.name),
+            dint_val!(self.size),
+            opt_str_val!(self.version),
+            opt_val!(self.language),
+            opt_val!(self.attributes),
+            int_val!(Into::<i16>::into(&self.sequence)),
+        ]
     }
 }

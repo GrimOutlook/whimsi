@@ -1,5 +1,7 @@
+use itertools::Itertools;
+
 use crate::{
-    msitable_boilerplate, tables::builder_table::MsiBuilderTable,
+    constants::*, msitable_boilerplate, tables::builder_table::MsiBuilderTable,
     types::column::identifier::Identifier,
 };
 
@@ -14,26 +16,33 @@ impl MsiBuilderTable for FileTable {
     msitable_boilerplate!();
 
     fn name(&self) -> &'static str {
-        "ComponentDao"
-    }
-
-    fn add(&mut self, dao: Self::TableValue) -> anyhow::Result<()> {
-        self.0.push(dao);
-        Ok(())
+        "File"
     }
 
     fn columns(&self) -> Vec<msi::Column> {
-        todo!()
-    }
-
-    fn write_to_package<F: std::io::Read + std::io::Write + std::io::Seek>(
-        &self,
-        package: &mut msi::Package<F>,
-    ) -> anyhow::Result<()> {
-        todo!()
+        vec![
+            msi::Column::build("File")
+                .primary_key()
+                .id_string(IDENTIFIER_MAX_LEN),
+            msi::Column::build("Component_").id_string(IDENTIFIER_MAX_LEN),
+            msi::Column::build("FileName")
+                .category(msi::Category::Filename)
+                .string(FILENAME_MAX_LEN),
+            msi::Column::build("FileSize").int32(),
+            msi::Column::build("Version")
+                .nullable()
+                .category(msi::Category::Version)
+                .string(VERSION_MAX_LEN),
+            msi::Column::build("Language")
+                .nullable()
+                .category(msi::Category::Language)
+                .string(LANGUAGE_MAX_LEN),
+            msi::Column::build("Attributes").nullable().int16(),
+            msi::Column::build("Sequence").int16(),
+        ]
     }
 
     fn rows(&self) -> Vec<Vec<msi::Value>> {
-        todo!()
+        self.values().iter().map(FileDao::to_row).collect_vec()
     }
 }

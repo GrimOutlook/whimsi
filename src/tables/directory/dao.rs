@@ -46,7 +46,13 @@ impl DirectoryDao {
 
 impl From<SystemFolder> for DirectoryDao {
     fn from(value: SystemFolder) -> Self {
-        if value == SystemFolder::TARGETDIR {
+        DirectoryDao::from(&value)
+    }
+}
+
+impl From<&SystemFolder> for DirectoryDao {
+    fn from(value: &SystemFolder) -> Self {
+        if value == &SystemFolder::TARGETDIR {
             // Documentation says that only the root directory can have the same ID for `parent`
             // and `directory` fields.
             return Self {
@@ -66,7 +72,7 @@ impl From<SystemFolder> for DirectoryDao {
 #[cfg(test)]
 mod test {
 
-    use crate::DirectoryDao;
+    use crate::tables::directory::dao::DirectoryDao;
     use crate::types::{helpers::filename::Filename, properties::system_folder::SystemFolder};
 
     #[test]

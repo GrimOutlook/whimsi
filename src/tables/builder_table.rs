@@ -14,6 +14,9 @@ pub(crate) trait MsiBuilderTable: Default {
     fn len(&self) -> usize;
     fn is_empty(&self) -> bool;
     fn add(&mut self, dao: Self::TableValue);
+    fn add_all(&mut self, daos: Vec<Self::TableValue>) {
+        daos.into_iter().for_each(|dao| self.add(dao));
+    }
 
     /// Write the columns contained in the table to the package.
     fn write_to_package<F: std::io::Read + std::io::Write + std::io::Seek>(

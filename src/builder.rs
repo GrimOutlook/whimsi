@@ -1,13 +1,18 @@
 use std::path::PathBuf;
 
 use getset::Getters;
-use tracing::info;
+use itertools::Itertools;
+use tracing::{debug, info};
 
 use crate::{
     buildable::MsiBuildable,
     tables::{
         MsiBuilderTables,
-        directory::{helper::Directory, kind::DirectoryKind, system_directory::SystemDirectory},
+        builder_table::MsiBuilderTable,
+        directory::{
+            dao::DirectoryDao, helper::Directory, kind::DirectoryKind,
+            system_directory::SystemDirectory,
+        },
         meta::MetaInformation,
     },
     types::{column::identifier::Identifier, properties::system_folder::SystemFolder},
@@ -141,11 +146,9 @@ impl MsiBuilder {
             .find(|dir| *dir.system_folder() == folder)
     }
 
-    pub fn finish(&self) -> anyhow::Result<MsiBuildable> {
+    pub fn finish(self) -> anyhow::Result<MsiBuildable> {
         info!("Validating and finalizing MSI information");
-        let mut tables = MsiBuilderTables::default();
-
-        todo!()
+        self.try_into()
     }
 }
 
@@ -158,8 +161,15 @@ impl Default for MsiBuilder {
     }
 }
 
+impl TryInto<MsiBuildable> for MsiBuilder {
+    type Error = anyhow::Error;
+    fn try_into(self) -> anyhow::Result<MsiBuildable> {
+        MsiBuildable::default().with_directories(self.system_directories)
+    }
+}
+
 #[derive(Debug, thiserror::Error, PartialEq)]
-pub enum WhimsiError {
+pub enum MsiBuilderError {
     #[error("Property with identifier {identifier} not found in Property table")]
     InvalidTargetDirChild { identifier: Identifier },
     #[error("TARGETDIR cannot be a subdirectory")]

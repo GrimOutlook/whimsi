@@ -1,3 +1,5 @@
+use std::{any, path::PathBuf};
+
 use anyhow::ensure;
 use itertools::Itertools;
 
@@ -14,6 +16,20 @@ use super::helper::Directory;
 pub trait DirectoryKind: Clone {
     fn contents(&self) -> &Vec<DirectoryItem>;
     fn contents_mut(&mut self) -> &mut Vec<DirectoryItem>;
+
+    fn with_contents(mut self, contents: &mut Vec<DirectoryItem>) -> Self {
+        self.add_contents(contents);
+        self
+    }
+    fn add_contents(&mut self, contents: &mut Vec<DirectoryItem>) {
+        self.contents_mut().append(contents);
+    }
+
+    fn with_item(mut self, item: impl Into<DirectoryItem>) -> anyhow::Result<Self> {
+        self.add_item(item);
+        Ok(self)
+    }
+
     fn add_item(&mut self, item: impl Into<DirectoryItem>) -> anyhow::Result<()> {
         let item = item.into();
         match item {
@@ -41,6 +57,18 @@ pub trait DirectoryKind: Clone {
             }
         }
         self.contents_mut().push(item.into());
+        Ok(())
+    }
+
+    fn with_path_contents(mut self, path: PathBuf) -> anyhow::Result<Self> {
+        self.add_path_contents(path)?;
+        Ok(self)
+    }
+
+    fn add_path_contents(&mut self, path: PathBuf) -> anyhow::Result<()> {
+        let dir = Directory::try_from(path)?;
+        self.add_contents(&mut dir.contents().clone());
+
         Ok(())
     }
 

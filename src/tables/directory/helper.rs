@@ -39,17 +39,17 @@ use crate::types::properties::system_folder::SystemFolder;
 /// All directory information is gathered during the user-input period. No information about
 /// directories is generated when traslating to `msi` crate `Package` type.
 #[derive(
+    Delegate,
     Clone,
     Debug,
-    Delegate,
     Display,
+    Eq,
     From,
+    Ord,
     PartialEq,
     PartialOrd,
     strum::EnumIs,
     strum::EnumTryAs,
-    Ord,
-    Eq,
 )]
 #[delegate(DirectoryKind)]
 pub enum Directory {
@@ -90,20 +90,15 @@ impl Directory {
         }
     }
 
-    fn add_contents(mut self, mut contents: Vec<DirectoryItem>) -> Self {
-        self.contents_mut().append(&mut contents);
-        self
-    }
-
     pub fn from_system_folder(value: SystemFolder) -> Self {
-        value.into()
+        Directory::from(value)
     }
 
     pub fn print_structure(&self) {
-        self.content_structure(0)
+        self.print_content_structure(0)
     }
 
-    fn content_structure(&self, depth: usize) {
+    fn print_content_structure(&self, depth: usize) {
         let delimiter = "|- ";
         let depth_str = |x| " ".repeat(x * delimiter.len());
         if depth == 0 {
@@ -117,7 +112,7 @@ impl Directory {
             println!("{}{delimiter}{file}", depth_str(depth + 1));
         }
         for directory in directories {
-            directory.content_structure(depth + 1);
+            directory.print_content_structure(depth + 1);
         }
     }
 }
@@ -136,14 +131,14 @@ impl TryFrom<PathBuf> for Directory {
             .collect_vec();
 
         let subdir = path.to_path_buf().try_into()?;
-        Ok(Directory::SubDirectory(subdir).add_contents(items))
+        Ok(Directory::SubDirectory(subdir).with_contents(&mut items))
     }
 }
 
 impl From<SystemFolder> for Directory {
     fn from(value: SystemFolder) -> Self {
-        let sd: SystemDirectory = value.into();
-        sd.into()
+        let sd = SystemDirectory::from(value);
+        Directory::from(sd)
     }
 }
 #[cfg(test)]

@@ -8,7 +8,7 @@ use crate::{
 
 use super::kind::DirectoryKind;
 
-#[derive(Clone, Debug, derive_more::Display, PartialEq, Getters, Derivative)]
+#[derive(Clone, Debug, Derivative, Getters, PartialEq, derive_more::Display)]
 #[display("{}", system_folder)]
 #[getset(get = "pub")]
 #[derivative(PartialOrd, Ord, Eq)]

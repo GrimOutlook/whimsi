@@ -1,7 +1,10 @@
-use std::io::{Read, Seek, Write};
+use std::io::Read;
+use std::io::Seek;
+use std::io::Write;
 
 use msi::Package;
-use tracing::{debug, trace};
+use tracing::debug;
+use tracing::trace;
 
 pub(crate) trait MsiBuilderTable: Default {
     type TableValue;

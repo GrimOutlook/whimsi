@@ -1,13 +1,16 @@
 use std::str::FromStr;
 
-use anyhow::{Context, bail, ensure};
-use derive_more::{Display, From};
+use anyhow::Context;
+use anyhow::bail;
+use anyhow::ensure;
+use derive_more::Display;
+use derive_more::From;
 use itertools::Itertools;
 use thiserror::Error;
 
-use crate::{constants::*, types::helpers::invalid_char::InvalidChar};
-
 use super::ColumnValue;
+use crate::constants::*;
+use crate::types::helpers::invalid_char::InvalidChar;
 
 /// Name of a file *or* folder.
 ///
@@ -39,7 +42,8 @@ pub struct LongFilename {
     inner: String,
 }
 impl LongFilename {
-    const INVALID_CHARS: &[char] = &['/', '\\', '?', '|', '>', '<', ':', '*', '"'];
+    const INVALID_CHARS: &[char] =
+        &['/', '\\', '?', '|', '>', '<', ':', '*', '"'];
 }
 
 impl FromStr for LongFilename {
@@ -54,10 +58,10 @@ impl FromStr for LongFilename {
     }
 }
 
-/// Short filenames have the same restricted character setas long filenames but with a few more
-/// characters added.
-// TODO: Figure out if short filenames are allowed to be missing an extension. Documentation is
-// unclear. Assuming yes.
+/// Short filenames have the same restricted character setas long filenames but
+/// with a few more characters added.
+// TODO: Figure out if short filenames are allowed to be missing an extension.
+// Documentation is unclear. Assuming yes.
 #[derive(Clone, Debug, Display, PartialEq)]
 pub struct ShortFilename {
     inner: String,
@@ -96,8 +100,7 @@ impl FromStr for ShortFilename {
     }
 }
 
-const TOO_LONG_ERR_MESSAGE: &str =
-    "Short filename input is too long. Only 8 characters + period (.) + 3 letter extension allowed";
+const TOO_LONG_ERR_MESSAGE: &str = "Short filename input is too long. Only 8 characters + period (.) + 3 letter extension allowed";
 
 #[derive(Clone, Debug, From, PartialEq, Error)]
 pub enum ShortFilenameParsingError {
@@ -130,9 +133,7 @@ fn validate_long_filename(s: &str) -> anyhow::Result<()> {
     let invalid_chars = invalid_chars(LongFilename::INVALID_CHARS, s);
     ensure!(
         invalid_chars.is_empty(),
-        FilenameParsingError::InvalidCharacters {
-            characters: invalid_chars,
-        }
+        FilenameParsingError::InvalidCharacters { characters: invalid_chars }
     );
     Ok(())
 }
@@ -166,23 +167,26 @@ mod test {
 
     use test_case::test_case;
 
-    use crate::types::{
-        column::filename::{LongFilename, ShortFilename, ShortFilenameParsingError},
-        helpers::invalid_char::InvalidChar,
-    };
+    use crate::types::column::filename::LongFilename;
+    use crate::types::column::filename::ShortFilename;
+    use crate::types::column::filename::ShortFilenameParsingError;
+    use crate::types::helpers::invalid_char::InvalidChar;
 
-    const LONG_INVALID_PANIC_MSG: &str = "VALID long filename is evaluating as INVALID";
-    const SHORT_INVALID_PANIC_MSG: &str = "VALID short filename is evaluating as INVALID";
-    const LONG_VALID_PANIC_MSG: &str = "INVALID long filename is evaluating as VALID";
-    const SHORT_VALID_PANIC_MSG: &str = "INVALID short filename is evaluating as VALID";
+    const LONG_INVALID_PANIC_MSG: &str =
+        "VALID long filename is evaluating as INVALID";
+    const SHORT_INVALID_PANIC_MSG: &str =
+        "VALID short filename is evaluating as INVALID";
+    const LONG_VALID_PANIC_MSG: &str =
+        "INVALID long filename is evaluating as VALID";
+    const SHORT_VALID_PANIC_MSG: &str =
+        "INVALID short filename is evaluating as VALID";
 
     use super::FilenameParsingError;
     #[test_case("long_filenae.ext"; "normal long")]
     fn valid_only_long(input: &str) {
-        let expected = LongFilename {
-            inner: input.into(),
-        };
-        let actual = LongFilename::from_str(input).expect(LONG_INVALID_PANIC_MSG);
+        let expected = LongFilename { inner: input.into() };
+        let actual =
+            LongFilename::from_str(input).expect(LONG_INVALID_PANIC_MSG);
         assert_eq!(expected, actual)
     }
 
@@ -190,14 +194,12 @@ mod test {
     #[test_case("filename"; "no extension")]
     #[test_case(".file.ext"; "starts with period")]
     fn valid_long_and_short(input: &str) {
-        let expected_long = LongFilename {
-            inner: input.into(),
-        };
-        let actual_long = LongFilename::from_str(input).expect(LONG_INVALID_PANIC_MSG);
-        let expected_short = ShortFilename {
-            inner: input.into(),
-        };
-        let actual_short = ShortFilename::from_str(input).expect(SHORT_INVALID_PANIC_MSG);
+        let expected_long = LongFilename { inner: input.into() };
+        let actual_long =
+            LongFilename::from_str(input).expect(LONG_INVALID_PANIC_MSG);
+        let expected_short = ShortFilename { inner: input.into() };
+        let actual_short =
+            ShortFilename::from_str(input).expect(SHORT_INVALID_PANIC_MSG);
         assert_eq!(expected_long, actual_long, "long");
         assert_eq!(expected_short, actual_short, "short");
     }
@@ -210,17 +212,11 @@ mod test {
         let short_actual = ShortFilename::from_str(input);
         assert_eq!(
             expected,
-            short_actual
-                .expect_err(SHORT_VALID_PANIC_MSG)
-                .downcast()
-                .unwrap()
+            short_actual.expect_err(SHORT_VALID_PANIC_MSG).downcast().unwrap()
         );
         assert_eq!(
             expected,
-            long_actual
-                .expect_err(LONG_VALID_PANIC_MSG)
-                .downcast()
-                .unwrap()
+            long_actual.expect_err(LONG_VALID_PANIC_MSG).downcast().unwrap()
         );
     }
 
@@ -228,12 +224,13 @@ mod test {
     #[test_case("long_filename", ShortFilenameParsingError::FilenameTooLong; "long filename")]
     #[test_case("long.extension", ShortFilenameParsingError::ExtensionTooLong; "long extension")]
     fn invalid_short(input: &str, expected: ShortFilenameParsingError) {
-        let actual = ShortFilename::from_str(input).expect_err(SHORT_VALID_PANIC_MSG);
+        let actual =
+            ShortFilename::from_str(input).expect_err(SHORT_VALID_PANIC_MSG);
         assert_eq!(
             expected,
-            actual
-                .downcast()
-                .unwrap_or_else(|_| panic!("ShortFilenameError is incorrect type"))
+            actual.downcast().unwrap_or_else(|_| panic!(
+                "ShortFilenameError is incorrect type"
+            ))
         );
     }
 }

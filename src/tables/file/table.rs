@@ -1,12 +1,11 @@
 use anyhow::ensure;
 use itertools::Itertools;
 
-use crate::{
-    constants::*, msitable_boilerplate, tables::builder_table::MsiBuilderTable,
-    types::column::identifier::Identifier,
-};
-
 use super::dao::FileDao;
+use crate::constants::*;
+use crate::msitable_boilerplate;
+use crate::tables::builder_table::MsiBuilderTable;
+use crate::types::column::identifier::Identifier;
 
 #[derive(Debug, Clone, Default)]
 pub struct FileTable(Vec<FileDao>);
@@ -48,10 +47,7 @@ impl MsiBuilderTable for FileTable {
     }
 
     fn contains(&self, dao: &FileDao) -> bool {
-        self.0
-            .iter()
-            .find(|entry| entry.file() == dao.file())
-            .is_some()
+        self.0.iter().find(|entry| entry.file() == dao.file()).is_some()
     }
 
     fn add(&mut self, dao: Self::TableValue) -> anyhow::Result<()> {

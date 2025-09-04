@@ -1,10 +1,10 @@
-// This is basically an internal representation of what is contained in the final MSI, just in more
-// manipulatable data types.
+// This is basically an internal representation of what is contained in the
+// final MSI, just in more manipulatable data types.
 //
 // Properties are derived from this table:
 // https://learn.microsoft.com/en-us/windows/win32/msi/database-tables
-// This is basically an internal representation of what is contained in the final MSI, just in more
-// manipulatable data types.
+// This is basically an internal representation of what is contained in the
+// final MSI, just in more manipulatable data types.
 //
 // Properties are derived from this table:
 // https://learn.microsoft.com/en-us/windows/win32/msi/database-tables
@@ -23,7 +23,6 @@
 
 use types::column::identifier::Identifier;
 
-pub mod buildable;
 pub mod builder;
 pub mod constants;
 pub mod tables;

@@ -1,19 +1,23 @@
-use anyhow::{Context, bail};
+use std::str::FromStr;
+
+use ambassador::delegatable_trait;
+use anyhow::Context;
+use anyhow::bail;
 use derive_more::Display;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
-use std::str::FromStr;
+use regex::Regex;
 use strum::IntoEnumIterator;
 use thiserror::Error;
 
-use regex::Regex;
-
-use crate::types::{helpers::invalid_char::InvalidChar, properties::system_folder::SystemFolder};
-
 use super::ColumnValue;
+use crate::types::helpers::invalid_char::InvalidChar;
+use crate::types::properties::system_folder::SystemFolder;
 
-static INVALID_FIRST_CHARACTER: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[^A-Za-z_]").unwrap());
-static INVALID_CHARACTER: Lazy<Regex> = Lazy::new(|| Regex::new(r"[^A-Za-z0-9_\.]").unwrap());
+static INVALID_FIRST_CHARACTER: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^[^A-Za-z_]").unwrap());
+static INVALID_CHARACTER: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"[^A-Za-z0-9_\.]").unwrap());
 
 /// May only contain ASCII characters of the set [A-Za-z0-9_\.]
 /// Must start with either a letter or underscore.
@@ -34,7 +38,10 @@ impl FromStr for Identifier {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some(hit) = INVALID_FIRST_CHARACTER.find(s) {
             bail!(IdentifierConversionError::InvalidFirstCharacter {
-                first_character: InvalidChar::new(hit.as_str().chars().next().unwrap(), 0),
+                first_character: InvalidChar::new(
+                    hit.as_str().chars().next().unwrap(),
+                    0
+                ),
             });
         }
 
@@ -42,7 +49,12 @@ impl FromStr for Identifier {
             let characters = INVALID_CHARACTER
                 .find_iter(s)
                 .enumerate()
-                .map(|(index, hit)| InvalidChar::new(hit.as_str().chars().next().unwrap(), index))
+                .map(|(index, hit)| {
+                    InvalidChar::new(
+                        hit.as_str().chars().next().unwrap(),
+                        index,
+                    )
+                })
                 .collect_vec();
             bail!(IdentifierConversionError::InvalidCharacters { characters });
         }
@@ -69,6 +81,12 @@ impl From<SystemFolder> for Identifier {
     }
 }
 
+impl ToIdentifier for Identifier {
+    fn to_identifier(&self) -> Identifier {
+        self.clone()
+    }
+}
+
 #[derive(Debug, Error, PartialEq)]
 pub enum IdentifierConversionError {
     #[error("Identifier has invalid first character: [{first_character}]")]
@@ -77,6 +95,7 @@ pub enum IdentifierConversionError {
     InvalidCharacters { characters: Vec<InvalidChar> },
 }
 
+#[delegatable_trait]
 pub trait ToIdentifier {
     fn to_identifier(&self) -> Identifier;
 }
@@ -87,16 +106,15 @@ mod test {
 
     use test_case::test_case;
 
-    use crate::types::{
-        column::identifier::IdentifierConversionError, helpers::invalid_char::InvalidChar,
-    };
-
     use super::Identifier;
+    use crate::types::column::identifier::IdentifierConversionError;
+    use crate::types::helpers::invalid_char::InvalidChar;
     #[test_case("Test8."; "starts with letter")]
     #[test_case("_Test8."; "starts with underscore")]
     fn valid_identifier(input: &str) {
         let expected = Identifier(input.to_owned());
-        let actual = Identifier::from_str(input).expect("Valid identifier returning as invalid");
+        let actual = Identifier::from_str(input)
+            .expect("Valid identifier returning as invalid");
         assert_eq!(expected, actual);
     }
 

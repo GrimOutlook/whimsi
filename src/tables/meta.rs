@@ -1,7 +1,8 @@
+use std::str::FromStr;
+
 use derivative::Derivative;
 use getset::Getters;
 use msi::PackageType;
-use std::str::FromStr;
 
 use crate::types::column::version::Version;
 

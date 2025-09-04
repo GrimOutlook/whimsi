@@ -1,38 +1,35 @@
-use std::{path::PathBuf, str::FromStr};
+use std::path::PathBuf;
+use std::str::FromStr;
 
 use derive_more::Constructor;
 use getset::Getters;
 
-use crate::{
-    str_val,
-    types::{
-        column::{default_dir::DefaultDir, identifier::Identifier},
-        helpers::filename::Filename,
-        properties::system_folder::SystemFolder,
-    },
-};
+use super::directory_identifier::DirectoryIdentifier;
+use crate::str_val;
+use crate::types::column::default_dir::DefaultDir;
+use crate::types::column::identifier::Identifier;
+use crate::types::helpers::filename::Filename;
+use crate::types::properties::system_folder::SystemFolder;
 
-#[derive(Clone, Debug, PartialEq, Getters, Constructor)]
+#[derive(Clone, Debug, PartialEq, Getters)]
 #[getset(get = "pub")]
 pub struct DirectoryDao {
     default_dir: DefaultDir,
-    directory: Identifier,
-    parent: Identifier,
+    directory: DirectoryIdentifier,
+    parent: DirectoryIdentifier,
 }
 
 impl DirectoryDao {
-    pub(crate) fn from_path(
-        path: PathBuf,
-        path_id: Identifier,
-        parent_id: Identifier,
-    ) -> anyhow::Result<Self> {
-        // Will panic if path terminates in '..' or basename is not valid Unicode.
-        let name = path.file_name().unwrap().to_str().unwrap();
-        Ok(Self {
-            default_dir: DefaultDir::Filename(Filename::parse(name)?),
-            directory: path_id,
-            parent: parent_id,
-        })
+    pub(crate) fn new(
+        name: impl Into<DefaultDir>,
+        path_id: impl Into<DirectoryIdentifier>,
+        parent_id: impl Into<DirectoryIdentifier>,
+    ) -> Self {
+        Self {
+            default_dir: name.into(),
+            directory: path_id.into(),
+            parent: parent_id.into(),
+        }
     }
 
     pub fn to_row(&self) -> Vec<msi::Value> {
@@ -46,15 +43,9 @@ impl DirectoryDao {
 
 impl From<SystemFolder> for DirectoryDao {
     fn from(value: SystemFolder) -> Self {
-        DirectoryDao::from(&value)
-    }
-}
-
-impl From<&SystemFolder> for DirectoryDao {
-    fn from(value: &SystemFolder) -> Self {
-        if value == &SystemFolder::TARGETDIR {
-            // Documentation says that only the root directory can have the same ID for `parent`
-            // and `directory` fields.
+        if value == SystemFolder::TARGETDIR {
+            // Documentation says that only the root directory can have the same
+            // ID for `parent` and `directory` fields.
             return Self {
                 directory: value.into(),
                 parent: value.into(),
@@ -73,7 +64,8 @@ impl From<&SystemFolder> for DirectoryDao {
 mod test {
 
     use crate::tables::directory::dao::DirectoryDao;
-    use crate::types::{helpers::filename::Filename, properties::system_folder::SystemFolder};
+    use crate::types::helpers::filename::Filename;
+    use crate::types::properties::system_folder::SystemFolder;
 
     #[test]
     fn try_from() {

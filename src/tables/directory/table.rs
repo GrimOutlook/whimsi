@@ -1,15 +1,16 @@
-use anyhow::{bail, ensure};
+use anyhow::bail;
+use anyhow::ensure;
 use itertools::Itertools;
 use thiserror::Error;
 
+use super::dao::DirectoryDao;
 use crate::constants::*;
 use crate::msitable_boilerplate;
 use crate::tables::builder_table::MsiBuilderTable;
 use crate::types::column::default_dir::DefaultDir;
 use crate::types::column::identifier::Identifier;
+use crate::types::column::identifier::ToIdentifier;
 use crate::types::properties::system_folder::SystemFolder;
-
-use super::dao::DirectoryDao;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DirectoryTable(Vec<DirectoryDao>);
@@ -42,9 +43,11 @@ impl MsiBuilderTable for DirectoryTable {
     }
 
     fn contains(&self, dao: &DirectoryDao) -> bool {
-        // NOTE: We purposefully allow entries that have the same DefaultDir and are contained by
-        // the same parent because you can assign different components to these entries if you want
-        // both components to install to the same location but based on separate criteria.
+        // NOTE: We purposefully allow entries that have the same DefaultDir and
+        // are contained by the same parent because you can assign
+        // different components to these entries if you want
+        // both components to install to the same location but based on separate
+        // criteria.
         self.0
             .iter()
             .find(|entry| entry.directory() == dao.directory())
@@ -71,14 +74,20 @@ impl DirectoryTable {
         Self::default()
     }
 
-    pub fn entry_with_id(&self, identifier: &Identifier) -> Option<&DirectoryDao> {
-        self.0.iter().find(|d| d.directory() == identifier)
+    pub fn entry_with_id(
+        &self,
+        identifier: &Identifier,
+    ) -> Option<&DirectoryDao> {
+        self.0.iter().find(|d| d.directory().to_identifier() == *identifier)
     }
 
-    pub fn entries_with_parent(&self, parent_id: &Identifier) -> Vec<&DirectoryDao> {
+    pub fn entries_with_parent(
+        &self,
+        parent_id: &Identifier,
+    ) -> Vec<&DirectoryDao> {
         self.0
             .iter()
-            .filter(|d| d.parent() == parent_id)
+            .filter(|d| d.parent().to_identifier() == *parent_id)
             .collect_vec()
     }
 
@@ -95,41 +104,42 @@ impl DirectoryTable {
 pub enum DirectoryTableError {
     #[error("Parent ID {parent_id} is not in DirectoryTable")]
     ParentDirectoryNotPresent { parent_id: Identifier },
-    #[error("Directory with ID {parent_id} already contains subdirectory with name {name:?}")]
-    DirectoryNameCollision {
-        parent_id: Identifier,
-        name: DefaultDir,
-    },
+    #[error(
+        "Directory with ID {parent_id} already contains subdirectory with name {name:?}"
+    )]
+    DirectoryNameCollision { parent_id: Identifier, name: DefaultDir },
 }
 
 #[cfg(test)]
 mod test {
-    use std::{io::Cursor, str::FromStr};
+    use std::io::Cursor;
+    use std::str::FromStr;
 
-    use msi::{PackageType, Select};
-
-    use crate::{
-        tables::{builder_table::MsiBuilderTable, directory::dao::DirectoryDao},
-        types::{
-            column::{default_dir::DefaultDir, identifier::Identifier},
-            helpers::filename::Filename,
-            properties::system_folder::SystemFolder,
-        },
-    };
+    use msi::PackageType;
+    use msi::Select;
 
     use super::DirectoryTable;
+    use crate::tables::builder_table::MsiBuilderTable;
+    use crate::tables::directory::dao::DirectoryDao;
+    use crate::types::column::default_dir::DefaultDir;
+    use crate::types::column::identifier::Identifier;
+    use crate::types::helpers::filename::Filename;
+    use crate::types::properties::system_folder::SystemFolder;
 
     #[test]
     fn write_to_package() {
-        let mut package =
-            msi::Package::create(PackageType::Installer, Cursor::new(Vec::new())).unwrap();
+        let mut package = msi::Package::create(
+            PackageType::Installer,
+            Cursor::new(Vec::new()),
+        )
+        .unwrap();
         let mut table = DirectoryTable::default();
         let parent = SystemFolder::ProgramFilesFolder;
         table.add(parent.into());
         table.add(DirectoryDao::new(
             DefaultDir::Filename(Filename::from_str("test").unwrap()),
             Identifier::from_str("test_id").unwrap(),
-            parent.into(),
+            parent,
         ));
         table.write_to_package(&mut package).unwrap();
 
@@ -147,7 +157,8 @@ mod test {
             "MSI Directory Table doesn't have `DefaultDir` column"
         );
         let rows = package.select_rows(Select::table("Directory")).unwrap();
-        // TARGETDIR is always in the table by default so add 1 to the total we expect
+        // TARGETDIR is always in the table by default so add 1 to the total we
+        // expect
         assert_eq!(rows.len(), 2 + 1, "Directory table row count mismatch");
     }
 }

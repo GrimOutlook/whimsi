@@ -1,6 +1,6 @@
+use super::directory::dao::DirectoryDao;
+use super::file::dao::FileDao;
 use crate::types::column::identifier::Identifier;
-
-use super::{directory::dao::DirectoryDao, file::dao::FileDao};
 
 type ComponentIdentifier = Identifier;
 

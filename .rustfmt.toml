@@ -1,0 +1,35 @@
+# Used the newest standards
+edition = "2024"
+style_edition = "2024"
+
+# Encourages the user to keep code more readable.
+# Also makes it so you can easily have 2 files on the same screen.
+max_width = 80
+comment_width = 80
+
+# The "Default" setting has a heuristic which splits lines too aggressively.
+use_small_heuristics = "Max"
+
+# Line endings will be converted to \n.
+newline_style = "Unix"
+
+# Unstable #####################################################################
+# Enable unstlable features
+unstable_features = true
+
+# Wrap comments if they're too long.
+wrap_comments = true
+
+# Align enum values
+enum_discrim_align_threshold = 20
+# Format any code in the code docs
+format_code_in_doc_comments = true
+# This makes diffs easier to parse when imports change.
+imports_granularity = "Item"
+# Make imports alphabetical
+reorder_imports = true
+# Standardize impl blocks
+reorder_impl_items = true
+# Standardize import order based on where they are coming from
+group_imports = "StdExternalCrate"
+

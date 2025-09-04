@@ -2,17 +2,16 @@ use derive_more::Constructor;
 use getset::Getters;
 use msi::Language;
 
-use crate::{
-    dint_val, int_val, opt_str_val, opt_val, str_val,
-    types::{
-        column::{
-            attributes::Attributes, identifier::Identifier, sequence::Sequence, version::Version,
-        },
-        helpers::filename::Filename,
-    },
-};
-
-use super::helper::File;
+use crate::dint_val;
+use crate::int_val;
+use crate::opt_str_val;
+use crate::opt_val;
+use crate::str_val;
+use crate::types::column::attributes::Attributes;
+use crate::types::column::identifier::Identifier;
+use crate::types::column::sequence::Sequence;
+use crate::types::column::version::Version;
+use crate::types::helpers::filename::Filename;
 
 #[derive(Clone, Debug, PartialEq, Getters, Constructor)]
 #[getset(get = "pub")]
@@ -28,14 +27,6 @@ pub struct FileDao {
 }
 
 impl FileDao {
-    pub(crate) fn from_file(
-        file: &File,
-        id: &Identifier,
-        sequence: Sequence,
-    ) -> anyhow::Result<FileDao> {
-        todo!("from_file")
-    }
-
     pub fn to_row(&self) -> Vec<msi::Value> {
         vec![
             str_val!(self.file),
@@ -45,7 +36,7 @@ impl FileDao {
             opt_str_val!(self.version),
             opt_val!(self.language),
             opt_val!(self.attributes),
-            int_val!(Into::<i16>::into(&self.sequence)),
+            int_val!(Into::<i16>::into(self.sequence.clone())),
         ]
     }
 }

@@ -1,24 +1,10 @@
 use std::fs::File;
 
 use tracing::level_filters::LevelFilter;
-use whimsi_lib::{
-    builder::MsiBuilder,
-    tables::directory::{
-        container::Container, helper::Directory, system_directory::SystemDirectory,
-    },
-    types::properties::system_folder::SystemFolder,
-};
+use whimsi_lib::builder::MsiBuilder;
+use whimsi_lib::types::properties::system_folder::SystemFolder;
 fn main() {
-    tracing_subscriber::fmt()
-        .with_max_level(LevelFilter::TRACE)
-        .init();
-    let manny = Directory::new("manny")
-        .expect("Failed to create directory")
-        .with_path_contents("./examples/reference/root_dir/".into())
-        .expect("Failed to add path contents to directory");
-    let prog = SystemDirectory::from(SystemFolder::ProgramFilesFolder)
-        .with_item(manny)
-        .expect("Failed to add directory to system directory");
+    tracing_subscriber::fmt().with_max_level(LevelFilter::TRACE).init();
     let file = File::options()
         .read(true)
         .write(true)
@@ -27,11 +13,14 @@ fn main() {
         .open("test.msi")
         .expect("Failed to open file");
 
-    MsiBuilder::default()
-        .with_directory(prog)
-        .expect("Failed to add directory to MSIBuilder")
-        .finish()
-        .expect("Failed to finalize MSIBuilder")
+    let mut builder = MsiBuilder::default();
+    let manny_id = builder
+        .add_directory("manny", SystemFolder::ProgramFilesFolder)
+        .expect("Failed to create directory");
+
+    builder
+        .with_path_contents("./examples/reference/root_dir/", manny_id)
+        .expect("Failed to add path to MSIBuilder")
         .build(file)
         .expect("Failed to build MSI");
 }

@@ -1,4 +1,5 @@
-use derive_more::{Constructor, Display};
+use derive_more::Constructor;
+use derive_more::Display;
 use getset::Getters;
 
 #[derive(Clone, Constructor, Debug, Display, Getters, PartialEq)]

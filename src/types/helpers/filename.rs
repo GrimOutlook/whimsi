@@ -4,7 +4,8 @@ use anyhow::Context;
 use derive_more::Display;
 use getset::Getters;
 
-use crate::types::column::filename::{LongFilename, ShortFilename};
+use crate::types::column::filename::LongFilename;
+use crate::types::column::filename::ShortFilename;
 
 #[derive(Clone, Debug, Display, Getters, PartialEq)]
 #[display("{}", long)]
@@ -20,17 +21,20 @@ impl Filename {
             short: ShortFilename::trimmed(input).context(format!(
                 "Failed parsing short filename with trim from [{input}]"
             ))?,
-            long: LongFilename::from_str(input)
-                .context(format!("Failed parsing long filename from [{input}]"))?,
+            long: LongFilename::from_str(input).context(format!(
+                "Failed parsing long filename from [{input}]"
+            ))?,
         })
     }
 
     pub fn strict_parse(input: &str) -> anyhow::Result<Self> {
         Ok(Self {
-            short: ShortFilename::from_str(input)
-                .context(format!("Failed parsing short filename from [{input}]"))?,
-            long: LongFilename::from_str(input)
-                .context(format!("Failed parsing long filename from [{input}]"))?,
+            short: ShortFilename::from_str(input).context(format!(
+                "Failed parsing short filename from [{input}]"
+            ))?,
+            long: LongFilename::from_str(input).context(format!(
+                "Failed parsing long filename from [{input}]"
+            ))?,
         })
     }
 }

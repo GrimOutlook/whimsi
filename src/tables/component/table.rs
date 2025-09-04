@@ -1,9 +1,10 @@
 use anyhow::ensure;
 use itertools::Itertools;
 
-use crate::{constants::*, msitable_boilerplate, tables::builder_table::MsiBuilderTable};
-
 use super::dao::ComponentDao;
+use crate::constants::*;
+use crate::msitable_boilerplate;
+use crate::tables::builder_table::MsiBuilderTable;
 
 #[derive(Debug, Clone, Default)]
 pub struct ComponentTable(Vec<ComponentDao>);

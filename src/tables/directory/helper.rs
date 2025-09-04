@@ -27,15 +27,17 @@ use strum::IntoEnumIterator;
 use thiserror::Error;
 
 use super::DirectoryError;
-use super::kind::DirectoryKind;
-use super::kind::ambassador_impl_DirectoryKind;
 use super::system_directory::SystemDirectory;
-use crate::implement_directory_kind_boilerplate;
+use super::traits::container::Container;
+use super::traits::container::ambassador_impl_Container;
+use super::traits::has_component::HasComponent;
+use crate::tables::component::helper::Component;
 use crate::tables::file::helper::File;
 use crate::types::column::identifier::Identifier;
 use crate::types::helpers::directory_item::DirectoryItem;
 use crate::types::helpers::filename::Filename;
 use crate::types::properties::system_folder::SystemFolder;
+use crate::{container_boilerplate, has_component_boilerplate};
 
 /// All directory information is gathered during the user-input period. No information about
 /// directories is generated when traslating to `msi` crate `Package` type.
@@ -53,16 +55,24 @@ pub struct Directory {
     #[derivative(PartialOrd = "ignore", Ord = "ignore")]
     contained: Vec<DirectoryItem>,
 
+    #[getset(skip)]
+    #[derivative(PartialOrd = "ignore", Ord = "ignore")]
+    component: Component,
+
     /// The directory's name (localizable)
     name: Filename,
 }
 
-impl DirectoryKind for Directory {
-    implement_directory_kind_boilerplate!();
+impl Container for Directory {
+    container_boilerplate!();
 
     fn name_conflict(&self, other: &Self) -> bool {
         self.name == other.name
     }
+}
+
+impl HasComponent for Directory {
+    has_component_boilerplate!();
 }
 
 impl FromStr for Directory {
@@ -76,6 +86,7 @@ impl FromStr for Directory {
 impl From<Filename> for Directory {
     fn from(value: Filename) -> Self {
         Self {
+            component: Component::default(),
             contained: Vec::new(),
             name: value,
         }
@@ -126,7 +137,7 @@ mod test {
     use camino::Utf8PathBuf;
 
     use crate::{
-        tables::directory::{helper::DirectoryKind, system_directory::SystemDirectory},
+        tables::directory::{helper::Container, system_directory::SystemDirectory},
         types::properties::system_folder::SystemFolder,
     };
 

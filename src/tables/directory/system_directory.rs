@@ -2,11 +2,11 @@ use derivative::Derivative;
 use getset::Getters;
 
 use crate::{
-    implement_directory_kind_boilerplate,
+    container_boilerplate,
     types::{helpers::directory_item::DirectoryItem, properties::system_folder::SystemFolder},
 };
 
-use super::kind::DirectoryKind;
+use super::traits::container::Container;
 
 #[derive(Clone, Debug, Derivative, Getters, PartialEq, derive_more::Display)]
 #[display("{}", system_folder)]
@@ -19,8 +19,8 @@ pub struct SystemDirectory {
     system_folder: SystemFolder,
 }
 
-impl DirectoryKind for SystemDirectory {
-    implement_directory_kind_boilerplate!();
+impl Container for SystemDirectory {
+    container_boilerplate!();
 
     fn name_conflict(&self, other: &Self) -> bool {
         self.system_folder == other.system_folder

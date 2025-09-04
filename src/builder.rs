@@ -10,8 +10,8 @@ use crate::{
         MsiBuilderTables,
         builder_table::MsiBuilderTable,
         directory::{
-            dao::DirectoryDao, helper::Directory, kind::DirectoryKind,
-            system_directory::SystemDirectory,
+            dao::DirectoryDao, helper::Directory, system_directory::SystemDirectory,
+            traits::container::Container,
         },
         meta::MetaInformation,
     },
@@ -53,8 +53,8 @@ impl MsiBuilder {
     /// ## Example
     ///
     /// ```
-    /// # use whimsi_lib::MsiBuilder;
-    /// # use whimsi_lib::tables::directory::kind::DirectoryKind;
+    /// # use whimsi_lib::builder::MsiBuilder;
+    /// # use whimsi_lib::tables::directory::container::Container;
     /// # use whimsi_lib::tables::directory::system_directory::SystemDirectory;
     /// # use whimsi_lib::types::properties::system_folder::SystemFolder;
     ///
@@ -148,7 +148,7 @@ impl MsiBuilder {
 
     pub fn finish(self) -> anyhow::Result<MsiBuildable> {
         info!("Validating and finalizing MSI information");
-        self.try_into()
+        MsiBuildable::try_from(self)
     }
 }
 
@@ -158,13 +158,6 @@ impl Default for MsiBuilder {
             system_directories: Vec::new(),
             meta: MetaInformation::default(),
         }
-    }
-}
-
-impl TryInto<MsiBuildable> for MsiBuilder {
-    type Error = anyhow::Error;
-    fn try_into(self) -> anyhow::Result<MsiBuildable> {
-        MsiBuildable::default().with_directories(self.system_directories)
     }
 }
 

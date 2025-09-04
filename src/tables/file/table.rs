@@ -1,3 +1,4 @@
+use anyhow::ensure;
 use itertools::Itertools;
 
 use crate::{
@@ -44,5 +45,19 @@ impl MsiBuilderTable for FileTable {
 
     fn rows(&self) -> Vec<Vec<msi::Value>> {
         self.values().iter().map(FileDao::to_row).collect_vec()
+    }
+
+    fn contains(&self, dao: &FileDao) -> bool {
+        self.0
+            .iter()
+            .find(|entry| entry.file() == dao.file())
+            .is_some()
+    }
+
+    fn add(&mut self, dao: Self::TableValue) -> anyhow::Result<()> {
+        // TODO: Create actual error for file ID collision.
+        ensure!(!self.contains(&dao), "TEMPERROR");
+        self.0.push(dao);
+        Ok(())
     }
 }

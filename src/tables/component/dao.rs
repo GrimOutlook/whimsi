@@ -1,4 +1,5 @@
 use anyhow::Context;
+use getset::Getters;
 
 use crate::{
     int_val, opt_str_val, str_val,
@@ -6,7 +7,8 @@ use crate::{
     types::column::{condition::Condition, guid::Guid, identifier::Identifier},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Getters)]
+#[getset(get = "pub(crate)")]
 pub struct ComponentDao {
     component: Identifier,
     component_id: Option<Guid>,

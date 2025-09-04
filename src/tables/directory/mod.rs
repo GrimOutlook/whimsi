@@ -2,9 +2,10 @@ use std::path::PathBuf;
 
 pub(crate) mod dao;
 pub mod helper;
-pub mod kind;
+pub(crate) mod kind;
 pub mod system_directory;
 pub mod table;
+pub mod traits;
 
 #[derive(Debug, thiserror::Error)]
 pub enum DirectoryError {

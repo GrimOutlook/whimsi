@@ -1,9 +1,9 @@
 use std::{alloc::System, str::FromStr};
 
-use getset::Getters;
+use getset::{Getters, WithSetters};
 use itertools::Itertools;
 use rand::distr::{Alphanumeric, SampleString};
-use tracing::{debug, info};
+use tracing::{debug, info, trace};
 
 use crate::{
     builder::MsiBuilder,
@@ -11,16 +11,27 @@ use crate::{
     tables::{
         MsiBuilderTables,
         builder_table::MsiBuilderTable,
-        directory::{dao::DirectoryDao, kind::DirectoryKind, system_directory::SystemDirectory},
+        directory::{
+            dao::DirectoryDao, kind::DirectoryKind, system_directory::SystemDirectory,
+            traits::container::Container,
+        },
+        file::helper::File,
         meta::MetaInformation,
     },
-    types::column::{default_dir::DefaultDir, identifier::Identifier},
+    types::{
+        column::{
+            default_dir::DefaultDir,
+            identifier::{Identifier, ToIdentifier},
+        },
+        helpers::directory_item::DirectoryItem,
+        properties::system_folder::SystemFolder,
+    },
 };
 
 type Identifiers = Vec<Identifier>;
 
-#[derive(Debug, Default, Getters)]
-#[getset(get = "pub")]
+#[derive(Debug, Default, Getters, WithSetters)]
+#[getset(get = "pub", set_with)]
 pub struct MsiBuildable {
     /// Tracks identifiers used to relate items between tables.
     pub(crate) identifiers: Identifiers,
@@ -65,6 +76,7 @@ impl MsiBuildable {
             );
             let id = Identifier::from_str(&id_string).unwrap();
             if !self.has_identifier(&id) {
+                // Ensure that the identifier cannot be generated again.
                 self.identifiers.push(id.clone());
                 return id;
             }
@@ -75,44 +87,88 @@ impl MsiBuildable {
         self.identifiers.iter().any(|i| i == identifier)
     }
 
-    pub fn with_directories(
-        mut self,
-        system_directories: Vec<SystemDirectory>,
-    ) -> anyhow::Result<Self> {
-        debug!("Generating DirectoryTable entries from given directories");
+    fn add_to_directory_table(
+        &mut self,
+        directory: DirectoryKind,
+        parent: Identifier,
+    ) -> anyhow::Result<Identifier> {
+        let id: Identifier;
+        let dao = match directory {
+            DirectoryKind::Directory(directory) => {
+                id = self.generate_id();
+                DirectoryDao::new(
+                    DefaultDir::from(directory.name().clone()),
+                    id.clone(),
+                    parent,
+                )
+            }
+            DirectoryKind::SystemDirectory(system_directory) => {
+                let folder = system_directory.system_folder();
+                id = folder.to_identifier();
+                // Extra check the verify that the system folder is only specified once.
+                self.identifiers.push(id.clone());
+                // The parent passed in for system_folders is always the same so I've simplified it
+                // to be a From conversion.
+                DirectoryDao::from(folder)
+            }
+        };
+        trace!("Added directory of ID [{id}] to DirectoryTable");
+        self.tables.directory_mut().add(dao);
 
-        // Add the DAOs for the system directories and it's direct contents.
-        let mut daos = Vec::new();
-        for system_directory in system_directories {
-            let system_folder = system_directory.system_folder();
-            // Add the system directory DAO
-            daos.push(DirectoryDao::from(system_folder));
-            daos.append(
-                &mut self
-                    .nested_directory_daos(&system_directory, &Identifier::from(system_folder)),
-            )
-        }
-
-        self.tables.directory_mut().add_all(daos);
-
-        Ok(self)
+        Ok(id)
     }
 
-    fn nested_directory_daos(
+    fn add_directory_recursively_to_tables(
         &mut self,
-        directory: &impl DirectoryKind,
         parent_id: &Identifier,
-    ) -> Vec<DirectoryDao> {
-        let mut daos = Vec::new();
-        for dir in directory.contained_directories().into_iter() {
-            let id = self.generate_id();
-            daos.push(DirectoryDao::new(
-                DefaultDir::from(dir.name().clone()),
-                id.clone(),
-                parent_id.clone(),
-            ));
-            daos.append(&mut self.nested_directory_daos(dir, &id));
+        directory: &DirectoryKind,
+    ) -> anyhow::Result<()> {
+        let directory_id =
+            self.add_to_directory_table(DirectoryKind::from(directory.clone()), parent_id.clone())?;
+        let component_id = self.add_to_component_table(directory_id, directory.component());
+
+        for item in contents {
+            match item {
+                DirectoryItem::File(file) => self.add_file_info_to_tables(&file, &directory_id)?,
+                DirectoryItem::Directory(directory) => {
+                    let id = self.add_to_directory_table(
+                        // TODO: I don't like cloning this directory, we should be able to take
+                        // ownership of it and move it.
+                        DirectoryKind::Directory(directory.clone()),
+                        directory_id.clone(),
+                    )?;
+                    self.add_contents_to_tables(&id, directory.contents())?
+                }
+            }
         }
-        daos
+        Ok(())
+    }
+
+    fn add_file_info_to_tables(
+        &mut self,
+        file: &File,
+        directory_id: &Identifier,
+    ) -> anyhow::Result<()> {
+        todo!()
+    }
+}
+
+impl TryFrom<MsiBuilder> for MsiBuildable {
+    type Error = anyhow::Error;
+    fn try_from(value: MsiBuilder) -> anyhow::Result<MsiBuildable> {
+        debug!("Creating Buildable from Builder");
+        let mut buildable = MsiBuildable::new().with_meta(value.meta().clone());
+        // System directories have to be handled in a special way since they only have identifiers
+        // and have a known parent.
+        for directory in value.system_directories() {
+            let directory_id = buildable.add_to_directory_table(
+                DirectoryKind::from(directory.clone()),
+                SystemFolder::TARGETDIR.to_identifier(),
+            )?;
+
+            buildable.add_contents_to_tables(&directory_id, directory.contents())?
+        }
+
+        todo!("Finish converting to buildable")
     }
 }

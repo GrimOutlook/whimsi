@@ -13,9 +13,13 @@ pub(crate) trait MsiBuilderTable: Default {
     fn rows(&self) -> Vec<Vec<msi::Value>>;
     fn len(&self) -> usize;
     fn is_empty(&self) -> bool;
-    fn add(&mut self, dao: Self::TableValue);
-    fn add_all(&mut self, daos: Vec<Self::TableValue>) {
-        daos.into_iter().for_each(|dao| self.add(dao));
+    fn contains(&self, dao: &Self::TableValue) -> bool;
+    fn add(&mut self, dao: Self::TableValue) -> anyhow::Result<()>;
+    fn add_all(&mut self, daos: Vec<Self::TableValue>) -> anyhow::Result<()> {
+        daos.into_iter()
+            .map(|dao| self.add(dao))
+            .collect::<anyhow::Result<Vec<()>>>()?;
+        Ok(())
     }
 
     /// Write the columns contained in the table to the package.
@@ -40,10 +44,6 @@ pub(crate) trait MsiBuilderTable: Default {
 #[macro_export]
 macro_rules! msitable_boilerplate {
     () => {
-        fn add(&mut self, dao: Self::TableValue) {
-            self.0.push(dao);
-        }
-
         fn values(&self) -> &Vec<Self::TableValue> {
             &self.0
         }

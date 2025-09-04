@@ -40,6 +40,23 @@ impl MsiBuilderTable for DirectoryTable {
     fn rows(&self) -> Vec<Vec<msi::Value>> {
         self.values().iter().map(DirectoryDao::to_row).collect_vec()
     }
+
+    fn contains(&self, dao: &DirectoryDao) -> bool {
+        // NOTE: We purposefully allow entries that have the same DefaultDir and are contained by
+        // the same parent because you can assign different components to these entries if you want
+        // both components to install to the same location but based on separate criteria.
+        self.0
+            .iter()
+            .find(|entry| entry.directory() == dao.directory())
+            .is_some()
+    }
+
+    fn add(&mut self, dao: Self::TableValue) -> anyhow::Result<()> {
+        // TODO: Create actual error for directory ID collision.
+        ensure!(!self.contains(&dao), "TEMPERROR");
+        self.0.push(dao);
+        Ok(())
+    }
 }
 
 impl Default for DirectoryTable {

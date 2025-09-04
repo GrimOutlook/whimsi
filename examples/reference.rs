@@ -4,7 +4,7 @@ use tracing::level_filters::LevelFilter;
 use whimsi_lib::{
     builder::MsiBuilder,
     tables::directory::{
-        helper::Directory, kind::DirectoryKind, system_directory::SystemDirectory,
+        container::Container, helper::Directory, system_directory::SystemDirectory,
     },
     types::properties::system_folder::SystemFolder,
 };

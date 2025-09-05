@@ -1317,6 +1317,7 @@ dependencies = [
  "getset",
  "itertools 0.14.0",
  "msi",
+ "num-traits",
  "once_cell",
  "pastey",
  "rand",

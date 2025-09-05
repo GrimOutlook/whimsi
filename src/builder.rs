@@ -1,8 +1,8 @@
-use std::os::unix::process::parent_id;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use anyhow::Context;
 use anyhow::bail;
 use getset::Getters;
 use itertools::Itertools;
@@ -19,12 +19,17 @@ use crate::tables::directory::directory_identifier::DirectoryIdentifier;
 use crate::tables::directory::table::DirectoryTable;
 use crate::tables::file::dao::FileDao;
 use crate::tables::file::table::FileTable;
+use crate::tables::media::cabinet_identifier::CabinetIdentifier;
+use crate::tables::media::dao::MediaDao;
 use crate::tables::media::table::MediaTable;
 use crate::tables::meta::MetaInformation;
 use crate::tables::property::table::PropertyTable;
 use crate::types::column::default_dir::DefaultDir;
+use crate::types::column::filename::Filename;
 use crate::types::column::identifier::Identifier;
-use crate::types::helpers::filename::Filename;
+use crate::types::column::sequence::Sequence;
+use crate::types::helpers::cabinet_info::CabinetInfo;
+use crate::types::helpers::cabinets::Cabinets;
 use crate::types::properties::system_folder::SystemFolder;
 
 /// An in-memory representation of the final MSI to be created.
@@ -40,6 +45,7 @@ pub struct MsiBuilder {
     /// Identifiers are created.
     identifiers: Vec<Identifier>,
 
+    cabinets: Cabinets,
     component: ComponentTable,
     directory: DirectoryTable,
     file: FileTable,
@@ -136,15 +142,7 @@ impl MsiBuilder {
     ) -> anyhow::Result<Self> {
         let path = path.into();
 
-        let directory_id = self.generate_id();
-        let directory_name = path
-            .file_name()
-            .ok_or(MsiBuilderError::NoDirectoryName { path: path.clone() })?
-            .to_str()
-            .ok_or(MsiBuilderError::InvalidDirectoryName {
-                path: path.clone(),
-            })?;
-        let id = self.add_directory(directory_name, parent)?;
+        let id = self.add_directory_from_path(&path, parent)?;
 
         let directory_contents: Vec<std::fs::DirEntry> =
             std::fs::read_dir(&path)?.try_collect()?;
@@ -167,6 +165,24 @@ impl MsiBuilder {
         Ok(self)
     }
 
+    pub fn add_directory_from_path(
+        &mut self,
+        path: impl Into<PathBuf>,
+        parent: impl Into<DirectoryIdentifier>,
+    ) -> anyhow::Result<Identifier> {
+        let path = path.into();
+
+        let directory_id = self.generate_id();
+        let name = path
+            .file_name()
+            .with_context(|| format!(
+                "Directory path [{path:?}] ended with `..` which is illegal."
+            ))?
+            .to_str()
+            .with_context(|| format!("Directory path [{path:?}] has invlaid unicode"))?;
+        self.add_directory(name, parent)
+    }
+
     pub fn add_directory(
         &mut self,
         name: impl ToString,
@@ -179,6 +195,7 @@ impl MsiBuilder {
             id.clone(),
             parent,
         ))?;
+
         Ok(id)
     }
 
@@ -194,8 +211,60 @@ impl MsiBuilder {
         path: impl Into<PathBuf>,
         parent_id: impl Into<DirectoryIdentifier>,
     ) -> anyhow::Result<Self> {
+        let path = path.into();
+        debug!("Creating DAOs for {path:?}");
+
+        let file_id = self.generate_id();
+        let component_id = self.generate_id();
+        let sequence = self.add_to_media(file_id.clone(), path.clone());
+        let file_dao = FileDao::install_file_from_path(
+            file_id,
+            component_id,
+            path,
+            sequence,
+        );
         todo!()
-        // let dao = FileDao::new(file, component, name, size, version, language, attributes, sequence)
+    }
+
+    /// Adds the given file to media so it will be installed when the MSI is run.
+    ///
+    /// If no media entry exists yet, one is created along with a cabinet file.
+    fn add_to_media(
+        &mut self,
+        file_id: Identifier,
+        file_path: PathBuf,
+    ) -> Sequence {
+        // Verify there is a Media entry to add on to.
+        let mut media_dao = if self.media.is_empty() {
+            // Create a new cabinet file.
+            let cabinet_id = self.new_cabinet();
+            // Create a new media DAO.
+            &mut MediaDao::internal(1, cabinet_id.clone())
+                .expect("Creating first entry to Media table failed")
+        } else {
+            self.media
+                .get_last_internal_media()
+                .expect("Media table contains no internal CAB files")
+        };
+
+        // Add the file to the cabinet.
+        let cabinet_id = &media_dao
+            .cabinet_id()
+            .expect("Media DAO that had a cabinet ID apparently doesn't");
+        let mut cabinet_info =
+            self.cabinets.find_id_mut(cabinet_id).expect(&format!("Cabinet of ID [{}] referenced by media with disk ID [{}] was not found", cabinet_id, media_dao.disk_id()));
+        cabinet_info.add_file(file_id, file_path);
+        // Set the Media table entry's LastSequence to the number of files in the cabinet.
+        media_dao
+            .set_last_sequence(cabinet_info)
+            .expect("LastSequence got too large. TODO: Handle this case.")
+    }
+
+    /// Creates a new cabinet file and returns the ID.
+    fn new_cabinet(&mut self) -> CabinetIdentifier {
+        let id = self.generate_id();
+        self.cabinets.add_new(id.clone());
+        CabinetIdentifier::Internal(id)
     }
 
     /// Build the MSI from all information given to MSIBuilder.
@@ -226,7 +295,7 @@ impl MsiBuilder {
         self.directory.write_to_package(package)?;
         self.component.write_to_package(package)?;
         self.file.write_to_package(package)?;
-        // self.media.write_to_package(package);
+        self.media.write_to_package(package);
         // self.property.write_to_package(package);
         Ok(())
     }

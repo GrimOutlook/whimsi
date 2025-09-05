@@ -4,7 +4,7 @@ use identifier::Identifier;
 use sequence::Sequence;
 use version::Version;
 
-use super::helpers::filename::Filename;
+use crate::types::column::filename::Filename;
 
 pub mod attributes;
 pub mod condition;

@@ -4,25 +4,73 @@ use anyhow::Context;
 use anyhow::bail;
 use anyhow::ensure;
 use derive_more::Display;
-use derive_more::From;
+use getset::Getters;
 use itertools::Itertools;
-use thiserror::Error;
 
-use super::ColumnValue;
 use crate::constants::*;
 use crate::types::helpers::invalid_char::InvalidChar;
 
-/// Name of a file *or* folder.
-///
-/// Reference: https://learn.microsoft.com/en-us/windows/win32/msi/filename
-// TODO: Figure out if filenames are allowed to end in a period. Assuming no.
-#[derive(Clone, Debug, Display, From, PartialEq)]
-pub enum MsiFilename {
-    Long(LongFilename),
-    Short(ShortFilename),
+#[derive(Clone, Debug, derive_more::Display, Default, Getters, PartialEq)]
+#[display("{}", long)]
+#[get = "pub"]
+pub struct Filename {
+    short: ShortFilename,
+    long: LongFilename,
 }
 
-#[derive(Clone, Debug, From, PartialEq, Error)]
+impl Filename {
+    pub fn parse(input: &str) -> anyhow::Result<Self> {
+        Ok(Self {
+            short: ShortFilename::trimmed(input).context(format!(
+                "Failed parsing short filename with trim from [{input}]"
+            ))?,
+            long: LongFilename::from_str(input).context(format!(
+                "Failed parsing long filename from [{input}]"
+            ))?,
+        })
+    }
+
+    pub fn strict_parse(input: &str) -> anyhow::Result<Self> {
+        Ok(Self {
+            short: ShortFilename::from_str(input).context(format!(
+                "Failed parsing short filename from [{input}]"
+            ))?,
+            long: LongFilename::from_str(input).context(format!(
+                "Failed parsing long filename from [{input}]"
+            ))?,
+        })
+    }
+}
+
+impl FromStr for Filename {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Filename::parse(s)
+    }
+}
+
+impl From<Filename> for String {
+    fn from(value: Filename) -> Self {
+        format!("{}|{}", value.short, value.long)
+    }
+}
+
+impl PartialOrd for Filename {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.to_string().partial_cmp(&other.to_string())
+    }
+}
+
+impl Ord for Filename {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.to_string().cmp(&other.to_string())
+    }
+}
+
+impl Eq for Filename {}
+
+#[derive(Clone, Debug, derive_more::From, PartialEq, thiserror::Error)]
 pub enum FilenameParsingError {
     #[error("Filename input string is blank")]
     EmptyString,
@@ -37,7 +85,7 @@ pub enum FilenameParsingError {
     InvalidCharacters { characters: Vec<InvalidChar> },
 }
 
-#[derive(Clone, Debug, Display, PartialEq)]
+#[derive(Clone, Debug, Display, Default, PartialEq)]
 pub struct LongFilename {
     inner: String,
 }
@@ -62,7 +110,7 @@ impl FromStr for LongFilename {
 /// with a few more characters added.
 // TODO: Figure out if short filenames are allowed to be missing an extension.
 // Documentation is unclear. Assuming yes.
-#[derive(Clone, Debug, Display, PartialEq)]
+#[derive(Clone, Debug, derive_more::Display, Default, PartialEq)]
 pub struct ShortFilename {
     inner: String,
 }
@@ -102,7 +150,7 @@ impl FromStr for ShortFilename {
 
 const TOO_LONG_ERR_MESSAGE: &str = "Short filename input is too long. Only 8 characters + period (.) + 3 letter extension allowed";
 
-#[derive(Clone, Debug, From, PartialEq, Error)]
+#[derive(Clone, Debug, derive_more::From, PartialEq, thiserror::Error)]
 pub enum ShortFilenameParsingError {
     #[error(
         "Short filename has invalid characters. Invalid characters: {:?}",

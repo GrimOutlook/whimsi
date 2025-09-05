@@ -122,8 +122,8 @@ mod test {
     use crate::tables::builder_table::MsiBuilderTable;
     use crate::tables::directory::dao::DirectoryDao;
     use crate::types::column::default_dir::DefaultDir;
+    use crate::types::column::filename::Filename;
     use crate::types::column::identifier::Identifier;
-    use crate::types::helpers::filename::Filename;
     use crate::types::properties::system_folder::SystemFolder;
 
     #[test]

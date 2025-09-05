@@ -7,8 +7,8 @@ use getset::Getters;
 use super::directory_identifier::DirectoryIdentifier;
 use crate::str_val;
 use crate::types::column::default_dir::DefaultDir;
+use crate::types::column::filename::Filename;
 use crate::types::column::identifier::Identifier;
-use crate::types::helpers::filename::Filename;
 use crate::types::properties::system_folder::SystemFolder;
 
 #[derive(Clone, Debug, PartialEq, Getters)]
@@ -64,7 +64,7 @@ impl From<SystemFolder> for DirectoryDao {
 mod test {
 
     use crate::tables::directory::dao::DirectoryDao;
-    use crate::types::helpers::filename::Filename;
+    use crate::types::column::filename::Filename;
     use crate::types::properties::system_folder::SystemFolder;
 
     #[test]

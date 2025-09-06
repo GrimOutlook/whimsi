@@ -4,6 +4,7 @@ use getset::Getters;
 use crate::int_val;
 use crate::opt_str_val;
 use crate::str_val;
+use crate::tables::dao::IsDao;
 use crate::tables::directory::directory_identifier::DirectoryIdentifier;
 use crate::types::column::condition::Condition;
 use crate::types::column::guid::Guid;
@@ -39,8 +40,10 @@ impl ComponentDao {
         self.key_path = Some(key_path);
         self
     }
+}
 
-    pub fn to_row(&self) -> Vec<msi::Value> {
+impl IsDao for ComponentDao {
+    fn to_row(&self) -> Vec<msi::Value> {
         vec![
             str_val!(self.component.to_string()),
             opt_str_val!(self.component_id),
@@ -49,5 +52,9 @@ impl ComponentDao {
             opt_str_val!(self.condition),
             opt_str_val!(self.key_path),
         ]
+    }
+
+    fn conflicts(&self, other: &Self) -> bool {
+        self.component == other.component
     }
 }

@@ -1,5 +1,6 @@
 use anyhow::ensure;
 
+use crate::constants::*;
 use crate::msitable_boilerplate;
 use crate::tables::builder_table::MsiBuilderTable;
 use crate::tables::media::dao::MediaDao;
@@ -28,26 +29,23 @@ impl MsiBuilderTable for MediaTable {
     }
 
     fn columns(&self) -> Vec<msi::Column> {
-        vec![]
-    }
-
-    fn rows(&self) -> Vec<Vec<msi::Value>> {
-        todo!()
-    }
-
-    fn contains(&self, dao: &MediaDao) -> bool {
-        // NOTE: We purposefully allow entries that have the same DefaultDir and
-        // are contained by the same parent because you can assign
-        // different components to these entries if you want
-        // both components to install to the same location but based on separate
-        // criteria.
-        self.0.iter().find(|entry| entry.disk_id() == dao.disk_id()).is_some()
-    }
-
-    fn add(&mut self, dao: Self::TableValue) -> anyhow::Result<()> {
-        // TODO: Create actual error for disk ID collision.
-        ensure!(!self.contains(&dao), "TEMPERROR");
-        self.0.push(dao);
-        Ok(())
+        vec![
+            msi::Column::build("DiskId").primary_key().int16(),
+            msi::Column::build("LastSequence").int16(),
+            msi::Column::build("DiskPrompt")
+                .nullable()
+                .text_string(DISK_PROMPT_MAX_LEN),
+            msi::Column::build("Cabinet")
+                .nullable()
+                .category(msi::Category::Cabinet)
+                .string(CABINET_MAX_LEN),
+            msi::Column::build("VolumeLabel")
+                .nullable()
+                .text_string(VOLUME_LABEL_MAX_LEN),
+            msi::Column::build("Source")
+                .nullable()
+                .category(msi::Category::Property)
+                .string(SOURCE_MAX_LEN),
+        ]
     }
 }

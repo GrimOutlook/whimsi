@@ -6,6 +6,7 @@ use getset::Getters;
 
 use super::directory_identifier::DirectoryIdentifier;
 use crate::str_val;
+use crate::tables::dao::IsDao;
 use crate::types::column::default_dir::DefaultDir;
 use crate::types::column::filename::Filename;
 use crate::types::column::identifier::Identifier;
@@ -31,13 +32,24 @@ impl DirectoryDao {
             parent: parent_id.into(),
         }
     }
+}
 
-    pub fn to_row(&self) -> Vec<msi::Value> {
+impl IsDao for DirectoryDao {
+    fn to_row(&self) -> Vec<msi::Value> {
         vec![
             str_val!(self.directory),
             str_val!(self.parent),
             str_val!(self.default_dir),
         ]
+    }
+
+    // NOTE: We purposefully allow entries that have the same DefaultDir and
+    // are contained by the same parent because you can assign
+    // different components to these entries if you want
+    // both components to install to the same location but based on separate
+    // criteria.
+    fn conflicts(&self, other: &Self) -> bool {
+        self.directory == other.directory
     }
 }
 
@@ -63,6 +75,7 @@ impl From<SystemFolder> for DirectoryDao {
 #[cfg(test)]
 mod test {
 
+    use crate::tables::dao::IsDao;
     use crate::tables::directory::dao::DirectoryDao;
     use crate::types::column::filename::Filename;
     use crate::types::properties::system_folder::SystemFolder;

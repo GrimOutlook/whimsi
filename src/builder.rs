@@ -6,6 +6,8 @@ use anyhow::Context;
 use anyhow::bail;
 use getset::Getters;
 use itertools::Itertools;
+use once_cell::sync::OnceCell;
+use once_cell::unsync::Lazy;
 use rand::distr::Alphanumeric;
 use rand::distr::SampleString;
 use tracing::debug;
@@ -143,6 +145,8 @@ impl MsiBuilder {
         parent: impl Into<DirectoryIdentifier>,
     ) -> anyhow::Result<Self> {
         let path = path.into();
+        let parent = parent.into();
+        debug!("Adding path [{:?}] contents to directory [{}]", path, parent);
 
         let id = self.add_directory_from_path(&path, parent)?;
 
@@ -240,6 +244,7 @@ impl MsiBuilder {
         file_id: Identifier,
         file_path: PathBuf,
     ) -> Sequence {
+        debug!("Adding file [{file_id}] with path [{file_path:?}] to media");
         // Verify there is a Media entry to add on to.
         if self.media.is_empty() {
             // Create a new cabinet file.
@@ -316,21 +321,29 @@ impl MsiBuilder {
     ///
     /// # Panics
     /// If a randomly generated ID is not a valid `Identifier`. Should not be
-    /// possible given the random string characterset and parsing rules of
+    /// possible given the how the `names` crate works and the parsing rules of
     /// an `Identifier`.
     pub fn generate_id(&mut self) -> Identifier {
+        let mut generator =
+            Lazy::new(|| names::Generator::with_naming(names::Name::Numbered));
         loop {
-            // Start the generated ID string with an underscore since
-            // identifiers aren't allowed to start with a number and
-            // this is the simplest way around rerolling if the randomly
-            // generated identifier starts with a number.
-            let mut id_string = "_".to_string();
-            let id_string_len = id_string.len();
-            Alphanumeric.append_string(
-                &mut rand::rng(),
-                &mut id_string,
-                IDENTIFIER_MAX_LEN - id_string_len,
-            );
+            // Prefix to indicate to anyone inspecting the MSI that an identifier was randomly
+            // generated and not explicitly stated by the package creator.
+            let prefix = "GEN_".to_uppercase();
+            let body = generator
+                .next()
+                .expect("Out of named IDs. I'm honestly impressed.")
+                .replace("-", "_")
+                .to_uppercase();
+
+            let id_string = format!("{}{}", prefix, body);
+
+            // Skip any IDs that are too long. I don't want to chop it down to size because I want
+            // the words to remain whole and the formate of the ID in general to remain the same.
+            if id_string.len() > IDENTIFIER_MAX_LEN {
+                continue;
+            }
+
             let id = Identifier::from_str(&id_string).unwrap();
             if !self.has_identifier(&id) {
                 // Ensure that the identifier cannot be generated again.

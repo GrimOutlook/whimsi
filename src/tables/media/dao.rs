@@ -1,6 +1,7 @@
 use anyhow::Context;
 use getset::Getters;
 
+use crate::tables::dao::IsDao;
 use crate::tables::media::cabinet_identifier::CabinetIdentifier;
 use crate::tables::media::disk_id::DiskId;
 use crate::tables::media::disk_id::{self};
@@ -10,6 +11,7 @@ use crate::types::column::identifier::Identifier;
 use crate::types::column::sequence::IncludedSequence;
 use crate::types::column::sequence::Sequence;
 use crate::types::helpers::cabinet_info::CabinetInfo;
+use crate::{int_val, opt_str_val};
 
 #[derive(Clone, Debug, Getters, PartialEq)]
 #[getset(get = "pub")]
@@ -60,5 +62,22 @@ impl MediaDao {
             self.last_sequence.into(),
             cab.id().clone(),
         )))
+    }
+}
+
+impl IsDao for MediaDao {
+    fn to_row(&self) -> Vec<msi::Value> {
+        vec![
+            int_val!(self.disk_id),
+            int_val!(self.last_sequence),
+            opt_str_val!(self.disk_prompt),
+            opt_str_val!(self.cabinet),
+            opt_str_val!(self.volume_label),
+            opt_str_val!(self.source),
+        ]
+    }
+
+    fn conflicts(&self, other: &Self) -> bool {
+        self.disk_id == other.disk_id
     }
 }

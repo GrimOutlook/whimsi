@@ -11,6 +11,7 @@ use crate::int_val;
 use crate::opt_str_val;
 use crate::opt_val;
 use crate::str_val;
+use crate::tables::dao::IsDao;
 use crate::types::column::attributes::Attributes;
 use crate::types::column::filename::Filename;
 use crate::types::column::identifier::Identifier;
@@ -31,19 +32,6 @@ pub struct FileDao {
 }
 
 impl FileDao {
-    pub fn to_row(&self) -> Vec<msi::Value> {
-        vec![
-            str_val!(self.file),
-            str_val!(self.component),
-            str_val!(self.name),
-            dint_val!(self.size),
-            opt_str_val!(self.version),
-            opt_val!(self.language),
-            opt_val!(self.attributes),
-            int_val!(Into::<i16>::into(self.sequence.clone())),
-        ]
-    }
-
     /// Create a FileDao for a file that is to be installed when the MSI is run.
     pub(crate) fn install_file(
         file_id: Identifier,
@@ -122,5 +110,24 @@ impl FileDao {
             })?;
 
         Self::install_file(file_id, component_id, name, size, sequence)
+    }
+}
+
+impl IsDao for FileDao {
+    fn to_row(&self) -> Vec<msi::Value> {
+        vec![
+            str_val!(self.file),
+            str_val!(self.component),
+            str_val!(self.name),
+            dint_val!(self.size),
+            opt_str_val!(self.version),
+            opt_val!(self.language),
+            opt_val!(self.attributes),
+            int_val!(Into::<i16>::into(self.sequence.clone())),
+        ]
+    }
+
+    fn conflicts(&self, other: &Self) -> bool {
+        self.file == other.file
     }
 }

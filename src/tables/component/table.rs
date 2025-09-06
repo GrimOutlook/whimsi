@@ -5,6 +5,7 @@ use super::dao::ComponentDao;
 use crate::constants::*;
 use crate::msitable_boilerplate;
 use crate::tables::builder_table::MsiBuilderTable;
+use crate::tables::dao::IsDao;
 
 #[derive(Debug, Clone, Default)]
 pub struct ComponentTable(Vec<ComponentDao>);
@@ -37,23 +38,5 @@ impl MsiBuilderTable for ComponentTable {
                 .nullable()
                 .id_string(IDENTIFIER_MAX_LEN),
         ]
-    }
-
-    fn rows(&self) -> Vec<Vec<msi::Value>> {
-        self.values().iter().map(ComponentDao::to_row).collect_vec()
-    }
-
-    fn contains(&self, dao: &ComponentDao) -> bool {
-        self.0
-            .iter()
-            .find(|entry| entry.component() == dao.component())
-            .is_some()
-    }
-
-    fn add(&mut self, dao: Self::TableValue) -> anyhow::Result<()> {
-        // TODO: Create actual error for component ID collision.
-        ensure!(!self.contains(&dao), "TEMPERROR");
-        self.0.push(dao);
-        Ok(())
     }
 }

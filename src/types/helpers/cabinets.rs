@@ -1,11 +1,8 @@
 use anyhow::ensure;
 
-use crate::{
-    tables::media::cabinet_identifier::CabinetIdentifier,
-    types::{
-        column::identifier::Identifier, helpers::cabinet_info::CabinetInfo,
-    },
-};
+use crate::tables::media::cabinet_identifier::CabinetIdentifier;
+use crate::types::column::identifier::Identifier;
+use crate::types::helpers::cabinet_info::CabinetInfo;
 
 #[derive(Debug, Default)]
 pub(crate) struct Cabinets(Vec<CabinetInfo>);

@@ -8,9 +8,11 @@ use crate::tables::media::dao::MediaDao;
 pub struct MediaTable(Vec<MediaDao>);
 
 impl MediaTable {
-    pub(crate) fn get_last_internal_media(&mut self) -> Option<&mut MediaDao> {
-        // Since only internal cabinets have an ID we can just verify that the cabinet_id is
-        // populated.
+    pub(crate) fn get_last_internal_media_mut(
+        &mut self,
+    ) -> Option<&mut MediaDao> {
+        // Since only internal cabinets have an ID we can just verify that the
+        // cabinet_id is populated.
         self.0.iter_mut().rfind(|media| media.cabinet_id().is_some())
     }
 }

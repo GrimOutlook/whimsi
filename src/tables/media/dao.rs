@@ -2,11 +2,13 @@ use anyhow::Context;
 use getset::Getters;
 
 use crate::tables::media::cabinet_identifier::CabinetIdentifier;
-use crate::tables::media::disk_id::{self, DiskId};
+use crate::tables::media::disk_id::DiskId;
+use crate::tables::media::disk_id::{self};
 use crate::tables::media::last_sequence::LastSequence;
 use crate::tables::media::property::Property;
 use crate::types::column::identifier::Identifier;
-use crate::types::column::sequence::{IncludedSequence, Sequence};
+use crate::types::column::sequence::IncludedSequence;
+use crate::types::column::sequence::Sequence;
 use crate::types::helpers::cabinet_info::CabinetInfo;
 
 #[derive(Clone, Debug, Getters, PartialEq)]

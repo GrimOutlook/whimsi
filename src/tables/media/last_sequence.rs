@@ -1,10 +1,7 @@
-use crate::{
-    constants::*,
-    types::{
-        column::sequence::{IncludedSequence, Sequence},
-        helpers::cabinet_info::CabinetInfo,
-    },
-};
+use crate::constants::*;
+use crate::types::column::sequence::IncludedSequence;
+use crate::types::column::sequence::Sequence;
+use crate::types::helpers::cabinet_info::CabinetInfo;
 
 #[derive(Debug, Clone, Copy, derive_more::Into, PartialEq)]
 pub struct LastSequence(i16);

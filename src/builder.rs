@@ -13,7 +13,9 @@ use tracing::info;
 
 use crate::constants::*;
 use crate::tables::builder_table::MsiBuilderTable;
+use crate::tables::component::dao::ComponentDao;
 use crate::tables::component::table::ComponentTable;
+use crate::tables::dao::Dao;
 use crate::tables::directory::dao::DirectoryDao;
 use crate::tables::directory::directory_identifier::DirectoryIdentifier;
 use crate::tables::directory::table::DirectoryTable;
@@ -219,14 +221,18 @@ impl MsiBuilder {
         let sequence = self.add_to_media(file_id.clone(), path.clone());
         let file_dao = FileDao::install_file_from_path(
             file_id,
-            component_id,
+            component_id.clone(),
             path,
             sequence,
-        );
-        todo!()
+        )?;
+        let component_dao = ComponentDao::new(component_id, parent_id.into());
+        self.insert_dao(file_dao)?;
+        self.insert_dao(component_dao)?;
+        Ok(self)
     }
 
-    /// Adds the given file to media so it will be installed when the MSI is run.
+    /// Adds the given file to media so it will be installed when the MSI is
+    /// run.
     ///
     /// If no media entry exists yet, one is created along with a cabinet file.
     fn add_to_media(
@@ -235,17 +241,19 @@ impl MsiBuilder {
         file_path: PathBuf,
     ) -> Sequence {
         // Verify there is a Media entry to add on to.
-        let mut media_dao = if self.media.is_empty() {
+        if self.media.is_empty() {
             // Create a new cabinet file.
             let cabinet_id = self.new_cabinet();
             // Create a new media DAO.
-            &mut MediaDao::internal(1, cabinet_id.clone())
-                .expect("Creating first entry to Media table failed")
-        } else {
-            self.media
-                .get_last_internal_media()
-                .expect("Media table contains no internal CAB files")
-        };
+            let dao = MediaDao::internal(1, cabinet_id.clone())
+                .expect("Creating first entry to Media table failed");
+            self.insert_dao(dao);
+        }
+
+        let media_dao = self
+            .media
+            .get_last_internal_media_mut()
+            .expect("Media table contains no internal CAB files");
 
         // Add the file to the cabinet.
         let cabinet_id = &media_dao
@@ -254,7 +262,8 @@ impl MsiBuilder {
         let mut cabinet_info =
             self.cabinets.find_id_mut(cabinet_id).expect(&format!("Cabinet of ID [{}] referenced by media with disk ID [{}] was not found", cabinet_id, media_dao.disk_id()));
         cabinet_info.add_file(file_id, file_path);
-        // Set the Media table entry's LastSequence to the number of files in the cabinet.
+        // Set the Media table entry's LastSequence to the number of files in
+        // the cabinet.
         media_dao
             .set_last_sequence(cabinet_info)
             .expect("LastSequence got too large. TODO: Handle this case.")
@@ -331,8 +340,20 @@ impl MsiBuilder {
         }
     }
 
+    /// Check to see if the given identifier has already been used.
     pub fn has_identifier(&self, identifier: &Identifier) -> bool {
         self.identifiers.iter().any(|i| i == identifier)
+    }
+
+    /// Insert the given DAO into it's respective table.
+    pub fn insert_dao(&mut self, dao: impl Into<Dao>) -> anyhow::Result<()> {
+        let dao = Into::<Dao>::into(dao);
+        match dao {
+            Dao::Component(component_dao) => self.component.add(component_dao),
+            Dao::Directory(directory_dao) => self.directory.add(directory_dao),
+            Dao::File(file_dao) => self.file.add(file_dao),
+            Dao::Media(media_dao) => self.media.add(media_dao),
+        }
     }
 }
 

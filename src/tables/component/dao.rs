@@ -4,6 +4,7 @@ use getset::Getters;
 use crate::int_val;
 use crate::opt_str_val;
 use crate::str_val;
+use crate::tables::directory::directory_identifier::DirectoryIdentifier;
 use crate::types::column::condition::Condition;
 use crate::types::column::guid::Guid;
 use crate::types::column::identifier::Identifier;
@@ -13,13 +14,32 @@ use crate::types::column::identifier::Identifier;
 pub struct ComponentDao {
     component: Identifier,
     component_id: Option<Guid>,
-    directory: Identifier,
+    directory: DirectoryIdentifier,
     attributes: i16,
     condition: Option<Condition>,
     key_path: Option<Identifier>,
 }
 
 impl ComponentDao {
+    pub fn new(
+        component_id: Identifier,
+        directory_id: DirectoryIdentifier,
+    ) -> ComponentDao {
+        ComponentDao {
+            component: component_id,
+            directory: directory_id,
+            component_id: None,
+            attributes: 0,
+            condition: None,
+            key_path: None,
+        }
+    }
+
+    pub fn with_keypath(mut self, key_path: Identifier) -> Self {
+        self.key_path = Some(key_path);
+        self
+    }
+
     pub fn to_row(&self) -> Vec<msi::Value> {
         vec![
             str_val!(self.component.to_string()),

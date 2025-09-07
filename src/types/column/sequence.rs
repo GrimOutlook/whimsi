@@ -1,6 +1,6 @@
 use super::identifier::Identifier;
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, strum::EnumTryAs)]
 pub enum Sequence {
     Included(IncludedSequence),
     // I was curious if there was a usecase where a FileTable entry could be
@@ -22,6 +22,12 @@ pub enum Sequence {
 pub struct IncludedSequence {
     inner: i16,
     media: Identifier,
+}
+
+impl IncludedSequence {
+    pub fn to_i16(&self) -> i16 {
+        self.inner
+    }
 }
 
 impl Into<i16> for IncludedSequence {

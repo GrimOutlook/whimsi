@@ -230,8 +230,8 @@ impl MsiBuilder {
             sequence,
         )?;
         let component_dao = ComponentDao::new(component_id, parent_id.into());
-        self.insert_dao(file_dao)?;
-        self.insert_dao(component_dao)?;
+        self.add_to_tables(file_dao)?;
+        self.add_to_tables(component_dao)?;
         Ok(self)
     }
 
@@ -252,7 +252,7 @@ impl MsiBuilder {
             // Create a new media DAO.
             let dao = MediaDao::internal(1, cabinet_id.clone())
                 .expect("Creating first entry to Media table failed");
-            self.insert_dao(dao);
+            self.add_to_tables(dao);
         }
 
         let media_dao = self
@@ -289,7 +289,8 @@ impl MsiBuilder {
         info!("Building MSI");
         let mut package =
             msi::Package::create(*self.meta.package_type(), container)?;
-        self.write_to_package(&mut package)?;
+        self.write_cabinets_to_package(&mut package)?;
+        self.write_tables_to_package(&mut package)?;
         Ok(package)
     }
 
@@ -299,7 +300,7 @@ impl MsiBuilder {
     /// Information is written based on a predetermined order so that
     /// information that doesn't reference other table information is
     /// written first.
-    pub(crate) fn write_to_package<
+    pub(crate) fn write_tables_to_package<
         F: std::io::Read + std::io::Write + std::io::Seek,
     >(
         &self,
@@ -312,6 +313,69 @@ impl MsiBuilder {
         self.media.write_to_package(package);
         // self.property.write_to_package(package);
         Ok(())
+    }
+
+    pub(crate) fn write_cabinets_to_package<
+        F: std::io::Read + std::io::Write + std::io::Seek,
+    >(
+        &self,
+        package: &mut msi::Package<F>,
+    ) -> anyhow::Result<()> {
+        let previous_last_sequence = 1;
+        for media in self
+            .media
+            .items()
+            .iter()
+            .sorted_by_key(|dao| Into::<i16>::into(*dao.last_sequence()))
+        {
+            let Some(cabinet_id) = media.cabinet_id() else {
+                // Ignore media listings that don't represent an internal cabinet file
+                continue;
+            };
+            let last_sequence = Into::<i16>::into(*media.last_sequence());
+            if last_sequence == 0 {
+                // Skip this cabinet file if no files are to be written to it.
+                continue;
+            }
+            let cabinet_info = self.cabinets.find_id(&cabinet_id).expect(
+                "Cabinet of ID [{}] could not be found when trying to build it!",
+            );
+            let files = self
+                .file
+                .in_sequence_range(previous_last_sequence, last_sequence);
+            if files.len() == 0 {
+                unreachable!(
+                    "No files found for given cabinet file. This should not happen."
+                )
+            }
+
+            let cabinet_file =
+                self.create_cabinet_file(&cabinet_info, &files)?;
+
+            self.write_cabinet_to_package(&cabinet_file, package)?;
+        }
+        Ok(())
+    }
+
+    pub(crate) fn create_cabinet_file(
+        &self,
+        cabinet_info: &CabinetInfo,
+        files: &Vec<&FileDao>,
+    ) -> anyhow::Result<cab::Cabinet<std::fs::File>> {
+        debug!("Creating cabinet file [{}]", cabinet_info.id());
+        let mut cab_builder = cab::CabinetBuilder::new();
+        todo!()
+    }
+
+    pub(crate) fn write_cabinet_to_package<
+        F: std::io::Read + std::io::Write + std::io::Seek,
+    >(
+        &self,
+        cabinet: &cab::Cabinet<std::fs::File>,
+        package: &mut msi::Package<F>,
+    ) -> anyhow::Result<()> {
+        debug!("Writing cabinet file to package");
+        todo!()
     }
 
     /// Generate an `Identifier` not already listed in the `Identifiers` list.
@@ -359,7 +423,7 @@ impl MsiBuilder {
     }
 
     /// Insert the given DAO into it's respective table.
-    pub fn insert_dao(&mut self, dao: impl Into<Dao>) -> anyhow::Result<()> {
+    pub fn add_to_tables(&mut self, dao: impl Into<Dao>) -> anyhow::Result<()> {
         let dao = Into::<Dao>::into(dao);
         match dao {
             Dao::Component(component_dao) => self.component.add(component_dao),

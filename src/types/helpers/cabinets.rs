@@ -21,7 +21,15 @@ impl Cabinets {
         self.0.iter().any(|cab| cab.id() == id)
     }
 
+    pub fn find_id(&self, id: &Identifier) -> Option<&CabinetInfo> {
+        self.0.iter().find(|cab| cab.id() == id)
+    }
+
     pub fn find_id_mut(&mut self, id: &Identifier) -> Option<&mut CabinetInfo> {
         self.0.iter_mut().find(|cab| cab.id() == id)
+    }
+
+    pub fn inner(&self) -> &Vec<CabinetInfo> {
+        &self.0
     }
 }

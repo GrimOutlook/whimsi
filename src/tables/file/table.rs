@@ -6,9 +6,24 @@ use crate::constants::*;
 use crate::msitable_boilerplate;
 use crate::tables::builder_table::MsiBuilderTable;
 use crate::types::column::identifier::Identifier;
+use crate::types::column::sequence::Sequence;
 
 #[derive(Debug, Clone, Default)]
 pub struct FileTable(Vec<FileDao>);
+impl FileTable {
+    pub fn in_sequence_range(&self, min: i16, max: i16) -> Vec<&FileDao> {
+        self.0
+            .iter()
+            .filter(|file| {
+                if let Sequence::Included(sequence) = file.sequence() {
+                    let sequence = sequence.to_i16();
+                    return sequence >= min && sequence <= max;
+                }
+                false
+            })
+            .collect()
+    }
+}
 impl MsiBuilderTable for FileTable {
     type TableValue = FileDao;
 

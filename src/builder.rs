@@ -1,3 +1,6 @@
+use std::io::Read;
+use std::io::Seek;
+use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -349,10 +352,15 @@ impl MsiBuilder {
                 )
             }
 
-            let cabinet_file =
-                self.create_cabinet_file(&cabinet_info, &files)?;
+            let mut cabinet_file = self.create_cabinet_file(&cabinet_info)?;
+            cabinet_file.rewind();
+            debug!("Position: {:?}", cabinet_file.stream_position());
 
-            self.write_cabinet_to_package(&cabinet_file, package)?;
+            self.write_cabinet_to_package(
+                &cabinet_info,
+                &mut cabinet_file,
+                package,
+            )?;
         }
         Ok(())
     }
@@ -360,22 +368,62 @@ impl MsiBuilder {
     pub(crate) fn create_cabinet_file(
         &self,
         cabinet_info: &CabinetInfo,
-        files: &Vec<&FileDao>,
-    ) -> anyhow::Result<cab::Cabinet<std::fs::File>> {
+    ) -> anyhow::Result<std::fs::File> {
         debug!("Creating cabinet file [{}]", cabinet_info.id());
         let mut cab_builder = cab::CabinetBuilder::new();
-        todo!()
+        let mut folder = cab_builder.add_folder(cab::CompressionType::MsZip);
+        cabinet_info.files().iter().for_each(|file| {
+            /// NOTE: From what I can tell attributes only need to be set on files in the File
+            /// table as those attributes overwrite the attributes that are set in the cabinet
+            /// file.
+            folder.add_file(file.id().to_string());
+        });
+        let file = tempfile::tempfile().with_context(|| {
+            format!(
+                "Failed to create tempfile for cabinet [{}]",
+                cabinet_info.id()
+            )
+        })?;
+        let mut cab_writer = cab_builder.build(file).with_context(|| {
+            format!(
+                "Failed to create cabinet file writer for cabinet file [{}]",
+                cabinet_info.id()
+            )
+        })?;
+
+        let mut files_iter = cabinet_info.files().iter();
+        while let Some(mut writer) =
+            cab_writer.next_file().expect("Failed to open")
+            && let Some(file) = files_iter.next()
+        {
+            let mut reader = std::fs::File::open(file.path()).unwrap();
+            std::io::copy(&mut reader, &mut writer).unwrap();
+        }
+
+        Ok(cab_writer.finish()?)
     }
 
     pub(crate) fn write_cabinet_to_package<
         F: std::io::Read + std::io::Write + std::io::Seek,
     >(
         &self,
-        cabinet: &cab::Cabinet<std::fs::File>,
+        cabinet_info: &CabinetInfo,
+        cabinet: &mut std::fs::File,
         package: &mut msi::Package<F>,
     ) -> anyhow::Result<()> {
-        debug!("Writing cabinet file to package");
-        todo!()
+        let cabinet_id = cabinet_info.id();
+        debug!(
+            "Writing cabinet file for cabinet ID [{}] to package",
+            cabinet_id
+        );
+        let mut writer = package
+            .write_stream(&cabinet_id.to_string())
+            .context("Failed to create stream writier for package")?;
+        std::io::copy(cabinet, &mut writer).with_context(|| {
+            format!("Failed to copy cabinet [{cabinet_id}] to package")
+        })?;
+
+        Ok(())
     }
 
     /// Generate an `Identifier` not already listed in the `Identifiers` list.

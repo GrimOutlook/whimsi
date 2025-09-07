@@ -10,7 +10,7 @@ fn main() {
         .write(true)
         .create(true)
         .truncate(true)
-        .open("test.msi")
+        .open("/tmp/test.msi")
         .expect("Failed to open file");
 
     let mut builder = MsiBuilder::default();

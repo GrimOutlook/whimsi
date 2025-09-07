@@ -30,7 +30,8 @@ impl CabinetInfo {
 // is any need to track file sizes in a cabinet file or the size of the
 // cabinet file itself.
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Getters)]
+#[getset(get = "pub")]
 pub struct CabinetContainedFile {
     id: Identifier,
     path: PathBuf,

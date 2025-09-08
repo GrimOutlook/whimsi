@@ -28,6 +28,9 @@ use crate::tables::dao::Dao;
 use crate::tables::directory::dao::DirectoryDao;
 use crate::tables::directory::directory_identifier::DirectoryIdentifier;
 use crate::tables::directory::table::DirectoryTable;
+use crate::tables::feature::identifier::FeatureIdentifier;
+use crate::tables::feature::table::FeatureTable;
+use crate::tables::feature_components::dao::FeatureComponentsDao;
 use crate::tables::file::dao::FileDao;
 use crate::tables::file::table::FileIdentifier;
 use crate::tables::file::table::FileTable;
@@ -65,6 +68,7 @@ pub struct MsiBuilder {
     directory: DirectoryTable,
     file: FileTable,
     media: MediaTable,
+    feature: FeatureTable,
     property: PropertyTable,
 }
 
@@ -439,11 +443,22 @@ impl MsiBuilder {
         component_id: &ComponentIdentifier,
     ) -> anyhow::Result<()> {
         // Get the default feature DAO.
-        //
-        // Get the default feature ID.
-        //
+        let Some(default) = self.feature.get_default_feature() else {
+            bail!("No default feature could be found");
+        };
         // Add the component to the default feature.
-        todo!()
+        self.add_component_to_feature(&default.feature().clone(), component_id)
+    }
+
+    fn add_component_to_feature(
+        &mut self,
+        feature_id: &FeatureIdentifier,
+        component_id: &ComponentIdentifier,
+    ) -> anyhow::Result<()> {
+        self.feature_components.add(FeatureComponentsDao::new(
+            feature_id.clone(),
+            component_id.clone(),
+        ))
     }
 
     /// Insert the given DAO into it's respective table.
@@ -469,12 +484,18 @@ impl Default for MsiBuilder {
         let empty_entries = Rc::new(RefCell::new(Vec::new()));
         Self {
             meta: Default::default(),
+
+            // Tables that don't have IDs for their entries.
             property: Default::default(),
             media: Default::default(),
+
             identifiers: empty_entries.clone(),
             cabinets: Cabinets::new(empty_entries.clone()),
+
+            // Tables that can generate IDs for their entries.
             component: ComponentTable::new(empty_entries.clone()),
             directory: DirectoryTable::new(empty_entries.clone()),
+            feature: FeatureTable::new(empty_entries.clone()),
             file: FileTable::new(empty_entries.clone()),
         }
     }

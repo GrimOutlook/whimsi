@@ -148,7 +148,11 @@ macro_rules! implement_new_for_id_generator_table {
     ($table:ident, $generator:ident) => {
         impl $table {
             pub fn new(
-                identifiers: std::rc::Rc<std::cell::RefCell<Vec<Identifier>>>,
+                identifiers: std::rc::Rc<
+                    std::cell::RefCell<
+                        Vec<$crate::types::column::identifier::Identifier>,
+                    >,
+                >,
             ) -> Self {
                 let entries = Vec::new();
                 let generator = $generator::from(identifiers);

@@ -5,6 +5,7 @@ pub mod component;
 pub(crate) mod dao;
 pub mod directory;
 pub mod feature;
+pub mod feature_components;
 pub mod file;
 pub(crate) mod id_generator_builder_list;
 pub(crate) mod macros;

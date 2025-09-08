@@ -1,4 +1,3 @@
-use crate::msi_list_boilerplate;
 use crate::tables::builder_list::MsiBuilderList;
 use crate::tables::feature::identifier::FeatureIdentifier;
 use crate::types::helpers::id_generator::IdGenerator;
@@ -10,18 +9,21 @@ use crate::{
         file::dao::FileDao,
     },
 };
+use crate::{implement_new_for_id_generator_table, msi_list_boilerplate};
 
 define_identifier_generator!(feature);
 
 #[derive(Debug, Clone)]
 pub struct FeatureTable {
     entries: Vec<FeatureDao>,
-    id_generator: FeatureIdGenerator,
+    generator: FeatureIdGenerator,
 }
 
 impl FeatureTable {
-    pub fn get_default_feature(&self) -> &FeatureDao {
-        todo!()
+    pub fn get_default_feature(&self) -> Option<&FeatureDao> {
+        self.entries.iter().find(|feature| {
+            feature.feature().to_string() == DEFAULT_FEATURE_IDENTIFIER
+        })
     }
 }
 
@@ -62,3 +64,5 @@ impl MsiBuilderList for FeatureTable {
 
     msi_list_boilerplate!();
 }
+
+implement_new_for_id_generator_table!(FeatureTable, FeatureIdGenerator);

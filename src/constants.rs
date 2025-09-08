@@ -11,6 +11,9 @@ pub const LANGUAGE_MAX_LEN: usize = 20;
 pub const SOURCE_MAX_LEN: usize = 72;
 pub const VERSION_MAX_LEN: usize = 72;
 pub const VOLUME_LABEL_MAX_LEN: usize = 32;
+pub const TITLE_MAX_LEN: usize = 64;
+pub const DESCRIPTION_MAX_LEN: usize = 255;
+pub const FEATURE_IDENTIFIER_MAX_LEN: usize = 38;
 
 // Found here: https://learn.microsoft.com/en-us/windows/win32/msi/filename
 pub const SHORT_FILENAME_MAX_LEN: usize = 8;

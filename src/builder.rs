@@ -225,6 +225,7 @@ impl MsiBuilder {
 
         let file_id = self.generate_id();
         let component_id = self.generate_id();
+        self.add_to_default_feature(&component_id)?;
         let sequence = self.add_to_media(file_id.clone(), path.clone());
         let file_dao = FileDao::install_file_from_path(
             file_id,
@@ -353,8 +354,9 @@ impl MsiBuilder {
             }
 
             let mut cabinet_file = self.create_cabinet_file(&cabinet_info)?;
+            // Have to set the poisition of the file reader back to 0 so that it gets read from the
+            // beginning when it gets read again.
             cabinet_file.rewind();
-            debug!("Position: {:?}", cabinet_file.stream_position());
 
             self.write_cabinet_to_package(
                 &cabinet_info,
@@ -424,6 +426,18 @@ impl MsiBuilder {
         })?;
 
         Ok(())
+    }
+
+    fn add_to_default_feature(
+        &mut self,
+        component_id: &Identifier,
+    ) -> anyhow::Result<()> {
+        // Get the default feature DAO.
+        //
+        // Get the default feature ID.
+        //
+        // Add the component to the default feature.
+        todo!()
     }
 
     /// Generate an `Identifier` not already listed in the `Identifiers` list.

@@ -2,6 +2,7 @@ pub(crate) mod builder_table;
 pub mod component;
 pub(crate) mod dao;
 pub mod directory;
+pub mod feature;
 pub mod file;
 pub(crate) mod macros;
 pub mod media;

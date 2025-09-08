@@ -2,22 +2,40 @@ use std::path::PathBuf;
 
 use getset::Getters;
 
-use crate::types::column::identifier::Identifier;
+use crate::{
+    tables::{
+        builder_list_entry::MsiBuilderListEntry, file::table::FileIdentifier,
+        media::cabinet_identifier::CabinetIdentifier,
+    },
+    types::column::identifier::{Identifier, ToOptionalIdentifier},
+};
 
-#[derive(Debug, Clone, Default, Getters)]
+#[derive(Debug, Clone, Default, Getters, PartialEq)]
 #[getset(get = "pub")]
 pub struct CabinetInfo {
-    id: Identifier,
+    id: CabinetIdentifier,
     files: Vec<CabinetContainedFile>,
 }
 
 impl CabinetInfo {
-    pub fn new(id: Identifier) -> Self {
+    pub fn new(id: CabinetIdentifier) -> Self {
         Self { id, files: Vec::new() }
     }
 
-    pub fn add_file(&mut self, id: Identifier, path: PathBuf) {
+    pub fn add_file(&mut self, id: FileIdentifier, path: PathBuf) {
         self.files.push(CabinetContainedFile { id, path });
+    }
+}
+
+impl MsiBuilderListEntry for CabinetInfo {
+    fn conflicts(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl ToOptionalIdentifier for CabinetInfo {
+    fn to_optional_identifier(&self) -> Option<Identifier> {
+        self.id.to_optional_identifier()
     }
 }
 
@@ -30,10 +48,10 @@ impl CabinetInfo {
 // is any need to track file sizes in a cabinet file or the size of the
 // cabinet file itself.
 
-#[derive(Debug, Clone, Getters)]
+#[derive(Debug, Clone, Getters, PartialEq)]
 #[getset(get = "pub")]
 pub struct CabinetContainedFile {
-    id: Identifier,
+    id: FileIdentifier,
     path: PathBuf,
     // size: i32,
 }

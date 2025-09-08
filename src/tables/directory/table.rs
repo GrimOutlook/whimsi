@@ -1,3 +1,8 @@
+use crate::implement_id_generator_for_table;
+use crate::msi_list_boilerplate;
+use crate::tables::builder_list::MsiBuilderList;
+use crate::tables::directory::directory_identifier::DirectoryIdentifier;
+use crate::tables::id_generator_builder_list::IdGeneratorBuilderList;
 use anyhow::bail;
 use anyhow::ensure;
 use itertools::Itertools;
@@ -5,20 +10,29 @@ use thiserror::Error;
 
 use super::dao::DirectoryDao;
 use crate::constants::*;
-use crate::msitable_boilerplate;
+use crate::define_identifier_generator;
+use crate::define_specific_identifier;
+use crate::define_specific_identifier_parsing;
+use crate::msi_table_boilerplate;
 use crate::tables::builder_table::MsiBuilderTable;
 use crate::types::column::default_dir::DefaultDir;
 use crate::types::column::identifier::Identifier;
 use crate::types::column::identifier::ToIdentifier;
 use crate::types::properties::system_folder::SystemFolder;
 
+define_identifier_generator!(directory);
+
 #[derive(Clone, Debug, PartialEq)]
-pub struct DirectoryTable(Vec<DirectoryDao>);
+pub struct DirectoryTable {
+    entries: Vec<DirectoryDao>,
+    generator: DirectoryIdGenerator,
+}
+
 impl MsiBuilderTable for DirectoryTable {
     type TableValue = DirectoryDao;
 
     // Boilderplate needed to access information on the inner object
-    msitable_boilerplate!();
+    msi_table_boilerplate!();
 
     fn name(&self) -> &'static str {
         "Directory"
@@ -28,48 +42,46 @@ impl MsiBuilderTable for DirectoryTable {
         vec![
             msi::Column::build("Directory")
                 .primary_key()
-                .id_string(IDENTIFIER_MAX_LEN),
+                .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
             msi::Column::build("Directory_Parent")
                 .nullable()
-                .id_string(IDENTIFIER_MAX_LEN),
+                .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
             msi::Column::build("DefaultDir")
                 .category(msi::Category::DefaultDir)
                 .string(DEFAULT_DIR_MAX_LEN),
         ]
     }
-
-    fn add(&mut self, dao: Self::TableValue) -> anyhow::Result<()> {
-        // TODO: Create actual error for directory ID collision.
-        ensure!(!self.contains(&dao), "TEMPERROR");
-        self.0.push(dao);
-        Ok(())
-    }
-}
-
-impl Default for DirectoryTable {
-    fn default() -> Self {
-        let v = vec![SystemFolder::TARGETDIR.into()];
-        Self(v)
-    }
 }
 
 impl DirectoryTable {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(
+        identifiers: std::rc::Rc<std::cell::RefCell<Vec<Identifier>>>,
+    ) -> Self {
+        let entries = Vec::new();
+        let generator = DirectoryIdGenerator::from(identifiers);
+        let mut table = Self { entries, generator };
+        IdGeneratorBuilderList::add(
+            &mut table,
+            DirectoryDao::from(SystemFolder::TARGETDIR),
+        )
+        .expect("Failed to add default directtories to Directory table.");
+        table
     }
 
     pub fn entry_with_id(
         &self,
         identifier: &Identifier,
     ) -> Option<&DirectoryDao> {
-        self.0.iter().find(|d| d.directory().to_identifier() == *identifier)
+        self.entries
+            .iter()
+            .find(|d| d.directory().to_identifier() == *identifier)
     }
 
     pub fn entries_with_parent(
         &self,
         parent_id: &Identifier,
     ) -> Vec<&DirectoryDao> {
-        self.0
+        self.entries
             .iter()
             .filter(|d| d.parent().to_identifier() == *parent_id)
             .collect_vec()
@@ -80,9 +92,16 @@ impl DirectoryTable {
     }
 
     pub fn len(&self) -> usize {
-        self.0.len()
+        self.entries.len()
     }
 }
+
+impl MsiBuilderList for DirectoryTable {
+    type ListValue = DirectoryDao;
+    msi_list_boilerplate!();
+}
+
+implement_id_generator_for_table!(DirectoryTable, DirectoryIdGenerator);
 
 #[derive(Debug, Error)]
 pub enum DirectoryTableError {
@@ -96,13 +115,16 @@ pub enum DirectoryTableError {
 
 #[cfg(test)]
 mod test {
+    use std::cell::RefCell;
     use std::io::Cursor;
+    use std::rc::Rc;
     use std::str::FromStr;
 
     use msi::PackageType;
     use msi::Select;
 
     use super::DirectoryTable;
+    use crate::tables::builder_list::MsiBuilderList;
     use crate::tables::builder_table::MsiBuilderTable;
     use crate::tables::directory::dao::DirectoryDao;
     use crate::types::column::default_dir::DefaultDir;
@@ -117,7 +139,7 @@ mod test {
             Cursor::new(Vec::new()),
         )
         .unwrap();
-        let mut table = DirectoryTable::default();
+        let mut table = DirectoryTable::new(Rc::new(RefCell::new(Vec::new())));
         let parent = SystemFolder::ProgramFilesFolder;
         table.add(parent.into());
         table.add(DirectoryDao::new(

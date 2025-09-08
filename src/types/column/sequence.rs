@@ -21,7 +21,6 @@ pub enum Sequence {
 #[derive(Clone, Debug, PartialEq, derive_more::Constructor)]
 pub struct IncludedSequence {
     inner: i16,
-    media: Identifier,
 }
 
 impl IncludedSequence {

@@ -4,16 +4,20 @@ use getset::Getters;
 use crate::int_val;
 use crate::opt_str_val;
 use crate::str_val;
+use crate::tables::builder_list_entry::MsiBuilderListEntry;
+use crate::tables::component::table::ComponentIdentifier;
 use crate::tables::dao::IsDao;
 use crate::tables::directory::directory_identifier::DirectoryIdentifier;
 use crate::types::column::condition::Condition;
 use crate::types::column::guid::Guid;
 use crate::types::column::identifier::Identifier;
+use crate::types::column::identifier::ToIdentifier;
+use crate::types::column::identifier::ToOptionalIdentifier;
 
 #[derive(Debug, Clone, Getters)]
 #[getset(get = "pub(crate)")]
 pub struct ComponentDao {
-    component: Identifier,
+    component: ComponentIdentifier,
     component_id: Option<Guid>,
     directory: DirectoryIdentifier,
     attributes: i16,
@@ -23,7 +27,7 @@ pub struct ComponentDao {
 
 impl ComponentDao {
     pub fn new(
-        component_id: Identifier,
+        component_id: ComponentIdentifier,
         directory_id: DirectoryIdentifier,
     ) -> ComponentDao {
         ComponentDao {
@@ -53,8 +57,15 @@ impl IsDao for ComponentDao {
             opt_str_val!(self.key_path),
         ]
     }
-
+}
+impl MsiBuilderListEntry for ComponentDao {
     fn conflicts(&self, other: &Self) -> bool {
         self.component == other.component
+    }
+}
+
+impl ToOptionalIdentifier for ComponentDao {
+    fn to_optional_identifier(&self) -> Option<Identifier> {
+        self.component.to_optional_identifier()
     }
 }

@@ -87,6 +87,12 @@ impl ToIdentifier for Identifier {
     }
 }
 
+impl ToOptionalIdentifier for Identifier {
+    fn to_optional_identifier(&self) -> Option<Identifier> {
+        Some(self.to_identifier())
+    }
+}
+
 #[derive(Debug, Error, PartialEq)]
 pub enum IdentifierConversionError {
     #[error("Identifier has invalid first character: [{first_character}]")]
@@ -96,8 +102,13 @@ pub enum IdentifierConversionError {
 }
 
 #[delegatable_trait]
-pub trait ToIdentifier {
+pub trait ToIdentifier: ToOptionalIdentifier {
     fn to_identifier(&self) -> Identifier;
+}
+
+#[delegatable_trait]
+pub trait ToOptionalIdentifier {
+    fn to_optional_identifier(&self) -> Option<Identifier>;
 }
 
 #[cfg(test)]

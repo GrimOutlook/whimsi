@@ -1,24 +1,35 @@
+use crate::msi_list_boilerplate;
+use crate::tables::builder_list::MsiBuilderList;
+use crate::tables::feature::identifier::FeatureIdentifier;
+use crate::types::helpers::id_generator::IdGenerator;
 use crate::{
     constants::*,
-    msitable_boilerplate,
+    define_identifier_generator, msi_table_boilerplate,
     tables::{
         builder_table::MsiBuilderTable, feature::dao::FeatureDao,
         file::dao::FileDao,
     },
 };
 
-#[derive(Debug, Clone, Default)]
-pub struct FeatureTable(Vec<FeatureDao>);
+define_identifier_generator!(feature);
+
+#[derive(Debug, Clone)]
+pub struct FeatureTable {
+    entries: Vec<FeatureDao>,
+    id_generator: FeatureIdGenerator,
+}
+
 impl FeatureTable {
     pub fn get_default_feature(&self) -> &FeatureDao {
         todo!()
     }
 }
+
 impl MsiBuilderTable for FeatureTable {
     type TableValue = FeatureDao;
 
     // Boilderplate needed to access information on the inner object
-    msitable_boilerplate!();
+    msi_table_boilerplate!();
 
     fn name(&self) -> &'static str {
         "Feature"
@@ -40,8 +51,14 @@ impl MsiBuilderTable for FeatureTable {
             msi::Column::build("Level").int16(),
             msi::Column::build("Directory")
                 .nullable()
-                .id_string(IDENTIFIER_MAX_LEN),
+                .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
             msi::Column::build("Attributes").int16(),
         ]
     }
+}
+
+impl MsiBuilderList for FeatureTable {
+    type ListValue = FeatureDao;
+
+    msi_list_boilerplate!();
 }

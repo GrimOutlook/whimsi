@@ -1,12 +1,19 @@
 use anyhow::ensure;
 
 use crate::constants::*;
-use crate::msitable_boilerplate;
+use crate::define_identifier_generator;
+use crate::define_specific_identifier;
+use crate::define_specific_identifier_parsing;
+use crate::msi_list_boilerplate;
+use crate::msi_table_boilerplate;
+use crate::tables::builder_list::MsiBuilderList;
 use crate::tables::builder_table::MsiBuilderTable;
 use crate::tables::media::dao::MediaDao;
 
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct MediaTable(Vec<MediaDao>);
+pub struct MediaTable {
+    entries: Vec<MediaDao>,
+}
 
 impl MediaTable {
     pub(crate) fn get_last_internal_media_mut(
@@ -14,7 +21,7 @@ impl MediaTable {
     ) -> Option<&mut MediaDao> {
         // Since only internal cabinets have an ID we can just verify that the
         // cabinet_id is populated.
-        self.0.iter_mut().rfind(|media| media.cabinet_id().is_some())
+        self.entries.iter_mut().rfind(|media| media.cabinet_id().is_some())
     }
 }
 
@@ -22,7 +29,7 @@ impl MsiBuilderTable for MediaTable {
     type TableValue = MediaDao;
 
     // Boilderplate needed to access information on the inner object
-    msitable_boilerplate!();
+    msi_table_boilerplate!();
 
     fn name(&self) -> &'static str {
         "Media"
@@ -48,4 +55,10 @@ impl MsiBuilderTable for MediaTable {
                 .string(SOURCE_MAX_LEN),
         ]
     }
+}
+
+impl MsiBuilderList for MediaTable {
+    type ListValue = MediaDao;
+
+    msi_list_boilerplate!();
 }

@@ -1,13 +1,16 @@
 use anyhow::Context;
 use getset::Getters;
 
+use crate::tables::builder_list_entry::MsiBuilderListEntry;
 use crate::tables::dao::IsDao;
-use crate::tables::media::cabinet_identifier::CabinetIdentifier;
+use crate::tables::media::cabinet_identifier::{
+    CabinetHandle, CabinetIdentifier,
+};
 use crate::tables::media::disk_id::DiskId;
 use crate::tables::media::disk_id::{self};
 use crate::tables::media::last_sequence::LastSequence;
 use crate::tables::media::property::Property;
-use crate::types::column::identifier::Identifier;
+use crate::types::column::identifier::{Identifier, ToOptionalIdentifier};
 use crate::types::column::sequence::IncludedSequence;
 use crate::types::column::sequence::Sequence;
 use crate::types::helpers::cabinet_info::CabinetInfo;
@@ -20,7 +23,7 @@ pub struct MediaDao {
     last_sequence: LastSequence,
     disk_prompt: Option<String>,
     /// This should only be `None` when referencing external media
-    cabinet: Option<CabinetIdentifier>,
+    cabinet: Option<CabinetHandle>,
     volume_label: Option<String>,
     source: Option<Property>,
 }
@@ -28,7 +31,7 @@ pub struct MediaDao {
 impl MediaDao {
     pub fn internal(
         disk_id: usize,
-        cabinet_identifier: CabinetIdentifier,
+        cabinet_identifier: CabinetHandle,
     ) -> anyhow::Result<Self> {
         Ok(Self {
             disk_id: DiskId::try_from(disk_id).with_context(|| {
@@ -45,8 +48,8 @@ impl MediaDao {
         })
     }
 
-    pub fn cabinet_id(&self) -> Option<Identifier> {
-        self.cabinet.clone()?.into_identifier()
+    pub fn cabinet_id(&self) -> Option<CabinetIdentifier> {
+        self.cabinet.clone()?.try_as_internal()
     }
 
     pub fn set_last_sequence(
@@ -58,10 +61,7 @@ impl MediaDao {
             .len()
             .try_into()
             .context("Cabinet has too many files to represent in the LastSequence column")?;
-        Ok(Sequence::Included(IncludedSequence::new(
-            self.last_sequence.into(),
-            cab.id().clone(),
-        )))
+        Ok(Sequence::Included(IncludedSequence::new(self.last_sequence.into())))
     }
 }
 
@@ -76,8 +76,16 @@ impl IsDao for MediaDao {
             opt_str_val!(self.source),
         ]
     }
+}
 
+impl MsiBuilderListEntry for MediaDao {
     fn conflicts(&self, other: &Self) -> bool {
         self.disk_id == other.disk_id
+    }
+}
+
+impl ToOptionalIdentifier for MediaDao {
+    fn to_optional_identifier(&self) -> Option<Identifier> {
+        None
     }
 }

@@ -11,18 +11,22 @@ use crate::int_val;
 use crate::opt_str_val;
 use crate::opt_val;
 use crate::str_val;
+use crate::tables::builder_list_entry::MsiBuilderListEntry;
+use crate::tables::component::table::ComponentIdentifier;
 use crate::tables::dao::IsDao;
+use crate::tables::file::table::FileIdentifier;
 use crate::types::column::attributes::Attributes;
 use crate::types::column::filename::Filename;
 use crate::types::column::identifier::Identifier;
+use crate::types::column::identifier::ToOptionalIdentifier;
 use crate::types::column::sequence::Sequence;
 use crate::types::column::version::Version;
 
 #[derive(Clone, Debug, Default, PartialEq, Getters)]
 #[getset(get = "pub")]
 pub struct FileDao {
-    file: Identifier,
-    component: Identifier,
+    file: FileIdentifier,
+    component: ComponentIdentifier,
     name: Filename,
     size: i32,
     version: Option<Version>,
@@ -34,8 +38,8 @@ pub struct FileDao {
 impl FileDao {
     /// Create a FileDao for a file that is to be installed when the MSI is run.
     pub(crate) fn install_file(
-        file_id: Identifier,
-        component_id: Identifier,
+        file_id: FileIdentifier,
+        component_id: ComponentIdentifier,
         name: Filename,
         size: i32,
         sequence: Sequence,
@@ -59,8 +63,8 @@ impl FileDao {
     /// Create FileDao for a file at a given path, that is to be installed when
     /// the MSI is run.
     pub(crate) fn install_file_from_path(
-        file_id: Identifier,
-        component_id: Identifier,
+        file_id: FileIdentifier,
+        component_id: ComponentIdentifier,
         path: PathBuf,
         sequence: Sequence,
     ) -> anyhow::Result<FileDao> {
@@ -126,8 +130,16 @@ impl IsDao for FileDao {
             int_val!(Into::<i16>::into(self.sequence.clone())),
         ]
     }
+}
 
+impl MsiBuilderListEntry for FileDao {
     fn conflicts(&self, other: &Self) -> bool {
         self.file == other.file
+    }
+}
+
+impl ToOptionalIdentifier for FileDao {
+    fn to_optional_identifier(&self) -> Option<Identifier> {
+        self.file.to_optional_identifier()
     }
 }

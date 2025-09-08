@@ -1,8 +1,10 @@
+use std::cell::RefCell;
 use std::io::Read;
 use std::io::Seek;
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::str::FromStr;
 
 use anyhow::Context;
@@ -17,15 +19,20 @@ use tracing::debug;
 use tracing::info;
 
 use crate::constants::*;
+use crate::tables::builder_list::MsiBuilderList;
 use crate::tables::builder_table::MsiBuilderTable;
 use crate::tables::component::dao::ComponentDao;
+use crate::tables::component::table::ComponentIdentifier;
 use crate::tables::component::table::ComponentTable;
 use crate::tables::dao::Dao;
 use crate::tables::directory::dao::DirectoryDao;
 use crate::tables::directory::directory_identifier::DirectoryIdentifier;
 use crate::tables::directory::table::DirectoryTable;
 use crate::tables::file::dao::FileDao;
+use crate::tables::file::table::FileIdentifier;
 use crate::tables::file::table::FileTable;
+use crate::tables::id_generator_builder_list::IdGeneratorBuilderList;
+use crate::tables::media::cabinet_identifier::CabinetHandle;
 use crate::tables::media::cabinet_identifier::CabinetIdentifier;
 use crate::tables::media::dao::MediaDao;
 use crate::tables::media::table::MediaTable;
@@ -37,10 +44,11 @@ use crate::types::column::identifier::Identifier;
 use crate::types::column::sequence::Sequence;
 use crate::types::helpers::cabinet_info::CabinetInfo;
 use crate::types::helpers::cabinets::Cabinets;
+use crate::types::helpers::id_generator::IdGenerator;
 use crate::types::properties::system_folder::SystemFolder;
 
 /// An in-memory representation of the final MSI to be created.
-#[derive(Debug, Default, Getters)]
+#[derive(Debug, Getters)]
 #[getset(get = "pub")]
 pub struct MsiBuilder {
     /// Information about the whole package. Tracks both information for
@@ -50,7 +58,7 @@ pub struct MsiBuilder {
 
     /// A list of all identifiers used in this MSI. Used to ensure no duplicate
     /// Identifiers are created.
-    identifiers: Vec<Identifier>,
+    identifiers: Rc<RefCell<Vec<Identifier>>>,
 
     cabinets: Cabinets,
     component: ComponentTable,
@@ -178,10 +186,10 @@ impl MsiBuilder {
         &mut self,
         path: impl Into<PathBuf>,
         parent: impl Into<DirectoryIdentifier>,
-    ) -> anyhow::Result<Identifier> {
+    ) -> anyhow::Result<DirectoryIdentifier> {
         let path = path.into();
 
-        let directory_id = self.generate_id();
+        let directory_id = self.directory.generate_id();
         let name = path
             .file_name()
             .with_context(|| format!(
@@ -196,9 +204,9 @@ impl MsiBuilder {
         &mut self,
         name: impl ToString,
         parent: impl Into<DirectoryIdentifier>,
-    ) -> anyhow::Result<Identifier> {
+    ) -> anyhow::Result<DirectoryIdentifier> {
         let filename = Filename::from_str(&name.to_string())?;
-        let id = self.generate_id();
+        let id = self.directory.generate_id();
         self.add_directory_dao(DirectoryDao::new(
             filename,
             id.clone(),
@@ -212,7 +220,7 @@ impl MsiBuilder {
         &mut self,
         dao: DirectoryDao,
     ) -> anyhow::Result<()> {
-        self.directory.add(dao)
+        IdGeneratorBuilderList::add(&mut self.directory, dao)
     }
 
     pub fn with_file_path(
@@ -223,8 +231,8 @@ impl MsiBuilder {
         let path = path.into();
         debug!("Creating DAOs for {path:?}");
 
-        let file_id = self.generate_id();
-        let component_id = self.generate_id();
+        let file_id = self.file.generate_id();
+        let component_id = self.component.generate_id();
         self.add_to_default_feature(&component_id)?;
         let sequence = self.add_to_media(file_id.clone(), path.clone());
         let file_dao = FileDao::install_file_from_path(
@@ -245,7 +253,7 @@ impl MsiBuilder {
     /// If no media entry exists yet, one is created along with a cabinet file.
     fn add_to_media(
         &mut self,
-        file_id: Identifier,
+        file_id: FileIdentifier,
         file_path: PathBuf,
     ) -> Sequence {
         debug!("Adding file [{file_id}] with path [{file_path:?}] to media");
@@ -279,10 +287,10 @@ impl MsiBuilder {
     }
 
     /// Creates a new cabinet file and returns the ID.
-    fn new_cabinet(&mut self) -> CabinetIdentifier {
-        let id = self.generate_id();
+    fn new_cabinet(&mut self) -> CabinetHandle {
+        let id = self.cabinets.generate_id();
         self.cabinets.add_new(id.clone());
-        CabinetIdentifier::Internal(id)
+        CabinetHandle::Internal(id)
     }
 
     /// Build the MSI from all information given to MSIBuilder.
@@ -326,9 +334,7 @@ impl MsiBuilder {
         package: &mut msi::Package<F>,
     ) -> anyhow::Result<()> {
         let previous_last_sequence = 1;
-        for media in self
-            .media
-            .items()
+        for media in MsiBuilderTable::entries(&self.media)
             .iter()
             .sorted_by_key(|dao| Into::<i16>::into(*dao.last_sequence()))
         {
@@ -430,7 +436,7 @@ impl MsiBuilder {
 
     fn add_to_default_feature(
         &mut self,
-        component_id: &Identifier,
+        component_id: &ComponentIdentifier,
     ) -> anyhow::Result<()> {
         // Get the default feature DAO.
         //
@@ -440,58 +446,36 @@ impl MsiBuilder {
         todo!()
     }
 
-    /// Generate an `Identifier` not already listed in the `Identifiers` list.
-    /// Returns the generated `Identifier` to the user for use and adds a
-    /// clone to the `Identifiers` list so it cannot be generated and used
-    /// again.
-    ///
-    /// # Panics
-    /// If a randomly generated ID is not a valid `Identifier`. Should not be
-    /// possible given the how the `names` crate works and the parsing rules of
-    /// an `Identifier`.
-    pub fn generate_id(&mut self) -> Identifier {
-        let mut generator =
-            Lazy::new(|| names::Generator::with_naming(names::Name::Numbered));
-        loop {
-            // Prefix to indicate to anyone inspecting the MSI that an identifier was randomly
-            // generated and not explicitly stated by the package creator.
-            let prefix = "GEN_".to_uppercase();
-            let body = generator
-                .next()
-                .expect("Out of named IDs. I'm honestly impressed.")
-                .replace("-", "_")
-                .to_uppercase();
-
-            let id_string = format!("{}{}", prefix, body);
-
-            // Skip any IDs that are too long. I don't want to chop it down to size because I want
-            // the words to remain whole and the formate of the ID in general to remain the same.
-            if id_string.len() > IDENTIFIER_MAX_LEN {
-                continue;
-            }
-
-            let id = Identifier::from_str(&id_string).unwrap();
-            if !self.has_identifier(&id) {
-                // Ensure that the identifier cannot be generated again.
-                self.identifiers.push(id.clone());
-                return id;
-            }
-        }
-    }
-
-    /// Check to see if the given identifier has already been used.
-    pub fn has_identifier(&self, identifier: &Identifier) -> bool {
-        self.identifiers.iter().any(|i| i == identifier)
-    }
-
     /// Insert the given DAO into it's respective table.
     pub fn add_to_tables(&mut self, dao: impl Into<Dao>) -> anyhow::Result<()> {
         let dao = Into::<Dao>::into(dao);
         match dao {
-            Dao::Component(component_dao) => self.component.add(component_dao),
-            Dao::Directory(directory_dao) => self.directory.add(directory_dao),
-            Dao::File(file_dao) => self.file.add(file_dao),
+            Dao::Component(component_dao) => {
+                IdGeneratorBuilderList::add(&mut self.component, component_dao)
+            }
+            Dao::Directory(directory_dao) => {
+                IdGeneratorBuilderList::add(&mut self.directory, directory_dao)
+            }
+            Dao::File(file_dao) => {
+                IdGeneratorBuilderList::add(&mut self.file, file_dao)
+            }
             Dao::Media(media_dao) => self.media.add(media_dao),
+        }
+    }
+}
+
+impl Default for MsiBuilder {
+    fn default() -> Self {
+        let empty_entries = Rc::new(RefCell::new(Vec::new()));
+        Self {
+            meta: Default::default(),
+            property: Default::default(),
+            media: Default::default(),
+            identifiers: empty_entries.clone(),
+            cabinets: Cabinets::new(empty_entries.clone()),
+            component: ComponentTable::new(empty_entries.clone()),
+            directory: DirectoryTable::new(empty_entries.clone()),
+            file: FileTable::new(empty_entries.clone()),
         }
     }
 }

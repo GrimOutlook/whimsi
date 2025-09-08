@@ -14,6 +14,7 @@ use thiserror::Error;
 
 use crate::types::column::identifier::Identifier;
 use crate::types::column::identifier::ToIdentifier;
+use crate::types::column::identifier::ToOptionalIdentifier;
 
 #[derive(
     Clone,
@@ -57,6 +58,12 @@ impl TryFrom<Identifier> for SystemFolder {
 impl ToIdentifier for SystemFolder {
     fn to_identifier(&self) -> Identifier {
         self.into()
+    }
+}
+
+impl ToOptionalIdentifier for SystemFolder {
+    fn to_optional_identifier(&self) -> Option<Identifier> {
+        Some(self.to_identifier())
     }
 }
 

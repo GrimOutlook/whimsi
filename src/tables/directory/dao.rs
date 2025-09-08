@@ -6,10 +6,13 @@ use getset::Getters;
 
 use super::directory_identifier::DirectoryIdentifier;
 use crate::str_val;
+use crate::tables::builder_list_entry::MsiBuilderListEntry;
 use crate::tables::dao::IsDao;
 use crate::types::column::default_dir::DefaultDir;
 use crate::types::column::filename::Filename;
-use crate::types::column::identifier::Identifier;
+use crate::types::column::identifier::{
+    Identifier, ToIdentifier, ToOptionalIdentifier,
+};
 use crate::types::properties::system_folder::SystemFolder;
 
 #[derive(Clone, Debug, PartialEq, Getters)]
@@ -42,7 +45,8 @@ impl IsDao for DirectoryDao {
             str_val!(self.default_dir),
         ]
     }
-
+}
+impl MsiBuilderListEntry for DirectoryDao {
     // NOTE: We purposefully allow entries that have the same DefaultDir and
     // are contained by the same parent because you can assign
     // different components to these entries if you want
@@ -69,6 +73,12 @@ impl From<SystemFolder> for DirectoryDao {
             parent: SystemFolder::TARGETDIR.into(),
             default_dir: Filename::parse(".").unwrap().into(),
         }
+    }
+}
+
+impl ToOptionalIdentifier for DirectoryDao {
+    fn to_optional_identifier(&self) -> Option<Identifier> {
+        Some(self.directory.to_identifier())
     }
 }
 

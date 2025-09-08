@@ -12,6 +12,5 @@ pub(crate) enum Dao {
 }
 
 pub(crate) trait IsDao {
-    fn conflicts(&self, other: &Self) -> bool;
     fn to_row(&self) -> Vec<msi::Value>;
 }

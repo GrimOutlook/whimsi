@@ -23,14 +23,15 @@ crate.
 
 ### Assumptions
 
-None of this code is LLM generated as I wanted to learn about the ins-and-outs
-of MSIs. I would consult with an LLM to try to get more detailed information
-and then try to verify that information using official sources (namely
-[Microsoft](https://learn.microsoft.com/en-us/windows/win32/msi)) but there are
-instances in the code where the Microsoft documentation was unclear and I was
-forced to take the LLM at it's word (with the knowledge that the information
-sounds plausible/likely). I note the cases where this has occurred below so
-maybe someone can correct me.
+The only portion of the code that is LLM generated are the long enums with many
+cases so I could save time and not generating more allows me to learn about the
+ins-and-outs of MSIs. I would consult with an LLM to try to get more detailed
+information and then try to verify that information using official sources
+(namely [Microsoft](https://learn.microsoft.com/en-us/windows/win32/msi)) but
+there are instances in the code where the Microsoft documentation was unclear
+and I was forced to take the LLM at it's word (with the knowledge that the
+information sounds plausible/likely). I note the cases where this has occurred
+below so maybe someone can correct me.
 
 #### Sequence Number 0 for File Table Entry
 

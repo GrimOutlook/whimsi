@@ -19,6 +19,7 @@ use tracing::debug;
 use tracing::info;
 
 use crate::constants::*;
+use crate::tables::advt_execute_sequence::table::AdvtExecuteSequenceTable;
 use crate::tables::builder_list::MsiBuilderList;
 use crate::tables::builder_table::MsiBuilderTable;
 use crate::tables::component::dao::ComponentDao;
@@ -88,7 +89,7 @@ pub struct MsiBuilder {
     msi_file_hash: MsiFileHashTable,
     // admin_execute_sequence: AdminExecuteSequenceTable,
     // admin_ui_sequence: AdminUiSequenceTable,
-    // advt_execute_sequence: AdvtExecuteSequenceTable,
+    advt_execute_sequence: AdvtExecuteSequenceTable,
     // install_execute_sequence: InstallExecuteSequenceTable,
     // install_ui_sequence: InstallUiSequenceTable,
 }
@@ -356,6 +357,7 @@ impl MsiBuilder {
         self.property.write_to_package(package)?;
         self.registry.write_to_package(package)?;
         self.msi_file_hash.write_to_package(package)?;
+        self.advt_execute_sequence.write_to_package(package)?;
         Ok(())
     }
 
@@ -527,6 +529,7 @@ impl Default for MsiBuilder {
             media: Default::default(),
             feature_components: Default::default(),
             msi_file_hash: Default::default(),
+            advt_execute_sequence: Default::default(),
 
             // Non-tables that need access to all or generate entity IDs.
             identifiers: empty_entries.clone(),

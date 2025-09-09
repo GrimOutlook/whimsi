@@ -11,6 +11,7 @@ pub(crate) mod id_generator_builder_list;
 pub(crate) mod macros;
 pub mod media;
 pub mod meta;
+pub mod msi_file_hash;
 pub mod property;
 pub mod registry;
 pub mod table_entry;

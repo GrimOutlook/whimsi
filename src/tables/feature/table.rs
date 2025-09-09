@@ -13,7 +13,10 @@ use crate::{
         file::dao::FileDao,
     },
 };
-use crate::{implement_new_for_id_generator_table, msi_list_boilerplate};
+use crate::{
+    implement_id_generator_for_table, implement_new_for_id_generator_table,
+    msi_list_boilerplate,
+};
 
 define_identifier_generator!(feature);
 
@@ -76,3 +79,5 @@ impl FeatureTable {
         Self { entries, generator }
     }
 }
+
+implement_id_generator_for_table!(FeatureTable, FeatureIdGenerator);

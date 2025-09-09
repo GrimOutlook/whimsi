@@ -41,6 +41,8 @@ use crate::tables::media::cabinet_identifier::CabinetIdentifier;
 use crate::tables::media::dao::MediaDao;
 use crate::tables::media::table::MediaTable;
 use crate::tables::meta::MetaInformation;
+use crate::tables::msi_file_hash::dao::MsiFileHashDao;
+use crate::tables::msi_file_hash::table::MsiFileHashTable;
 use crate::tables::property::table::PropertyTable;
 use crate::tables::registry::table::RegistryTable;
 use crate::types::column::default_dir::DefaultDir;
@@ -83,7 +85,7 @@ pub struct MsiBuilder {
     // - ALLUSERS
     property: PropertyTable,
     registry: RegistryTable,
-    // msi_file_hash: MsiFileHashTable,
+    msi_file_hash: MsiFileHashTable,
     // admin_execute_sequence: AdminExecuteSequenceTable,
     // admin_ui_sequence: AdminUiSequenceTable,
     // advt_execute_sequence: AdvtExecuteSequenceTable,
@@ -255,6 +257,8 @@ impl MsiBuilder {
 
         let file_id = self.file.generate_id();
         let component_id = self.component.generate_id();
+        let file_hash_dao = MsiFileHashDao::from_path(file_id.clone(), &path)?;
+        self.add_to_tables(file_hash_dao)?;
         self.add_to_default_feature(&component_id)?;
         let sequence = self.add_to_media(file_id.clone(), path.clone());
         let file_dao = FileDao::install_file_from_path(
@@ -263,9 +267,9 @@ impl MsiBuilder {
             path,
             sequence,
         )?;
+        self.add_to_tables(file_dao)?;
         let component_dao = ComponentDao::new(component_id, parent_id.into())
             .with_keypath(file_id.to_identifier());
-        self.add_to_tables(file_dao)?;
         self.add_to_tables(component_dao)?;
         Ok(self)
     }
@@ -351,6 +355,7 @@ impl MsiBuilder {
         self.feature_components.write_to_package(package)?;
         self.property.write_to_package(package)?;
         self.registry.write_to_package(package)?;
+        self.msi_file_hash.write_to_package(package)?;
         Ok(())
     }
 
@@ -497,7 +502,16 @@ impl MsiBuilder {
             Dao::File(file_dao) => {
                 IdGeneratorBuilderList::add(&mut self.file, file_dao)
             }
-            Dao::Media(media_dao) => self.media.add(media_dao),
+            Dao::Registry(registry_dao) => {
+                IdGeneratorBuilderList::add(&mut self.registry, registry_dao)
+            }
+            Dao::Feature(feature_dao) => {
+                IdGeneratorBuilderList::add(&mut self.feature, feature_dao)
+            }
+            Dao::Property(dao) => self.property.add(dao),
+            Dao::Media(dao) => self.media.add(dao),
+            Dao::MsiFileHash(dao) => self.msi_file_hash.add(dao),
+            Dao::FeatureComponents(dao) => self.feature_components.add(dao),
         }
     }
 }
@@ -512,6 +526,7 @@ impl Default for MsiBuilder {
             property: Default::default(),
             media: Default::default(),
             feature_components: Default::default(),
+            msi_file_hash: Default::default(),
 
             // Non-tables that need access to all or generate entity IDs.
             identifiers: empty_entries.clone(),

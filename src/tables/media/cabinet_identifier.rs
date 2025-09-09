@@ -22,12 +22,7 @@ impl FromStr for CabinetIdentifier {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> anyhow::Result<Self> {
-        if !s.starts_with("#") {
-            bail!("External cabinets cannot be parsed to CabinetIdentifiers");
-        }
-
-        let identifier = s.trim_start_matches("#");
-        Ok(CabinetIdentifier(Identifier::from_str(identifier)?))
+        Ok(CabinetIdentifier(Identifier::from_str(s)?))
     }
 }
 

@@ -31,6 +31,7 @@ use crate::tables::directory::table::DirectoryTable;
 use crate::tables::feature::identifier::FeatureIdentifier;
 use crate::tables::feature::table::FeatureTable;
 use crate::tables::feature_components::dao::FeatureComponentsDao;
+use crate::tables::feature_components::table::FeatureComponentsTable;
 use crate::tables::file::dao::FileDao;
 use crate::tables::file::table::FileIdentifier;
 use crate::tables::file::table::FileTable;
@@ -44,6 +45,7 @@ use crate::tables::property::table::PropertyTable;
 use crate::types::column::default_dir::DefaultDir;
 use crate::types::column::filename::Filename;
 use crate::types::column::identifier::Identifier;
+use crate::types::column::identifier::ToIdentifier;
 use crate::types::column::sequence::Sequence;
 use crate::types::helpers::cabinet_info::CabinetInfo;
 use crate::types::helpers::cabinets::Cabinets;
@@ -69,6 +71,7 @@ pub struct MsiBuilder {
     file: FileTable,
     media: MediaTable,
     feature: FeatureTable,
+    feature_components: FeatureComponentsTable,
     property: PropertyTable,
 }
 
@@ -163,8 +166,6 @@ impl MsiBuilder {
         let parent = parent.into();
         debug!("Adding path [{:?}] contents to directory [{}]", path, parent);
 
-        let id = self.add_directory_from_path(&path, parent)?;
-
         let directory_contents: Vec<std::fs::DirEntry> =
             std::fs::read_dir(&path)?.try_collect()?;
         for item in directory_contents {
@@ -175,9 +176,10 @@ impl MsiBuilder {
             let path = item.path();
 
             if filetype.is_file() {
-                self = self.with_file_path(path, id.clone())?;
+                self = self.with_file_path(path, parent.clone())?;
             } else if filetype.is_dir() {
-                self = self.with_path_contents(path, id.clone())?;
+                let id = self.add_directory_from_path(&path, parent.clone())?;
+                self = self.with_path_contents(path, id)?;
             } else {
                 bail!("Create error for nonfile+nondir types")
             }
@@ -240,12 +242,13 @@ impl MsiBuilder {
         self.add_to_default_feature(&component_id)?;
         let sequence = self.add_to_media(file_id.clone(), path.clone());
         let file_dao = FileDao::install_file_from_path(
-            file_id,
+            file_id.clone(),
             component_id.clone(),
             path,
             sequence,
         )?;
-        let component_dao = ComponentDao::new(component_id, parent_id.into());
+        let component_dao = ComponentDao::new(component_id, parent_id.into())
+            .with_keypath(file_id.to_identifier());
         self.add_to_tables(file_dao)?;
         self.add_to_tables(component_dao)?;
         Ok(self)
@@ -326,7 +329,9 @@ impl MsiBuilder {
         self.directory.write_to_package(package)?;
         self.component.write_to_package(package)?;
         self.file.write_to_package(package)?;
-        self.media.write_to_package(package);
+        self.media.write_to_package(package)?;
+        self.feature.write_to_package(package)?;
+        self.feature_components.write_to_package(package)?;
         // self.property.write_to_package(package);
         Ok(())
     }
@@ -488,7 +493,9 @@ impl Default for MsiBuilder {
             // Tables that don't have IDs for their entries.
             property: Default::default(),
             media: Default::default(),
+            feature_components: Default::default(),
 
+            // Non-tables that need access to all or generate entity IDs.
             identifiers: empty_entries.clone(),
             cabinets: Cabinets::new(empty_entries.clone()),
 

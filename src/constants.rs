@@ -41,3 +41,9 @@ pub const CABINET_IDENTIFIER_PREFIX: &str = "CABINET_";
 pub const DEFAULT_FEATURE_IDENTIFIER: &str = "DEFAULT_FEATURE";
 pub const DEFAULT_MEDIA_IDENTIFIER: &str = "DEFAULT_MEDIA";
 pub const DEFAULT_CABINET_IDENTIFIER: &str = "DEFAULT_CABINET";
+
+// Default feature information. Picked by inspecting MSIs to see what the defaults were since I
+// never changed any of those settings.
+pub const DEFAULT_FEATURE_DISPLAY: i16 = 2;
+pub const DEFAULT_FEATURE_LEVEL: i16 = 1;
+pub const DEFAULT_FEATURE_TITLE: &str = "Default Feature";

@@ -4,7 +4,7 @@ use std::{cell::RefCell, rc::Rc, str::FromStr};
 use crate::types::column::identifier::{Identifier, ToIdentifier};
 
 pub(crate) trait IdGenerator {
-    type IdentifierType: ToIdentifier + FromStr;
+    type IdentifierType: ToIdentifier + FromStr<Err = anyhow::Error>;
     fn id_prefix(&self) -> &str;
     fn used(&self) -> &Rc<RefCell<Vec<Identifier>>>;
     fn count(&self) -> usize;
@@ -14,13 +14,14 @@ pub(crate) trait IdGenerator {
         loop {
             let new_id = &format!("{}{}", self.id_prefix(), self.count());
             let new_identifier = Self::IdentifierType::from_str(&new_id)
-                .unwrap_or_else(|_| {
-                    panic!(
+                .with_context(|| {
+                    format!(
                         "[{}] could not be turned into a [{}] identifier",
                         new_id,
                         self.id_prefix()
                     )
-                });
+                })
+                .unwrap();
 
             let generic_identifier =
                 <Self::IdentifierType as ToIdentifier>::to_identifier(

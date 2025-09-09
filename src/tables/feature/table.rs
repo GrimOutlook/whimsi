@@ -1,5 +1,9 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use crate::tables::builder_list::MsiBuilderList;
 use crate::tables::feature::identifier::FeatureIdentifier;
+use crate::types::column::identifier::{self, Identifier};
 use crate::types::helpers::id_generator::IdGenerator;
 use crate::{
     constants::*,
@@ -65,4 +69,10 @@ impl MsiBuilderList for FeatureTable {
     msi_list_boilerplate!();
 }
 
-implement_new_for_id_generator_table!(FeatureTable, FeatureIdGenerator);
+impl FeatureTable {
+    pub fn new(identifiers: Rc<RefCell<Vec<Identifier>>>) -> Self {
+        let entries = vec![FeatureDao::default()];
+        let generator = FeatureIdGenerator::from(identifiers);
+        Self { entries, generator }
+    }
+}

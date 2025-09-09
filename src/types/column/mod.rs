@@ -10,8 +10,10 @@ pub mod attributes;
 pub mod condition;
 pub mod default_dir;
 pub mod filename;
+pub mod formatted;
 pub mod guid;
 pub mod identifier;
+pub mod reg_path;
 pub mod sequence;
 pub mod version;
 

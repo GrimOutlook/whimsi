@@ -12,4 +12,5 @@ pub(crate) mod macros;
 pub mod media;
 pub mod meta;
 pub mod property;
+pub mod registry;
 pub mod table_entry;

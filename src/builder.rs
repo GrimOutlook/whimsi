@@ -42,6 +42,7 @@ use crate::tables::media::dao::MediaDao;
 use crate::tables::media::table::MediaTable;
 use crate::tables::meta::MetaInformation;
 use crate::tables::property::table::PropertyTable;
+use crate::tables::registry::table::RegistryTable;
 use crate::types::column::default_dir::DefaultDir;
 use crate::types::column::filename::Filename;
 use crate::types::column::identifier::Identifier;
@@ -72,7 +73,22 @@ pub struct MsiBuilder {
     media: MediaTable,
     feature: FeatureTable,
     feature_components: FeatureComponentsTable,
+    // TODO: Ensure that the following properties are defined:
+    // - ProductCode
+    // - ProductName
+    // - ProductVersion
+    // - ProductLanguage
+    // - Manufacturer
+    // - UpgradeCode
+    // - ALLUSERS
     property: PropertyTable,
+    registry: RegistryTable,
+    // msi_file_hash: MsiFileHashTable,
+    // admin_execute_sequence: AdminExecuteSequenceTable,
+    // admin_ui_sequence: AdminUiSequenceTable,
+    // advt_execute_sequence: AdvtExecuteSequenceTable,
+    // install_execute_sequence: InstallExecuteSequenceTable,
+    // install_ui_sequence: InstallUiSequenceTable,
 }
 
 impl MsiBuilder {
@@ -308,8 +324,9 @@ impl MsiBuilder {
         info!("Building MSI");
         let mut package =
             msi::Package::create(*self.meta.package_type(), container)?;
-        self.write_cabinets_to_package(&mut package)?;
         self.write_tables_to_package(&mut package)?;
+        self.write_cabinets_to_package(&mut package)?;
+        info!("Finished building MSI");
         Ok(package)
     }
 
@@ -332,7 +349,8 @@ impl MsiBuilder {
         self.media.write_to_package(package)?;
         self.feature.write_to_package(package)?;
         self.feature_components.write_to_package(package)?;
-        // self.property.write_to_package(package);
+        self.property.write_to_package(package)?;
+        self.registry.write_to_package(package)?;
         Ok(())
     }
 
@@ -504,6 +522,7 @@ impl Default for MsiBuilder {
             directory: DirectoryTable::new(empty_entries.clone()),
             feature: FeatureTable::new(empty_entries.clone()),
             file: FileTable::new(empty_entries.clone()),
+            registry: RegistryTable::new(empty_entries.clone()),
         }
     }
 }

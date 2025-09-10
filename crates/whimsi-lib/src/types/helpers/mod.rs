@@ -1,3 +1,4 @@
+pub mod architecture;
 pub mod cabinet_info;
 pub mod cabinets;
 pub(crate) mod id_generator;

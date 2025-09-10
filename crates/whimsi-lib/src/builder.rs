@@ -10,6 +10,8 @@ use std::str::FromStr;
 use anyhow::Context;
 use anyhow::bail;
 use getset::Getters;
+use getset::Setters;
+use getset::WithSetters;
 use itertools::Itertools;
 use once_cell::sync::OnceCell;
 use once_cell::unsync::Lazy;
@@ -17,8 +19,11 @@ use rand::distr::Alphanumeric;
 use rand::distr::SampleString;
 use tracing::debug;
 use tracing::info;
+use uuid::Uuid;
 
 use crate::constants::*;
+use crate::tables::admin_execute_sequence::table::AdminExecuteSequenceTable;
+use crate::tables::admin_ui_sequence::table::AdminUiSequenceTable;
 use crate::tables::advt_execute_sequence::table::AdvtExecuteSequenceTable;
 use crate::tables::builder_list::MsiBuilderList;
 use crate::tables::builder_table::MsiBuilderTable;
@@ -37,6 +42,8 @@ use crate::tables::file::dao::FileDao;
 use crate::tables::file::table::FileIdentifier;
 use crate::tables::file::table::FileTable;
 use crate::tables::id_generator_builder_list::IdGeneratorBuilderList;
+use crate::tables::install_execute_sequence::table::InstallExecuteSequenceTable;
+use crate::tables::install_ui_sequence::table::InstallUiSequenceTable;
 use crate::tables::media::cabinet_identifier::CabinetHandle;
 use crate::tables::media::cabinet_identifier::CabinetIdentifier;
 use crate::tables::media::dao::MediaDao;
@@ -51,19 +58,23 @@ use crate::types::column::filename::Filename;
 use crate::types::column::identifier::Identifier;
 use crate::types::column::identifier::ToIdentifier;
 use crate::types::column::sequence::Sequence;
+use crate::types::helpers::architecture::MsiArchitecture;
 use crate::types::helpers::cabinet_info::CabinetInfo;
 use crate::types::helpers::cabinets::Cabinets;
 use crate::types::helpers::id_generator::IdGenerator;
 use crate::types::properties::system_folder::SystemFolder;
 
 /// An in-memory representation of the final MSI to be created.
-#[derive(Debug, Getters)]
+#[derive(Debug, Getters, Setters)]
 #[getset(get = "pub")]
 pub struct MsiBuilder {
     /// Information about the whole package. Tracks both information for
     /// creating the MSI and information that is tracked in the
     /// _SummaryInformation table.
-    meta: MetaInformation,
+    ///
+    /// WARN: The MSI cannot be built without this information being filled out.
+    #[getset(set = "pub")]
+    meta: Option<MetaInformation>,
 
     /// A list of all identifiers used in this MSI. Used to ensure no duplicate
     /// Identifiers are created.
@@ -87,14 +98,19 @@ pub struct MsiBuilder {
     property: PropertyTable,
     registry: RegistryTable,
     msi_file_hash: MsiFileHashTable,
-    // admin_execute_sequence: AdminExecuteSequenceTable,
-    // admin_ui_sequence: AdminUiSequenceTable,
+    admin_execute_sequence: AdminExecuteSequenceTable,
+    admin_ui_sequence: AdminUiSequenceTable,
     advt_execute_sequence: AdvtExecuteSequenceTable,
-    // install_execute_sequence: InstallExecuteSequenceTable,
-    // install_ui_sequence: InstallUiSequenceTable,
+    install_execute_sequence: InstallExecuteSequenceTable,
+    install_ui_sequence: InstallUiSequenceTable,
 }
 
 impl MsiBuilder {
+    pub fn with_meta(mut self, meta: MetaInformation) -> Self {
+        self.meta = Some(meta);
+        self
+    }
+
     /// Insert a given filesystem path's contents into the MSI for installation.
     ///
     /// If the path leads to a directory, the directory and all contents will be
@@ -326,13 +342,43 @@ impl MsiBuilder {
         self,
         container: F,
     ) -> anyhow::Result<msi::Package<F>> {
+        let Some(ref meta) = self.meta else {
+            bail!("Meta information cannot be blank");
+        };
         info!("Building MSI");
+
         let mut package =
-            msi::Package::create(*self.meta.package_type(), container)?;
+            msi::Package::create(*meta.package_type(), container)?;
+        self.write_meta_info_to_package(&mut package, meta)?;
         self.write_tables_to_package(&mut package)?;
         self.write_cabinets_to_package(&mut package)?;
         info!("Finished building MSI");
         Ok(package)
+    }
+
+    pub(crate) fn write_meta_info_to_package<
+        F: std::io::Read + std::io::Write + std::io::Seek,
+    >(
+        &self,
+        package: &mut msi::Package<F>,
+        meta: &MetaInformation,
+    ) -> anyhow::Result<()> {
+        let summary_info = package.summary_info_mut();
+        // summary_info.set_codepage(msi::CodePage::default());
+        summary_info.set_subject(meta.subject());
+
+        if let Some(author) = meta.author() {
+            summary_info.set_author(author);
+        }
+        summary_info.set_languages(meta.languages());
+        // if let Some(arch) = meta.architecture() {
+        //     summary_info.set_arch(arch.to_string());
+        // }
+        summary_info.set_creating_application("WHIMSI");
+        summary_info.set_creation_time_to_now();
+        summary_info.set_uuid(Uuid::new_v4());
+        // summary_info.set_word_count(2);
+        Ok(())
     }
 
     /// Just writes the information stored in each of the table properties to
@@ -357,7 +403,11 @@ impl MsiBuilder {
         self.property.write_to_package(package)?;
         self.registry.write_to_package(package)?;
         self.msi_file_hash.write_to_package(package)?;
+        self.admin_execute_sequence.write_to_package(package)?;
+        self.admin_ui_sequence.write_to_package(package)?;
         self.advt_execute_sequence.write_to_package(package)?;
+        self.install_execute_sequence.write_to_package(package)?;
+        self.install_ui_sequence.write_to_package(package)?;
         Ok(())
     }
 
@@ -524,14 +574,18 @@ impl Default for MsiBuilder {
     fn default() -> Self {
         let empty_entries = Rc::new(RefCell::new(Vec::new()));
         Self {
-            meta: Default::default(),
+            meta: None,
 
             // Tables that don't have IDs for their entries.
             property: Default::default(),
             media: Default::default(),
             feature_components: Default::default(),
             msi_file_hash: Default::default(),
+            admin_execute_sequence: Default::default(),
+            admin_ui_sequence: Default::default(),
             advt_execute_sequence: Default::default(),
+            install_execute_sequence: Default::default(),
+            install_ui_sequence: Default::default(),
 
             // Non-tables that need access to all or generate entity IDs.
             identifiers: empty_entries.clone(),

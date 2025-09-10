@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use crate::constants::*;
 use crate::msi_list_boilerplate;
 use crate::msi_table_boilerplate;
@@ -40,15 +42,10 @@ impl MsiBuilderTable for AdvtExecuteSequenceTable {
 
 impl Default for AdvtExecuteSequenceTable {
     fn default() -> Self {
-        let entries = vec![
-            AdvtAction::CostInitialize.into(),
-            AdvtAction::CostFinalize.into(),
-            AdvtAction::InstallValidate.into(),
-            AdvtAction::InstallInitialize.into(),
-            AdvtAction::InstallFinalize.into(),
-            AdvtAction::PublishFeatures.into(),
-            AdvtAction::PublishProduct.into(),
-        ];
+        let entries = Vec::from(ADVT_EXECUTE_SEQUENCE_DEFAULT_ACTIONS)
+            .into_iter()
+            .map_into()
+            .collect_vec();
         Self { entries }
     }
 }

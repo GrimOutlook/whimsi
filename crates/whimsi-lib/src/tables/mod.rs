@@ -1,4 +1,5 @@
 pub mod admin_execute_sequence;
+pub mod admin_ui_sequence;
 pub mod advt_execute_sequence;
 pub mod builder_list;
 pub mod builder_list_entry;
@@ -11,6 +12,8 @@ pub mod feature_components;
 pub mod file;
 pub mod generic_sequence;
 pub(crate) mod id_generator_builder_list;
+pub mod install_execute_sequence;
+pub mod install_ui_sequence;
 pub(crate) mod macros;
 pub mod media;
 pub mod meta;

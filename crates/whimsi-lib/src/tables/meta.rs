@@ -1,18 +1,34 @@
 use std::str::FromStr;
 
 use derivative::Derivative;
-use getset::Getters;
-use msi::PackageType;
+use getset::{Getters, Setters, WithSetters};
+use msi::{Language, PackageType};
 
-use crate::types::column::version::Version;
+use crate::types::{
+    column::version::Version, helpers::architecture::MsiArchitecture,
+};
 
-#[derive(Debug, Clone, Derivative, Getters)]
-#[derivative(Default)]
-#[get = "pub"]
+#[derive(Debug, Clone, Getters, Setters, WithSetters)]
+#[getset(get = "pub", set = "pub", set_with = "pub")]
 pub struct MetaInformation {
-    #[derivative(Default(value = "PackageType::Installer"))]
     package_type: PackageType,
-    package_name: String,
-    #[derivative(Default(value = "Version::from_str(\"0\").unwrap()"))]
-    version: Version,
+    subject: String,
+    // version: Version,
+    author: Option<String>,
+    manufacturer: Option<String>,
+    architecture: Option<MsiArchitecture>,
+    languages: Vec<Language>,
+}
+
+impl MetaInformation {
+    pub fn new(package_type: PackageType, subject: String) -> Self {
+        MetaInformation {
+            package_type,
+            subject,
+            author: None,
+            manufacturer: None,
+            architecture: None,
+            languages: Vec::new(),
+        }
+    }
 }

@@ -67,6 +67,9 @@ impl MsiFileHashDao {
         })
     }
 
+    /// This implementation is shamelessly stolen from `msitools` in `utils.vala`.
+    ///
+    /// https://gitlab.gnome.org/GNOME/msitools/-/blob/master/tools/wixl/util.vala?ref_type=heads#L151
     fn get_msi_file_hash_parts(
         path: &PathBuf,
     ) -> anyhow::Result<(i32, i32, i32, i32)> {

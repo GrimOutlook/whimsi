@@ -10,18 +10,18 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct AdminExecuteSequenceTable {
+pub struct InstallUiSequenceTable {
     entries: Vec<GenericSequenceDao>,
 }
 
-msi_list_boilerplate!(AdminExecuteSequenceTable, GenericSequenceDao);
+msi_list_boilerplate!(InstallUiSequenceTable, GenericSequenceDao);
 
-impl MsiBuilderTable for AdminExecuteSequenceTable {
+impl MsiBuilderTable for InstallUiSequenceTable {
     type TableValue = GenericSequenceDao;
     msi_table_boilerplate!();
 
     fn name(&self) -> &'static str {
-        "AdminExecuteSequence"
+        "InstallUISequence"
     }
 
     fn columns(&self) -> Vec<msi::Column> {
@@ -38,9 +38,9 @@ impl MsiBuilderTable for AdminExecuteSequenceTable {
     }
 }
 
-impl Default for AdminExecuteSequenceTable {
+impl Default for InstallUiSequenceTable {
     fn default() -> Self {
-        let entries = Vec::from(ADMIN_EXECUTE_SEQUENCE_DEFAULT_ACTIONS)
+        let entries = Vec::from(INSTALL_UI_SEQUENCE_DEFAULT_ACTIONS)
             .into_iter()
             .map_into()
             .collect_vec();

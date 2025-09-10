@@ -1,3 +1,5 @@
+use crate::types::standard_action::{AdvtAction, StandardAction};
+
 // Found by inspecting MSIs made by other tools. Couldn't find official
 // documentation on these values.
 pub const CABINET_MAX_LEN: usize = 255;
@@ -53,3 +55,64 @@ pub const DEFAULT_MEDIA_IDENTIFIER: &str = "DEFAULT_MEDIA";
 pub const DEFAULT_FEATURE_DISPLAY: i16 = 2;
 pub const DEFAULT_FEATURE_LEVEL: i16 = 1;
 pub const DEFAULT_FEATURE_TITLE: &str = "Default Feature";
+
+// Default actions for the action tables
+pub const ADVT_EXECUTE_SEQUENCE_DEFAULT_ACTIONS: &[AdvtAction] = &[
+    AdvtAction::InstallValidate,
+    AdvtAction::CostInitialize,
+    AdvtAction::CostFinalize,
+    AdvtAction::InstallFinalize,
+    AdvtAction::PublishFeatures,
+    AdvtAction::InstallInitialize,
+    AdvtAction::PublishProduct,
+];
+pub const ADMIN_EXECUTE_SEQUENCE_DEFAULT_ACTIONS: &[StandardAction] = &[
+    StandardAction::CostInitialize,
+    StandardAction::FileCost,
+    StandardAction::CostFinalize,
+    StandardAction::InstallValidate,
+    StandardAction::InstallInitialize,
+    StandardAction::InstallAdminPackage,
+    StandardAction::InstallFiles,
+    StandardAction::InstallFinalize,
+];
+pub const ADMIN_UI_SEQUENCE_DEFAULT_ACTIONS: &[StandardAction] = &[
+    StandardAction::CostInitialize,
+    StandardAction::FileCost,
+    StandardAction::CostFinalize,
+    StandardAction::ExecuteAction,
+];
+pub const INSTALL_EXECUTE_SEQUENCE_DEFAULT_ACTIONS: &[StandardAction] = &[
+    StandardAction::ValidateProductId,
+    StandardAction::CostInitialize,
+    StandardAction::FileCost,
+    StandardAction::CostFinalize,
+    StandardAction::InstallValidate,
+    StandardAction::InstallInitialize,
+    StandardAction::ProcessComponents,
+    StandardAction::UnpublishFeatures,
+    StandardAction::StopServices,
+    StandardAction::DeleteServices,
+    StandardAction::RemoveRegistryValues,
+    StandardAction::RemoveShortcuts,
+    StandardAction::RemoveFiles,
+    StandardAction::InstallFiles,
+    StandardAction::CreateShortcuts,
+    StandardAction::WriteRegistryValues,
+    StandardAction::InstallServices,
+    StandardAction::StartServices,
+    StandardAction::RegisterUser,
+    StandardAction::RegisterProduct,
+    StandardAction::PublishFeatures,
+    StandardAction::PublishProduct,
+    StandardAction::InstallFinalize,
+];
+pub const INSTALL_UI_SEQUENCE_DEFAULT_ACTIONS: &[StandardAction] = &[
+    StandardAction::AppSearch,
+    StandardAction::LaunchConditions,
+    StandardAction::ValidateProductId,
+    StandardAction::CostInitialize,
+    StandardAction::FileCost,
+    StandardAction::CostFinalize,
+    StandardAction::ExecuteAction,
+];

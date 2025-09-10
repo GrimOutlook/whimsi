@@ -7,6 +7,7 @@ use crate::types::column::condition::Condition;
 use crate::types::column::identifier::Identifier;
 use crate::types::helpers::to_msi_value::ToMsiOptionalValue;
 use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
+use crate::types::standard_action::StandardAction;
 
 #[derive(Debug, Clone, PartialEq, Getters)]
 #[getset(get = "pub")]
@@ -35,5 +36,15 @@ impl MsiBuilderListEntry for GenericSequenceDao {
 impl ToUniqueMsiIdentifier for GenericSequenceDao {
     fn to_unique_msi_identifier(&self) -> Option<Identifier> {
         None
+    }
+}
+
+impl From<StandardAction> for GenericSequenceDao {
+    fn from(value: StandardAction) -> Self {
+        Self {
+            action: value.into(),
+            condition: None,
+            sequence: Some(value as i16),
+        }
     }
 }

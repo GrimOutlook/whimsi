@@ -15,12 +15,6 @@ pub struct PropertyTable {
     entries: Vec<PropertyDao>,
 }
 
-impl MsiBuilderList for PropertyTable {
-    type ListValue = PropertyDao;
-
-    msi_list_boilerplate!();
-}
-
 impl MsiBuilderTable for PropertyTable {
     type TableValue = PropertyDao;
 
@@ -39,3 +33,5 @@ impl MsiBuilderTable for PropertyTable {
         ]
     }
 }
+
+msi_list_boilerplate!(PropertyTable, PropertyDao);

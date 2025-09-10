@@ -10,12 +10,6 @@ pub struct FeatureComponentsTable {
     entries: Vec<FeatureComponentsDao>,
 }
 
-impl MsiBuilderList for FeatureComponentsTable {
-    type ListValue = FeatureComponentsDao;
-
-    msi_list_boilerplate!();
-}
-
 impl MsiBuilderTable for FeatureComponentsTable {
     type TableValue = FeatureComponentsDao;
 
@@ -36,3 +30,5 @@ impl MsiBuilderTable for FeatureComponentsTable {
         ]
     }
 }
+
+msi_list_boilerplate!(FeatureComponentsTable, FeatureComponentsDao);

@@ -96,11 +96,7 @@ impl DirectoryTable {
     }
 }
 
-impl MsiBuilderList for DirectoryTable {
-    type ListValue = DirectoryDao;
-
-    msi_list_boilerplate!();
-}
+msi_list_boilerplate!(DirectoryTable, DirectoryDao);
 
 implement_id_generator_for_table!(DirectoryTable, DirectoryIdGenerator);
 

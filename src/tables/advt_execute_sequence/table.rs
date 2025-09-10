@@ -13,11 +13,7 @@ pub struct AdvtExecuteSequenceTable {
     entries: Vec<AdvtExecuteSequenceDao>,
 }
 
-impl MsiBuilderList for AdvtExecuteSequenceTable {
-    type ListValue = AdvtExecuteSequenceDao;
-
-    msi_list_boilerplate!();
-}
+msi_list_boilerplate!(AdvtExecuteSequenceTable, AdvtExecuteSequenceDao);
 
 impl MsiBuilderTable for AdvtExecuteSequenceTable {
     type TableValue = AdvtExecuteSequenceDao;

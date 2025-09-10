@@ -10,12 +10,6 @@ pub struct MsiFileHashTable {
     entries: Vec<MsiFileHashDao>,
 }
 
-impl MsiBuilderList for MsiFileHashTable {
-    type ListValue = MsiFileHashDao;
-
-    msi_list_boilerplate!();
-}
-
 impl MsiBuilderTable for MsiFileHashTable {
     type TableValue = MsiFileHashDao;
 
@@ -38,3 +32,5 @@ impl MsiBuilderTable for MsiFileHashTable {
         ]
     }
 }
+
+msi_list_boilerplate!(MsiFileHashTable, MsiFileHashDao);

@@ -48,11 +48,6 @@ impl Cabinets {
     }
 }
 
-impl MsiBuilderList for Cabinets {
-    type ListValue = CabinetInfo;
-
-    msi_list_boilerplate!();
-}
-
+msi_list_boilerplate!(Cabinets, CabinetInfo);
 implement_new_for_id_generator_table!(Cabinets, CabinetIdGenerator);
 implement_id_generator_for_table!(Cabinets, CabinetIdGenerator);

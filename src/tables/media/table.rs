@@ -57,8 +57,4 @@ impl MsiBuilderTable for MediaTable {
     }
 }
 
-impl MsiBuilderList for MediaTable {
-    type ListValue = MediaDao;
-
-    msi_list_boilerplate!();
-}
+msi_list_boilerplate!(MediaTable, MediaDao);

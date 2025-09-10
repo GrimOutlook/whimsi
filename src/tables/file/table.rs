@@ -74,11 +74,6 @@ impl MsiBuilderTable for FileTable {
     }
 }
 
-impl MsiBuilderList for FileTable {
-    type ListValue = FileDao;
-
-    msi_list_boilerplate!();
-}
-
+msi_list_boilerplate!(FileTable, FileDao);
 implement_new_for_id_generator_table!(FileTable, FileIdGenerator);
 implement_id_generator_for_table!(FileTable, FileIdGenerator);

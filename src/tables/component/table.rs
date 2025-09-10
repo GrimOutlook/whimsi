@@ -59,11 +59,7 @@ impl MsiBuilderTable for ComponentTable {
     }
 }
 
-impl MsiBuilderList for ComponentTable {
-    type ListValue = ComponentDao;
-
-    msi_list_boilerplate!();
-}
+msi_list_boilerplate!(ComponentTable, ComponentDao);
 
 implement_id_generator_for_table!(ComponentTable, ComponentIdGenerator);
 implement_new_for_id_generator_table!(ComponentTable, ComponentIdGenerator);

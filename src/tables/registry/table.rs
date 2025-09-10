@@ -20,12 +20,6 @@ pub struct RegistryTable {
     generator: RegistryIdGenerator,
 }
 
-impl MsiBuilderList for RegistryTable {
-    type ListValue = RegistryDao;
-
-    msi_list_boilerplate!();
-}
-
 impl MsiBuilderTable for RegistryTable {
     type TableValue = RegistryDao;
 
@@ -56,5 +50,6 @@ impl MsiBuilderTable for RegistryTable {
     }
 }
 
+msi_list_boilerplate!(RegistryTable, RegistryDao);
 implement_id_generator_for_table!(RegistryTable, RegistryIdGenerator);
 implement_new_for_id_generator_table!(RegistryTable, RegistryIdGenerator);

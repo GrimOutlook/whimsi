@@ -64,12 +64,6 @@ impl MsiBuilderTable for FeatureTable {
     }
 }
 
-impl MsiBuilderList for FeatureTable {
-    type ListValue = FeatureDao;
-
-    msi_list_boilerplate!();
-}
-
 impl FeatureTable {
     pub fn new(identifiers: Rc<RefCell<Vec<Identifier>>>) -> Self {
         let entries = vec![FeatureDao::default()];
@@ -78,4 +72,5 @@ impl FeatureTable {
     }
 }
 
+msi_list_boilerplate!(FeatureTable, FeatureDao);
 implement_id_generator_for_table!(FeatureTable, FeatureIdGenerator);

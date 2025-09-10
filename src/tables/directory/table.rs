@@ -5,6 +5,7 @@ use thiserror::Error;
 
 use super::dao::DirectoryDao;
 use crate::constants::*;
+use crate::define_generator_table;
 use crate::define_identifier_generator;
 use crate::define_specific_identifier;
 use crate::define_specific_identifier_parsing;
@@ -20,38 +21,21 @@ use crate::types::column::identifier::Identifier;
 use crate::types::column::identifier::ToIdentifier;
 use crate::types::properties::system_folder::SystemFolder;
 
-define_identifier_generator!(directory);
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct DirectoryTable {
-    entries: Vec<DirectoryDao>,
-    generator: DirectoryIdGenerator,
-}
-
-impl MsiBuilderTable for DirectoryTable {
-    type TableValue = DirectoryDao;
-
-    // Boilderplate needed to access information on the inner object
-    msi_table_boilerplate!();
-
-    fn name(&self) -> &'static str {
-        "Directory"
-    }
-
-    fn columns(&self) -> Vec<msi::Column> {
-        vec![
-            msi::Column::build("Directory")
-                .primary_key()
-                .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-            msi::Column::build("Directory_Parent")
-                .nullable()
-                .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-            msi::Column::build("DefaultDir")
-                .category(msi::Category::DefaultDir)
-                .string(DEFAULT_DIR_MAX_LEN),
-        ]
-    }
-}
+define_identifier_generator!(Directory);
+define_generator_table!(
+    Directory,
+    vec![
+        msi::Column::build("Directory")
+            .primary_key()
+            .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
+        msi::Column::build("Directory_Parent")
+            .nullable()
+            .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
+        msi::Column::build("DefaultDir")
+            .category(msi::Category::DefaultDir)
+            .string(DEFAULT_DIR_MAX_LEN),
+    ]
+);
 
 impl DirectoryTable {
     pub fn new(
@@ -97,7 +81,6 @@ impl DirectoryTable {
 }
 
 msi_list_boilerplate!(DirectoryTable, DirectoryDao);
-
 implement_id_generator_for_table!(DirectoryTable, DirectoryIdGenerator);
 
 #[derive(Debug, Error)]

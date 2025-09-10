@@ -14,7 +14,7 @@ use crate::types::column::identifier::Identifier;
 use crate::types::column::identifier::ToIdentifier;
 use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 
-#[derive(Debug, Clone, Getters)]
+#[derive(Debug, Clone, PartialEq, Getters)]
 #[getset(get = "pub(crate)")]
 pub struct ComponentDao {
     component: ComponentIdentifier,

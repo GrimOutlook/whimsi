@@ -1,11 +1,9 @@
-use crate::{
-    constants::DEFAULT_IDENTIFIER_MAX_LEN,
-    msi_list_boilerplate, msi_table_boilerplate,
-    tables::{
-        builder_list::MsiBuilderList, builder_table::MsiBuilderTable,
-        feature_components::dao::FeatureComponentsDao,
-    },
-};
+use crate::constants::DEFAULT_IDENTIFIER_MAX_LEN;
+use crate::msi_list_boilerplate;
+use crate::msi_table_boilerplate;
+use crate::tables::builder_list::MsiBuilderList;
+use crate::tables::builder_table::MsiBuilderTable;
+use crate::tables::feature_components::dao::FeatureComponentsDao;
 
 #[derive(Debug, Clone, Default)]
 pub struct FeatureComponentsTable {
@@ -14,6 +12,7 @@ pub struct FeatureComponentsTable {
 
 impl MsiBuilderList for FeatureComponentsTable {
     type ListValue = FeatureComponentsDao;
+
     msi_list_boilerplate!();
 }
 

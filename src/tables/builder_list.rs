@@ -1,12 +1,10 @@
 use anyhow::ensure;
 
-use crate::{
-    tables::builder_list_entry::MsiBuilderListEntry,
-    types::column::identifier::ToOptionalIdentifier,
-};
+use crate::tables::builder_list_entry::MsiBuilderListEntry;
+use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 
 pub(crate) trait MsiBuilderList {
-    type ListValue: MsiBuilderListEntry + ToOptionalIdentifier;
+    type ListValue: MsiBuilderListEntry + ToUniqueMsiIdentifier;
 
     // Handled by boilerplate macro defined below
     fn entries(&self) -> &Vec<Self::ListValue>;

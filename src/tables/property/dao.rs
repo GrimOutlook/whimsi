@@ -1,11 +1,9 @@
-use crate::{
-    str_val,
-    tables::{
-        builder_list_entry::MsiBuilderListEntry, dao::IsDao,
-        property::property_text::PropertyText,
-    },
-    types::column::identifier::{Identifier, ToOptionalIdentifier},
-};
+use crate::str_val;
+use crate::tables::builder_list_entry::MsiBuilderListEntry;
+use crate::tables::dao::IsDao;
+use crate::tables::property::property_text::PropertyText;
+use crate::types::column::identifier::Identifier;
+use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 
 #[derive(Clone, Debug, Default)]
 pub struct PropertyDao {
@@ -25,8 +23,8 @@ impl MsiBuilderListEntry for PropertyDao {
     }
 }
 
-impl ToOptionalIdentifier for PropertyDao {
-    fn to_optional_identifier(&self) -> Option<Identifier> {
+impl ToUniqueMsiIdentifier for PropertyDao {
+    fn to_unique_msi_identifier(&self) -> Option<Identifier> {
         Some(self.property.clone())
     }
 }

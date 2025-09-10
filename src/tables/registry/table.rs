@@ -1,14 +1,14 @@
-use crate::{
-    constants::*,
-    define_identifier_generator, define_specific_identifier,
-    define_specific_identifier_parsing, implement_id_generator_for_table,
-    implement_new_for_id_generator_table, msi_list_boilerplate,
-    msi_table_boilerplate,
-    tables::{
-        builder_list::MsiBuilderList, builder_table::MsiBuilderTable,
-        registry::dao::RegistryDao,
-    },
-};
+use crate::constants::*;
+use crate::define_identifier_generator;
+use crate::define_specific_identifier;
+use crate::define_specific_identifier_parsing;
+use crate::implement_id_generator_for_table;
+use crate::implement_new_for_id_generator_table;
+use crate::msi_list_boilerplate;
+use crate::msi_table_boilerplate;
+use crate::tables::builder_list::MsiBuilderList;
+use crate::tables::builder_table::MsiBuilderTable;
+use crate::tables::registry::dao::RegistryDao;
 
 define_specific_identifier!(registry);
 define_specific_identifier_parsing!(registry);
@@ -22,11 +22,13 @@ pub struct RegistryTable {
 
 impl MsiBuilderList for RegistryTable {
     type ListValue = RegistryDao;
+
     msi_list_boilerplate!();
 }
 
 impl MsiBuilderTable for RegistryTable {
     type TableValue = RegistryDao;
+
     msi_table_boilerplate!();
 
     fn name(&self) -> &'static str {

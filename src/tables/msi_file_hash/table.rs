@@ -1,11 +1,9 @@
-use crate::{
-    constants::DEFAULT_IDENTIFIER_MAX_LEN,
-    msi_list_boilerplate, msi_table_boilerplate,
-    tables::{
-        builder_list::MsiBuilderList, builder_table::MsiBuilderTable,
-        msi_file_hash::dao::MsiFileHashDao,
-    },
-};
+use crate::constants::DEFAULT_IDENTIFIER_MAX_LEN;
+use crate::msi_list_boilerplate;
+use crate::msi_table_boilerplate;
+use crate::tables::builder_list::MsiBuilderList;
+use crate::tables::builder_table::MsiBuilderTable;
+use crate::tables::msi_file_hash::dao::MsiFileHashDao;
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct MsiFileHashTable {
@@ -20,6 +18,7 @@ impl MsiBuilderList for MsiFileHashTable {
 
 impl MsiBuilderTable for MsiFileHashTable {
     type TableValue = MsiFileHashDao;
+
     msi_table_boilerplate!();
 
     fn name(&self) -> &'static str {

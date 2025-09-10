@@ -1,16 +1,16 @@
-use crate::{
-    constants::{self, *},
-    int_val, opt_int_val, opt_str_val, str_val,
-    tables::{builder_list_entry::MsiBuilderListEntry, dao::IsDao},
-    types::{
-        column::{
-            condition::Condition,
-            identifier::{Identifier, ToOptionalIdentifier},
-            sequence::Sequence,
-        },
-        standard_action::AdvtAction,
-    },
-};
+use crate::constants::*;
+use crate::constants::{self};
+use crate::int_val;
+use crate::opt_int_val;
+use crate::opt_str_val;
+use crate::str_val;
+use crate::tables::builder_list_entry::MsiBuilderListEntry;
+use crate::tables::dao::IsDao;
+use crate::types::column::condition::Condition;
+use crate::types::column::identifier::Identifier;
+use crate::types::column::sequence::Sequence;
+use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
+use crate::types::standard_action::AdvtAction;
 
 #[derive(Debug, Clone)]
 pub struct AdvtExecuteSequenceDao {
@@ -29,8 +29,8 @@ impl IsDao for AdvtExecuteSequenceDao {
     }
 }
 
-impl ToOptionalIdentifier for AdvtExecuteSequenceDao {
-    fn to_optional_identifier(&self) -> Option<Identifier> {
+impl ToUniqueMsiIdentifier for AdvtExecuteSequenceDao {
+    fn to_unique_msi_identifier(&self) -> Option<Identifier> {
         None
     }
 }

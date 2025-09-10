@@ -11,10 +11,10 @@ use tracing::trace;
 use crate::tables::builder_list::MsiBuilderList;
 use crate::tables::builder_list_entry::MsiBuilderListEntry;
 use crate::tables::dao::IsDao;
-use crate::types::column::identifier::ToOptionalIdentifier;
+use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 
 pub(crate) trait MsiBuilderTable: MsiBuilderList {
-    type TableValue: IsDao + ToOptionalIdentifier + MsiBuilderListEntry;
+    type TableValue: IsDao + ToUniqueMsiIdentifier + MsiBuilderListEntry;
 
     /// Utilized when creating the MSI using the `msi` crate.
     fn name(&self) -> &'static str;

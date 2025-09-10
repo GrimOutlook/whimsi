@@ -10,9 +10,8 @@ use crate::tables::builder_list_entry::MsiBuilderListEntry;
 use crate::tables::dao::IsDao;
 use crate::types::column::default_dir::DefaultDir;
 use crate::types::column::filename::Filename;
-use crate::types::column::identifier::{
-    Identifier, ToIdentifier, ToOptionalIdentifier,
-};
+use crate::types::column::identifier::{Identifier, ToIdentifier};
+use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 use crate::types::properties::system_folder::SystemFolder;
 
 #[derive(Clone, Debug, PartialEq, Getters)]
@@ -76,8 +75,8 @@ impl From<SystemFolder> for DirectoryDao {
     }
 }
 
-impl ToOptionalIdentifier for DirectoryDao {
-    fn to_optional_identifier(&self) -> Option<Identifier> {
+impl ToUniqueMsiIdentifier for DirectoryDao {
+    fn to_unique_msi_identifier(&self) -> Option<Identifier> {
         Some(self.directory.to_identifier())
     }
 }

@@ -1,20 +1,16 @@
 use anyhow::ensure;
 
-use crate::{
-    tables::{
-        builder_list::MsiBuilderList, builder_table::MsiBuilderTable,
-        dao::IsDao,
-    },
-    types::{
-        column::identifier::{ToIdentifier, ToOptionalIdentifier},
-        helpers::id_generator::IdGenerator,
-    },
-};
+use crate::tables::builder_list::MsiBuilderList;
+use crate::tables::builder_table::MsiBuilderTable;
+use crate::tables::dao::IsDao;
+use crate::types::column::identifier::ToIdentifier;
+use crate::types::helpers::id_generator::IdGenerator;
+use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 
 pub(crate) trait IdGeneratorBuilderList: MsiBuilderList {
     type GeneratorType: IdGenerator;
     fn add(&mut self, dao: Self::ListValue) -> anyhow::Result<()> {
-        if let Some(identifier) = dao.to_optional_identifier() {
+        if let Some(identifier) = dao.to_unique_msi_identifier() {
             self.generator_mut().add_used_identifier(identifier)?
         }
         ensure!(!self.contains(&dao), "TEMPERROR");

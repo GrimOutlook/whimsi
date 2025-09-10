@@ -1,8 +1,3 @@
-use crate::implement_id_generator_for_table;
-use crate::msi_list_boilerplate;
-use crate::tables::builder_list::MsiBuilderList;
-use crate::tables::directory::directory_identifier::DirectoryIdentifier;
-use crate::tables::id_generator_builder_list::IdGeneratorBuilderList;
 use anyhow::bail;
 use anyhow::ensure;
 use itertools::Itertools;
@@ -13,8 +8,13 @@ use crate::constants::*;
 use crate::define_identifier_generator;
 use crate::define_specific_identifier;
 use crate::define_specific_identifier_parsing;
+use crate::implement_id_generator_for_table;
+use crate::msi_list_boilerplate;
 use crate::msi_table_boilerplate;
+use crate::tables::builder_list::MsiBuilderList;
 use crate::tables::builder_table::MsiBuilderTable;
+use crate::tables::directory::directory_identifier::DirectoryIdentifier;
+use crate::tables::id_generator_builder_list::IdGeneratorBuilderList;
 use crate::types::column::default_dir::DefaultDir;
 use crate::types::column::identifier::Identifier;
 use crate::types::column::identifier::ToIdentifier;
@@ -98,6 +98,7 @@ impl DirectoryTable {
 
 impl MsiBuilderList for DirectoryTable {
     type ListValue = DirectoryDao;
+
     msi_list_boilerplate!();
 }
 

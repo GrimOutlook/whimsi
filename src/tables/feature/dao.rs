@@ -1,16 +1,16 @@
 use getset::Getters;
 
-use crate::{
-    constants::*,
-    int_val, opt_str_val, opt_val, str_val,
-    tables::{
-        builder_list_entry::MsiBuilderListEntry, dao::IsDao,
-        feature::identifier::FeatureIdentifier,
-    },
-    types::column::identifier::{
-        Identifier, ToIdentifier, ToOptionalIdentifier,
-    },
-};
+use crate::constants::*;
+use crate::int_val;
+use crate::opt_str_val;
+use crate::opt_val;
+use crate::str_val;
+use crate::tables::builder_list_entry::MsiBuilderListEntry;
+use crate::tables::dao::IsDao;
+use crate::tables::feature::identifier::FeatureIdentifier;
+use crate::types::column::identifier::Identifier;
+use crate::types::column::identifier::ToIdentifier;
+use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 
 #[derive(Clone, Debug, PartialEq, Getters)]
 #[getset(get = "pub")]
@@ -58,8 +58,8 @@ impl MsiBuilderListEntry for FeatureDao {
     }
 }
 
-impl ToOptionalIdentifier for FeatureDao {
-    fn to_optional_identifier(&self) -> Option<Identifier> {
+impl ToUniqueMsiIdentifier for FeatureDao {
+    fn to_unique_msi_identifier(&self) -> Option<Identifier> {
         Some(self.feature.to_identifier())
     }
 }

@@ -2,11 +2,10 @@ use std::str::FromStr;
 
 use anyhow::ensure;
 
-use crate::{
-    constants::*,
-    define_specific_identifier,
-    types::column::identifier::{Identifier, ToIdentifier},
-};
+use crate::constants::*;
+use crate::define_specific_identifier;
+use crate::types::column::identifier::Identifier;
+use crate::types::column::identifier::ToIdentifier;
 
 define_specific_identifier!(feature);
 

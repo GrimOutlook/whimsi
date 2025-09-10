@@ -18,9 +18,9 @@ use crate::tables::file::table::FileIdentifier;
 use crate::types::column::attributes::Attributes;
 use crate::types::column::filename::Filename;
 use crate::types::column::identifier::Identifier;
-use crate::types::column::identifier::ToOptionalIdentifier;
 use crate::types::column::sequence::Sequence;
 use crate::types::column::version::Version;
+use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 
 #[derive(Clone, Debug, Default, PartialEq, Getters)]
 #[getset(get = "pub")]
@@ -138,8 +138,8 @@ impl MsiBuilderListEntry for FileDao {
     }
 }
 
-impl ToOptionalIdentifier for FileDao {
-    fn to_optional_identifier(&self) -> Option<Identifier> {
-        self.file.to_optional_identifier()
+impl ToUniqueMsiIdentifier for FileDao {
+    fn to_unique_msi_identifier(&self) -> Option<Identifier> {
+        self.file.to_unique_msi_identifier()
     }
 }

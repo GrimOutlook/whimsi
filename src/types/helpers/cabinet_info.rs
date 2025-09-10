@@ -2,13 +2,11 @@ use std::path::PathBuf;
 
 use getset::Getters;
 
-use crate::{
-    tables::{
-        builder_list_entry::MsiBuilderListEntry, file::table::FileIdentifier,
-        media::cabinet_identifier::CabinetIdentifier,
-    },
-    types::column::identifier::{Identifier, ToOptionalIdentifier},
-};
+use crate::tables::builder_list_entry::MsiBuilderListEntry;
+use crate::tables::file::table::FileIdentifier;
+use crate::tables::media::cabinet_identifier::CabinetIdentifier;
+use crate::types::column::identifier::Identifier;
+use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 
 #[derive(Debug, Clone, Default, Getters, PartialEq)]
 #[getset(get = "pub")]
@@ -33,9 +31,9 @@ impl MsiBuilderListEntry for CabinetInfo {
     }
 }
 
-impl ToOptionalIdentifier for CabinetInfo {
-    fn to_optional_identifier(&self) -> Option<Identifier> {
-        self.id.to_optional_identifier()
+impl ToUniqueMsiIdentifier for CabinetInfo {
+    fn to_unique_msi_identifier(&self) -> Option<Identifier> {
+        self.id.to_unique_msi_identifier()
     }
 }
 

@@ -1,17 +1,20 @@
-use std::{io::Read, path::PathBuf};
+use std::io::Read;
+use std::path::PathBuf;
 
-use md5::{Digest, Md5, digest::generic_array::GenericArray};
+use md5::Digest;
+use md5::Md5;
+use md5::digest::generic_array::GenericArray;
 use tracing::debug;
 
-use crate::{
-    dint_val, int_val, str_val,
-    tables::{
-        builder_list_entry::MsiBuilderListEntry,
-        dao::IsDao,
-        file::{self, table::FileIdentifier},
-    },
-    types::column::identifier::{Identifier, ToOptionalIdentifier},
-};
+use crate::dint_val;
+use crate::int_val;
+use crate::str_val;
+use crate::tables::builder_list_entry::MsiBuilderListEntry;
+use crate::tables::dao::IsDao;
+use crate::tables::file::table::FileIdentifier;
+use crate::tables::file::{self};
+use crate::types::column::identifier::Identifier;
+use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MsiFileHashDao {
@@ -29,8 +32,8 @@ impl MsiBuilderListEntry for MsiFileHashDao {
     }
 }
 
-impl ToOptionalIdentifier for MsiFileHashDao {
-    fn to_optional_identifier(&self) -> Option<Identifier> {
+impl ToUniqueMsiIdentifier for MsiFileHashDao {
+    fn to_unique_msi_identifier(&self) -> Option<Identifier> {
         None
     }
 }
@@ -57,7 +60,8 @@ impl MsiFileHashDao {
             Self::get_msi_file_hash_parts(path)?;
         Ok(Self {
             file: file_id,
-            // NOTE: This option is currently always set to 0 as it is reserved for future use.
+            // NOTE: This option is currently always set to 0 as it is reserved
+            // for future use.
             options: 0,
             hash_part_1,
             hash_part_2,

@@ -1,10 +1,3 @@
-use crate::define_specific_identifier_parsing;
-use crate::implement_id_generator_for_table;
-use crate::implement_new_for_id_generator_table;
-use crate::msi_list_boilerplate;
-use crate::tables::builder_list::MsiBuilderList;
-use crate::types::column::identifier::Identifier;
-use crate::types::column::identifier::ToIdentifier;
 use anyhow::ensure;
 use itertools::Itertools;
 
@@ -12,9 +5,16 @@ use super::dao::ComponentDao;
 use crate::constants::*;
 use crate::define_identifier_generator;
 use crate::define_specific_identifier;
+use crate::define_specific_identifier_parsing;
+use crate::implement_id_generator_for_table;
+use crate::implement_new_for_id_generator_table;
+use crate::msi_list_boilerplate;
 use crate::msi_table_boilerplate;
+use crate::tables::builder_list::MsiBuilderList;
 use crate::tables::builder_table::MsiBuilderTable;
 use crate::tables::dao::IsDao;
+use crate::types::column::identifier::Identifier;
+use crate::types::column::identifier::ToIdentifier;
 
 define_specific_identifier!(component);
 define_specific_identifier_parsing!(component);
@@ -61,6 +61,7 @@ impl MsiBuilderTable for ComponentTable {
 
 impl MsiBuilderList for ComponentTable {
     type ListValue = ComponentDao;
+
     msi_list_boilerplate!();
 }
 

@@ -373,7 +373,8 @@ impl MsiBuilder {
             .sorted_by_key(|dao| Into::<i16>::into(*dao.last_sequence()))
         {
             let Some(cabinet_id) = media.cabinet_id() else {
-                // Ignore media listings that don't represent an internal cabinet file
+                // Ignore media listings that don't represent an internal
+                // cabinet file
                 continue;
             };
             let last_sequence = Into::<i16>::into(*media.last_sequence());
@@ -394,8 +395,8 @@ impl MsiBuilder {
             }
 
             let mut cabinet_file = self.create_cabinet_file(&cabinet_info)?;
-            // Have to set the poisition of the file reader back to 0 so that it gets read from the
-            // beginning when it gets read again.
+            // Have to set the poisition of the file reader back to 0 so that it
+            // gets read from the beginning when it gets read again.
             cabinet_file.rewind();
 
             self.write_cabinet_to_package(
@@ -415,8 +416,9 @@ impl MsiBuilder {
         let mut cab_builder = cab::CabinetBuilder::new();
         let mut folder = cab_builder.add_folder(cab::CompressionType::MsZip);
         cabinet_info.files().iter().for_each(|file| {
-            /// NOTE: From what I can tell attributes only need to be set on files in the File
-            /// table as those attributes overwrite the attributes that are set in the cabinet
+            /// NOTE: From what I can tell attributes only need to be set on
+            /// files in the File table as those attributes
+            /// overwrite the attributes that are set in the cabinet
             /// file.
             folder.add_file(file.id().to_string());
         });

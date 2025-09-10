@@ -12,7 +12,7 @@ use crate::types::column::condition::Condition;
 use crate::types::column::guid::Guid;
 use crate::types::column::identifier::Identifier;
 use crate::types::column::identifier::ToIdentifier;
-use crate::types::column::identifier::ToOptionalIdentifier;
+use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 
 #[derive(Debug, Clone, Getters)]
 #[getset(get = "pub(crate)")]
@@ -64,8 +64,8 @@ impl MsiBuilderListEntry for ComponentDao {
     }
 }
 
-impl ToOptionalIdentifier for ComponentDao {
-    fn to_optional_identifier(&self) -> Option<Identifier> {
-        self.component.to_optional_identifier()
+impl ToUniqueMsiIdentifier for ComponentDao {
+    fn to_unique_msi_identifier(&self) -> Option<Identifier> {
+        self.component.to_unique_msi_identifier()
     }
 }

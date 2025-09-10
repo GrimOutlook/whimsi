@@ -76,6 +76,7 @@ impl MsiBuilderTable for FileTable {
 
 impl MsiBuilderList for FileTable {
     type ListValue = FileDao;
+
     msi_list_boilerplate!();
 }
 

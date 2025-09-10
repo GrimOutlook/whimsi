@@ -1,15 +1,13 @@
-use crate::{
-    constants::*,
-    msi_list_boilerplate, msi_table_boilerplate,
-    tables::{
-        advt_execute_sequence::dao::AdvtExecuteSequenceDao,
-        builder_list::MsiBuilderList, builder_table::MsiBuilderTable,
-    },
-    types::standard_action::AdvtAction,
-};
+use crate::constants::*;
+use crate::msi_list_boilerplate;
+use crate::msi_table_boilerplate;
+use crate::tables::advt_execute_sequence::dao::AdvtExecuteSequenceDao;
+use crate::tables::builder_list::MsiBuilderList;
+use crate::tables::builder_table::MsiBuilderTable;
+use crate::types::standard_action::AdvtAction;
 
-/// The AdvtExecuteSequence table lists actions the installer calls when the top-level ADVERTISE
-/// action is executed.
+/// The AdvtExecuteSequence table lists actions the installer calls when the
+/// top-level ADVERTISE action is executed.
 #[derive(Debug, Clone)]
 pub struct AdvtExecuteSequenceTable {
     entries: Vec<AdvtExecuteSequenceDao>,
@@ -17,13 +15,14 @@ pub struct AdvtExecuteSequenceTable {
 
 impl MsiBuilderList for AdvtExecuteSequenceTable {
     type ListValue = AdvtExecuteSequenceDao;
+
     msi_list_boilerplate!();
 }
 
 impl MsiBuilderTable for AdvtExecuteSequenceTable {
-    msi_table_boilerplate!();
-
     type TableValue = AdvtExecuteSequenceDao;
+
+    msi_table_boilerplate!();
 
     fn name(&self) -> &'static str {
         "AdvtExecuteSequence"

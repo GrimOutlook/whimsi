@@ -1,16 +1,15 @@
-use crate::tables::builder_list::MsiBuilderList;
-use crate::tables::media::cabinet_identifier::{
-    CabinetIdGenerator, CabinetIdentifier,
-};
 use anyhow::ensure;
 
+use crate::define_identifier_generator;
+use crate::define_specific_identifier;
+use crate::implement_id_generator_for_table;
+use crate::implement_new_for_id_generator_table;
+use crate::msi_list_boilerplate;
+use crate::tables::builder_list::MsiBuilderList;
+use crate::tables::media::cabinet_identifier::CabinetIdGenerator;
+use crate::tables::media::cabinet_identifier::CabinetIdentifier;
 use crate::types::column::identifier::Identifier;
 use crate::types::helpers::cabinet_info::CabinetInfo;
-use crate::{
-    define_identifier_generator, define_specific_identifier,
-    implement_id_generator_for_table, implement_new_for_id_generator_table,
-    msi_list_boilerplate,
-};
 
 #[derive(Debug)]
 pub(crate) struct Cabinets {
@@ -51,6 +50,7 @@ impl Cabinets {
 
 impl MsiBuilderList for Cabinets {
     type ListValue = CabinetInfo;
+
     msi_list_boilerplate!();
 }
 

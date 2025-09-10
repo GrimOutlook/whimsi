@@ -1,7 +1,11 @@
-use anyhow::Context;
-use std::{cell::RefCell, rc::Rc, str::FromStr};
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::str::FromStr;
 
-use crate::types::column::identifier::{Identifier, ToIdentifier};
+use anyhow::Context;
+
+use crate::types::column::identifier::Identifier;
+use crate::types::column::identifier::ToIdentifier;
 
 pub(crate) trait IdGenerator {
     type IdentifierType: ToIdentifier + FromStr<Err = anyhow::Error>;
@@ -61,8 +65,8 @@ macro_rules! define_specific_identifier {
                     self.0.clone()
                 }
             }
-            impl $crate::types::column::identifier::ToOptionalIdentifier for [<$id_type:camel Identifier>] {
-                fn to_optional_identifier(&self) -> Option<$crate::types::column::identifier::Identifier> {
+            impl $crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier for [<$id_type:camel Identifier>] {
+                fn to_unique_msi_identifier(&self) -> Option<$crate::types::column::identifier::Identifier> {
                     Some(self.0.clone())
                 }
             }

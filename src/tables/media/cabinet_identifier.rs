@@ -3,11 +3,13 @@ use std::fmt::Display;
 use std::rc::Rc;
 use std::str::FromStr;
 
-use anyhow::{bail, ensure};
+use anyhow::bail;
+use anyhow::ensure;
 
+use crate::define_identifier_generator;
+use crate::define_specific_identifier;
 use crate::types::column::filename::ShortFilename;
-use crate::types::column::identifier::{Identifier, ToOptionalIdentifier};
-use crate::{define_identifier_generator, define_specific_identifier};
+use crate::types::column::identifier::Identifier;
 
 define_specific_identifier!(cabinet);
 

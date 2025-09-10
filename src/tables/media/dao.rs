@@ -1,20 +1,21 @@
 use anyhow::Context;
 use getset::Getters;
 
+use crate::int_val;
+use crate::opt_str_val;
 use crate::tables::builder_list_entry::MsiBuilderListEntry;
 use crate::tables::dao::IsDao;
-use crate::tables::media::cabinet_identifier::{
-    CabinetHandle, CabinetIdentifier,
-};
+use crate::tables::media::cabinet_identifier::CabinetHandle;
+use crate::tables::media::cabinet_identifier::CabinetIdentifier;
 use crate::tables::media::disk_id::DiskId;
 use crate::tables::media::disk_id::{self};
 use crate::tables::media::last_sequence::LastSequence;
 use crate::tables::media::property::Property;
-use crate::types::column::identifier::{Identifier, ToOptionalIdentifier};
+use crate::types::column::identifier::Identifier;
 use crate::types::column::sequence::IncludedSequence;
 use crate::types::column::sequence::Sequence;
 use crate::types::helpers::cabinet_info::CabinetInfo;
-use crate::{int_val, opt_str_val};
+use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 
 #[derive(Clone, Debug, Getters, PartialEq)]
 #[getset(get = "pub")]
@@ -84,8 +85,8 @@ impl MsiBuilderListEntry for MediaDao {
     }
 }
 
-impl ToOptionalIdentifier for MediaDao {
-    fn to_optional_identifier(&self) -> Option<Identifier> {
+impl ToUniqueMsiIdentifier for MediaDao {
+    fn to_unique_msi_identifier(&self) -> Option<Identifier> {
         None
     }
 }

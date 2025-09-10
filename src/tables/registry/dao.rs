@@ -1,16 +1,15 @@
-use crate::{
-    define_identifier_generator, define_specific_identifier,
-    define_specific_identifier_parsing, int_val, str_val,
-    tables::{
-        builder_list_entry::MsiBuilderListEntry,
-        component::table::ComponentIdentifier, dao::IsDao,
-    },
-    types::column::{
-        formatted::Formatted,
-        identifier::{Identifier, ToOptionalIdentifier},
-        reg_path::RegPath,
-    },
-};
+use crate::define_identifier_generator;
+use crate::define_specific_identifier;
+use crate::define_specific_identifier_parsing;
+use crate::int_val;
+use crate::str_val;
+use crate::tables::builder_list_entry::MsiBuilderListEntry;
+use crate::tables::component::table::ComponentIdentifier;
+use crate::tables::dao::IsDao;
+use crate::types::column::formatted::Formatted;
+use crate::types::column::identifier::Identifier;
+use crate::types::column::reg_path::RegPath;
+use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 
 define_specific_identifier!(registry);
 define_specific_identifier_parsing!(registry);
@@ -39,9 +38,9 @@ impl IsDao for RegistryDao {
     }
 }
 
-impl ToOptionalIdentifier for RegistryDao {
-    fn to_optional_identifier(&self) -> Option<Identifier> {
-        self.registry.to_optional_identifier()
+impl ToUniqueMsiIdentifier for RegistryDao {
+    fn to_unique_msi_identifier(&self) -> Option<Identifier> {
+        self.registry.to_unique_msi_identifier()
     }
 }
 

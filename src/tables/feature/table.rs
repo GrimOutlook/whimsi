@@ -1,22 +1,20 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::constants::*;
+use crate::define_identifier_generator;
+use crate::implement_id_generator_for_table;
+use crate::implement_new_for_id_generator_table;
+use crate::msi_list_boilerplate;
+use crate::msi_table_boilerplate;
 use crate::tables::builder_list::MsiBuilderList;
+use crate::tables::builder_table::MsiBuilderTable;
+use crate::tables::feature::dao::FeatureDao;
 use crate::tables::feature::identifier::FeatureIdentifier;
-use crate::types::column::identifier::{self, Identifier};
+use crate::tables::file::dao::FileDao;
+use crate::types::column::identifier::Identifier;
+use crate::types::column::identifier::{self};
 use crate::types::helpers::id_generator::IdGenerator;
-use crate::{
-    constants::*,
-    define_identifier_generator, msi_table_boilerplate,
-    tables::{
-        builder_table::MsiBuilderTable, feature::dao::FeatureDao,
-        file::dao::FileDao,
-    },
-};
-use crate::{
-    implement_id_generator_for_table, implement_new_for_id_generator_table,
-    msi_list_boilerplate,
-};
 
 define_identifier_generator!(feature);
 

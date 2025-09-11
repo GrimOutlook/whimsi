@@ -10,7 +10,7 @@ fn pad(mut string: String, fill: char, width: usize) -> String {
     string
 }
 
-fn print_summary_info<F>(package: &whimsi_whimsi_msi::Package<F>) {
+fn print_summary_info<F>(package: &whimsi_msi::Package<F>) {
     println!("Package type: {:?}", package.package_type());
     let is_signed = package.has_digital_signature();
     let summary_info = package.summary_info();
@@ -34,7 +34,7 @@ fn print_summary_info<F>(package: &whimsi_whimsi_msi::Package<F>) {
     let languages = summary_info.languages();
     if !languages.is_empty() {
         let tags: Vec<&str> =
-            languages.iter().map(whimsi_whimsi_msi::Language::tag).collect();
+            languages.iter().map(whimsi_msi::Language::tag).collect();
         println!("    Language: {}", tags.join(", "));
     }
     if let Some(timestamp) = summary_info.creation_time() {
@@ -52,7 +52,7 @@ fn print_summary_info<F>(package: &whimsi_whimsi_msi::Package<F>) {
     }
 }
 
-fn print_table_description(table: &whimsi_whimsi_msi::Table) {
+fn print_table_description(table: &whimsi_msi::Table) {
     println!("{}", table.name());
     for column in table.columns() {
         println!(
@@ -66,7 +66,7 @@ fn print_table_description(table: &whimsi_whimsi_msi::Table) {
 }
 
 fn print_table_contents<F: Read + Seek>(
-    package: &mut whimsi_whimsi_msi::Package<F>,
+    package: &mut whimsi_msi::Package<F>,
     table_name: &str,
 ) {
     let mut col_widths: Vec<usize> = package
@@ -77,7 +77,7 @@ fn print_table_contents<F: Read + Seek>(
         .map(|column| column.name().len())
         .collect();
     let rows: Vec<Vec<String>> = package
-        .select_rows(whimsi_whimsi_msi::Select::table(table_name))
+        .select_rows(whimsi_msi::Select::table(table_name))
         .expect("select")
         .map(|row| {
             let mut strings = Vec::with_capacity(row.len());
@@ -94,8 +94,7 @@ fn print_table_contents<F: Read + Seek>(
         for (index, column) in
             package.get_table(table_name).unwrap().columns().iter().enumerate()
         {
-            let string =
-                pad(column.name().to_string(), ' ', col_widths[index]);
+            let string = pad(column.name().to_string(), ' ', col_widths[index]);
             line.push_str(&string);
             line.push_str("  ");
         }
@@ -163,7 +162,7 @@ fn main() {
     if let Some(submatches) = matches.subcommand_matches("describe") {
         let path = submatches.value_of("path").unwrap();
         let table_name = submatches.value_of("table").unwrap();
-        let package = whimsi_whimsi_msi::open(path).expect("open package");
+        let package = whimsi_msi::open(path).expect("open package");
         if let Some(table) = package.get_table(table_name) {
             print_table_description(table);
         } else {
@@ -172,27 +171,27 @@ fn main() {
     } else if let Some(submatches) = matches.subcommand_matches("export") {
         let path = submatches.value_of("path").unwrap();
         let table_name = submatches.value_of("table").unwrap();
-        let mut package = whimsi_whimsi_msi::open(path).expect("open package");
+        let mut package = whimsi_msi::open(path).expect("open package");
         print_table_contents(&mut package, table_name);
     } else if let Some(submatches) = matches.subcommand_matches("extract") {
         let path = submatches.value_of("path").unwrap();
         let stream_name = submatches.value_of("stream").unwrap();
-        let mut package = whimsi_whimsi_msi::open(path).expect("open package");
+        let mut package = whimsi_msi::open(path).expect("open package");
         let mut stream = package.read_stream(stream_name).expect("read");
         io::copy(&mut stream, &mut io::stdout()).expect("extract");
     } else if let Some(submatches) = matches.subcommand_matches("streams") {
         let path = submatches.value_of("path").unwrap();
-        let package = whimsi_whimsi_msi::open(path).expect("open package");
+        let package = whimsi_msi::open(path).expect("open package");
         for stream_name in package.streams() {
             println!("{stream_name}");
         }
     } else if let Some(submatches) = matches.subcommand_matches("summary") {
         let path = submatches.value_of("path").unwrap();
-        let package = whimsi_whimsi_msi::open(path).expect("open package");
+        let package = whimsi_msi::open(path).expect("open package");
         print_summary_info(&package);
     } else if let Some(submatches) = matches.subcommand_matches("tables") {
         let path = submatches.value_of("path").unwrap();
-        let package = whimsi_whimsi_msi::open(path).expect("open package");
+        let package = whimsi_msi::open(path).expect("open package");
         for table in package.tables() {
             println!("{}", table.name());
         }

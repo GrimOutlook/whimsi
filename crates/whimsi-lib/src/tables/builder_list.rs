@@ -43,7 +43,7 @@ pub(crate) trait MsiBuilderList {
 #[macro_export]
 macro_rules! msi_list_boilerplate {
     ($struct_type:ty, $list_value_type:ty) => {
-        impl MsiBuilderList for $struct_type {
+        impl $crate::tables::builder_list::MsiBuilderList for $struct_type {
             type ListValue = $list_value_type;
 
             fn entries(&self) -> &Vec<Self::ListValue> {

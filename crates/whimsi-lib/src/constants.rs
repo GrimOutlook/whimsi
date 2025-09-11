@@ -44,6 +44,8 @@ pub const FILE_IDENTIFIER_PREFIX: &str = "FILE_";
 pub const MEDIA_IDENTIFIER_PREFIX: &str = "MEDIA_";
 pub const PROPERTY_IDENTIFIER_PREFIX: &str = "PROPERTY_";
 pub const REGISTRY_IDENTIFIER_PREFIX: &str = "REGISTRY_";
+pub const SIGNATURE_IDENTIFIER_PREFIX: &str = "SIGNATURE_";
+pub const BINARY_IDENTIFIER_PREFIX: &str = "BINARY_";
 
 // Default identifiers
 pub const DEFAULT_CABINET_IDENTIFIER: &str = "DEFAULT_CABINET";

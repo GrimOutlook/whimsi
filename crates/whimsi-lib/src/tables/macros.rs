@@ -8,7 +8,7 @@ macro_rules! define_generator_table {
                 generator: [<$var:camel IdGenerator>],
             }
 
-            impl MsiBuilderTable for [<$var:camel Table>] {
+            impl $crate::tables::builder_table::MsiBuilderTable for [<$var:camel Table>] {
                 type TableValue = [<$var:camel Dao>];
 
                 fn entries(&self) -> &Vec<Self::TableValue> {

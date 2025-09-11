@@ -25,11 +25,14 @@ use crate::constants::*;
 use crate::tables::admin_execute_sequence::table::AdminExecuteSequenceTable;
 use crate::tables::admin_ui_sequence::table::AdminUiSequenceTable;
 use crate::tables::advt_execute_sequence::table::AdvtExecuteSequenceTable;
+use crate::tables::app_search::table::AppSearchTable;
+use crate::tables::binary::table::BinaryTable;
 use crate::tables::builder_list::MsiBuilderList;
 use crate::tables::builder_table::MsiBuilderTable;
 use crate::tables::component::dao::ComponentDao;
 use crate::tables::component::table::ComponentIdentifier;
 use crate::tables::component::table::ComponentTable;
+use crate::tables::custom_action::table::CustomActionTable;
 use crate::tables::dao::Dao;
 use crate::tables::directory::dao::DirectoryDao;
 use crate::tables::directory::directory_identifier::DirectoryIdentifier;
@@ -44,6 +47,7 @@ use crate::tables::file::table::FileTable;
 use crate::tables::id_generator_builder_list::IdGeneratorBuilderList;
 use crate::tables::install_execute_sequence::table::InstallExecuteSequenceTable;
 use crate::tables::install_ui_sequence::table::InstallUiSequenceTable;
+use crate::tables::launch_condition::table::LaunchConditionTable;
 use crate::tables::media::cabinet_identifier::CabinetHandle;
 use crate::tables::media::cabinet_identifier::CabinetIdentifier;
 use crate::tables::media::dao::MediaDao;
@@ -53,7 +57,9 @@ use crate::tables::msi_file_hash::dao::MsiFileHashDao;
 use crate::tables::msi_file_hash::table::MsiFileHashTable;
 use crate::tables::property::dao::PropertyDao;
 use crate::tables::property::table::PropertyTable;
+use crate::tables::reg_locator::table::RegLocatorTable;
 use crate::tables::registry::table::RegistryTable;
+use crate::tables::signature::table::SignatureTable;
 use crate::types::column::default_dir::DefaultDir;
 use crate::types::column::filename::Filename;
 use crate::types::column::identifier::Identifier;
@@ -104,6 +110,12 @@ pub struct MsiBuilder {
     advt_execute_sequence: AdvtExecuteSequenceTable,
     install_execute_sequence: InstallExecuteSequenceTable,
     install_ui_sequence: InstallUiSequenceTable,
+    signature: SignatureTable,
+    launch_condition: LaunchConditionTable,
+    binary: BinaryTable,
+    reg_locator: RegLocatorTable,
+    app_search: AppSearchTable,
+    custom_action: CustomActionTable,
 }
 
 impl MsiBuilder {
@@ -432,12 +444,12 @@ impl MsiBuilder {
         self.install_execute_sequence.write_to_package(package)?;
         self.install_ui_sequence.write_to_package(package)?;
         // Empty tables that seem to be required?
-        // self.signature.write_to_package(package)?;
-        // self.launch_condition.write_to_package(package)?;
-        // self.reg_locator.write_to_package(package)?;
-        // self.app_search.write_to_package(package)?;
-        // self.binary.write_to_package(package)?;
-        // self.custom_action.write_to_package(package)?;
+        self.signature.write_to_package(package)?;
+        self.launch_condition.write_to_package(package)?;
+        self.reg_locator.write_to_package(package)?;
+        self.app_search.write_to_package(package)?;
+        self.binary.write_to_package(package)?;
+        self.custom_action.write_to_package(package)?;
         Ok(())
     }
 
@@ -616,6 +628,12 @@ impl Default for MsiBuilder {
             advt_execute_sequence: Default::default(),
             install_execute_sequence: Default::default(),
             install_ui_sequence: Default::default(),
+            signature: Default::default(),
+            launch_condition: Default::default(),
+            binary: Default::default(),
+            reg_locator: Default::default(),
+            app_search: Default::default(),
+            custom_action: Default::default(),
 
             // Non-tables that need access to all or generate entity IDs.
             identifiers: empty_entries.clone(),

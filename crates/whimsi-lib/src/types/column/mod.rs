@@ -8,6 +8,7 @@ use crate::types::column::filename::Filename;
 
 pub mod attributes;
 pub mod condition;
+pub mod custom_source;
 pub mod default_dir;
 pub mod filename;
 pub mod formatted;

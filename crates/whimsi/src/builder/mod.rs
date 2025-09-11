@@ -11,7 +11,7 @@ use std::{
 use anyhow::{bail, ensure};
 use anyhow::{Context, Result};
 use camino::Utf8PathBuf;
-use msi::{Package, PackageType};
+use whimsi_msi::{Package, PackageType};
 use roxygen::roxygen;
 use tables::directory::DirectoryTable;
 use tracing::info;
@@ -109,7 +109,7 @@ mod test {
     use assertables::*;
     use camino::Utf8Path;
     use itertools::Itertools;
-    use msi::{Package, Row, Select};
+    use whimsi_msi::{Package, Row, Select};
 
     use crate::enums::system_folder::SystemFolder;
 

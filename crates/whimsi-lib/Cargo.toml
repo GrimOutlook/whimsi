@@ -18,7 +18,6 @@ enum_dispatch = "0.3.13"
 getset = "0.1.6"
 itertools = "0.14.0"
 md-5 = "0.10.6"
-msi = "0.9.0"
 names = { version = "0.14.0", default-features = false }
 num-traits = "0.2.19"
 once_cell = "1.21.3"
@@ -33,6 +32,7 @@ thiserror = "2.0.12"
 tracing = "0.1.41"
 uuid = { version = "1.17.0", features = ["v4"] }
 whimsi-macros = { path = "../whimsi-macros/" }
+whimsi-msi = { path = "../whimsi-msi/" }
 
 [dev-dependencies]
 assert_fs = "1.1.3"

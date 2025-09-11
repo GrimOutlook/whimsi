@@ -21,22 +21,22 @@ define_identifier_generator!(feature);
 define_generator_table!(
     Feature,
     vec![
-        msi::Column::build("Feature")
+        whimsi_msi::Column::build("Feature")
             .primary_key()
             .id_string(FEATURE_IDENTIFIER_MAX_LEN),
-        msi::Column::build("Feature_Parent")
+        whimsi_msi::Column::build("Feature_Parent")
             .nullable()
             .id_string(FEATURE_IDENTIFIER_MAX_LEN),
-        msi::Column::build("Title").nullable().string(TITLE_MAX_LEN),
-        msi::Column::build("Description")
+        whimsi_msi::Column::build("Title").nullable().string(TITLE_MAX_LEN),
+        whimsi_msi::Column::build("Description")
             .nullable()
             .string(DESCRIPTION_MAX_LEN),
-        msi::Column::build("Display").nullable().int16(),
-        msi::Column::build("Level").int16(),
-        msi::Column::build("Directory")
+        whimsi_msi::Column::build("Display").nullable().int16(),
+        whimsi_msi::Column::build("Level").int16(),
+        whimsi_msi::Column::build("Directory")
             .nullable()
             .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-        msi::Column::build("Attributes").int16(),
+        whimsi_msi::Column::build("Attributes").int16(),
     ]
 );
 

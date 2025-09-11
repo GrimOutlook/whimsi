@@ -24,12 +24,12 @@ impl MsiBuilderTable for PropertyTable {
         "Property"
     }
 
-    fn columns(&self) -> Vec<msi::Column> {
+    fn columns(&self) -> Vec<whimsi_msi::Column> {
         vec![
-            msi::Column::build("Property")
+            whimsi_msi::Column::build("Property")
                 .primary_key()
                 .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-            msi::Column::build("Value").text_string(PROPERTY_VALUE_MAX_LEN),
+            whimsi_msi::Column::build("Value").text_string(PROPERTY_VALUE_MAX_LEN),
         ]
     }
 }

@@ -23,24 +23,24 @@ define_identifier_generator!(File);
 define_generator_table!(
     File,
     vec![
-        msi::Column::build("File")
+        whimsi_msi::Column::build("File")
             .primary_key()
             .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-        msi::Column::build("Component_").id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-        msi::Column::build("FileName")
-            .category(msi::Category::Filename)
+        whimsi_msi::Column::build("Component_").id_string(DEFAULT_IDENTIFIER_MAX_LEN),
+        whimsi_msi::Column::build("FileName")
+            .category(whimsi_msi::Category::Filename)
             .string(FILENAME_MAX_LEN),
-        msi::Column::build("FileSize").int32(),
-        msi::Column::build("Version")
+        whimsi_msi::Column::build("FileSize").int32(),
+        whimsi_msi::Column::build("Version")
             .nullable()
-            .category(msi::Category::Version)
+            .category(whimsi_msi::Category::Version)
             .string(VERSION_MAX_LEN),
-        msi::Column::build("Language")
+        whimsi_msi::Column::build("Language")
             .nullable()
-            .category(msi::Category::Language)
+            .category(whimsi_msi::Category::Language)
             .string(LANGUAGE_MAX_LEN),
-        msi::Column::build("Attributes").nullable().int16(),
-        msi::Column::build("Sequence").int16(),
+        whimsi_msi::Column::build("Attributes").nullable().int16(),
+        whimsi_msi::Column::build("Sequence").int16(),
     ]
 );
 

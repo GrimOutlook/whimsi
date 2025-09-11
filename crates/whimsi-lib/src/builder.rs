@@ -341,14 +341,14 @@ impl MsiBuilder {
     pub fn build<F: std::io::Read + std::io::Write + std::io::Seek>(
         self,
         container: F,
-    ) -> anyhow::Result<msi::Package<F>> {
+    ) -> anyhow::Result<whimsi_msi::Package<F>> {
         let Some(ref meta) = self.meta else {
             bail!("Meta information cannot be blank");
         };
         info!("Building MSI");
 
         let mut package =
-            msi::Package::create(*meta.package_type(), container)?;
+            whimsi_msi::Package::create(*meta.package_type(), container)?;
         self.write_meta_info_to_package(&mut package, meta)?;
         self.write_tables_to_package(&mut package)?;
         self.write_cabinets_to_package(&mut package)?;
@@ -360,24 +360,25 @@ impl MsiBuilder {
         F: std::io::Read + std::io::Write + std::io::Seek,
     >(
         &self,
-        package: &mut msi::Package<F>,
+        package: &mut whimsi_msi::Package<F>,
         meta: &MetaInformation,
     ) -> anyhow::Result<()> {
         let summary_info = package.summary_info_mut();
-        // summary_info.set_codepage(msi::CodePage::default());
+        summary_info.set_codepage(whimsi_msi::CodePage::Windows1252);
         summary_info.set_subject(meta.subject());
 
         if let Some(author) = meta.author() {
             summary_info.set_author(author);
         }
         summary_info.set_languages(meta.languages());
-        // if let Some(arch) = meta.architecture() {
-        //     summary_info.set_arch(arch.to_string());
-        // }
+        if let Some(arch) = meta.architecture() {
+            summary_info.set_arch(arch.to_string());
+        }
         summary_info.set_creating_application("WHIMSI");
         summary_info.set_creation_time_to_now();
         summary_info.set_uuid(Uuid::new_v4());
-        // summary_info.set_word_count(2);
+        summary_info.set_word_count(2);
+        summary_info.set_page_count(200);
         Ok(())
     }
 
@@ -391,7 +392,7 @@ impl MsiBuilder {
         F: std::io::Read + std::io::Write + std::io::Seek,
     >(
         &self,
-        package: &mut msi::Package<F>,
+        package: &mut whimsi_msi::Package<F>,
     ) -> anyhow::Result<()> {
         info!("Writing tables to package");
         self.directory.write_to_package(package)?;
@@ -415,7 +416,7 @@ impl MsiBuilder {
         F: std::io::Read + std::io::Write + std::io::Seek,
     >(
         &self,
-        package: &mut msi::Package<F>,
+        package: &mut whimsi_msi::Package<F>,
     ) -> anyhow::Result<()> {
         let previous_last_sequence = 1;
         for media in MsiBuilderTable::entries(&self.media)
@@ -503,7 +504,7 @@ impl MsiBuilder {
         &self,
         cabinet_info: &CabinetInfo,
         cabinet: &mut std::fs::File,
-        package: &mut msi::Package<F>,
+        package: &mut whimsi_msi::Package<F>,
     ) -> anyhow::Result<()> {
         let cabinet_id = cabinet_info.id();
         debug!(

@@ -47,7 +47,7 @@ impl Into<i16> for Sequence {
     }
 }
 
-impl From<Sequence> for msi::Value {
+impl From<Sequence> for whimsi_msi::Value {
     fn from(value: Sequence) -> Self {
         Into::<i16>::into(value).into()
     }

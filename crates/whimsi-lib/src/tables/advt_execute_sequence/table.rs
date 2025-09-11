@@ -26,16 +26,16 @@ impl MsiBuilderTable for AdvtExecuteSequenceTable {
         "AdvtExecuteSequence"
     }
 
-    fn columns(&self) -> Vec<msi::Column> {
+    fn columns(&self) -> Vec<whimsi_msi::Column> {
         vec![
-            msi::Column::build("Action")
+            whimsi_msi::Column::build("Action")
                 .primary_key()
                 .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-            msi::Column::build("Condition")
+            whimsi_msi::Column::build("Condition")
                 .nullable()
-                .category(msi::Category::Condition)
+                .category(whimsi_msi::Category::Condition)
                 .string(CONDITION_MAX_LEN),
-            msi::Column::build("Sequence").nullable().int16(),
+            whimsi_msi::Column::build("Sequence").nullable().int16(),
         ]
     }
 }

@@ -8,7 +8,7 @@ impl From<Uuid> for Guid {
     }
 }
 
-impl From<Guid> for msi::Value {
+impl From<Guid> for whimsi_msi::Value {
     fn from(value: Guid) -> Self {
         value.0.into()
     }

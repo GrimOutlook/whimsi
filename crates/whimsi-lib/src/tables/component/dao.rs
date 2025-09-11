@@ -47,7 +47,7 @@ impl ComponentDao {
 }
 
 impl IsDao for ComponentDao {
-    fn to_row(&self) -> Vec<msi::Value> {
+    fn to_row(&self) -> Vec<whimsi_msi::Value> {
         vec![
             self.component.clone().into(),
             self.component_id.to_optional_value(),

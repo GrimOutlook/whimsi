@@ -4,7 +4,7 @@ use anyhow::Context;
 use anyhow::bail;
 use derive_more::Constructor;
 use getset::Getters;
-use msi::Language;
+use whimsi_msi::Language;
 
 use crate::tables::builder_list_entry::MsiBuilderListEntry;
 use crate::tables::component::table::ComponentIdentifier;
@@ -114,7 +114,7 @@ impl FileDao {
 }
 
 impl IsDao for FileDao {
-    fn to_row(&self) -> Vec<msi::Value> {
+    fn to_row(&self) -> Vec<whimsi_msi::Value> {
         vec![
             self.file.clone().into(),
             self.component.clone().into(),

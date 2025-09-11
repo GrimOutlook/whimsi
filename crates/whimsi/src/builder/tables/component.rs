@@ -1,7 +1,7 @@
 // Populates the `File` table
 
 use anyhow::{Context, Result};
-use msi::{Category, Column, Insert, Value};
+use whimsi_msi::{Category, Column, Insert, Value};
 use uuid::Uuid;
 
 use crate::{builder::MsiPackage, models::file::MsiFile};

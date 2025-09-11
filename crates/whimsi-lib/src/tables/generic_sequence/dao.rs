@@ -18,7 +18,7 @@ pub struct GenericSequenceDao {
 }
 
 impl IsDao for GenericSequenceDao {
-    fn to_row(&self) -> Vec<msi::Value> {
+    fn to_row(&self) -> Vec<whimsi_msi::Value> {
         vec![
             self.action.clone().into(),
             self.condition.to_optional_value(),

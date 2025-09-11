@@ -25,7 +25,7 @@ pub struct RegistryDao {
 }
 
 impl IsDao for RegistryDao {
-    fn to_row(&self) -> Vec<msi::Value> {
+    fn to_row(&self) -> Vec<whimsi_msi::Value> {
         vec![
             self.registry.clone().into(),
             self.root.into(),

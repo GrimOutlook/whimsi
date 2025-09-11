@@ -23,7 +23,7 @@ macro_rules! define_generator_table {
                     stringify!($var)
                 }
 
-                fn columns(&self) -> Vec<msi::Column> {
+                fn columns(&self) -> Vec<whimsi_msi::Column> {
                     $columns
                 }
             }

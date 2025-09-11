@@ -3,7 +3,7 @@ use std::{cell::RefCell, default, io::Cursor, rc::Rc};
 use ambassador::{delegatable_trait, Delegate};
 use anyhow::{Context, Result};
 use directory::DirectoryTable;
-use msi::{Column, Insert, Package, Rows, Value};
+use whimsi_msi::{Column, Insert, Package, Rows, Value};
 use strum::EnumDiscriminants;
 
 use super::MsiPackage;

@@ -19,16 +19,16 @@ impl MsiBuilderTable for MsiFileHashTable {
         "MsiFileHash"
     }
 
-    fn columns(&self) -> Vec<msi::Column> {
+    fn columns(&self) -> Vec<whimsi_msi::Column> {
         vec![
-            msi::Column::build("File_")
+            whimsi_msi::Column::build("File_")
                 .primary_key()
                 .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-            msi::Column::build("Options").int16(),
-            msi::Column::build("HashPart1").int32(),
-            msi::Column::build("HashPart2").int32(),
-            msi::Column::build("HashPart3").int32(),
-            msi::Column::build("HashPart4").int32(),
+            whimsi_msi::Column::build("Options").int16(),
+            whimsi_msi::Column::build("HashPart1").int32(),
+            whimsi_msi::Column::build("HashPart2").int32(),
+            whimsi_msi::Column::build("HashPart3").int32(),
+            whimsi_msi::Column::build("HashPart4").int32(),
         ]
     }
 }

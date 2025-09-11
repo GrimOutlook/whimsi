@@ -4,7 +4,7 @@ use std::io::Write;
 
 use anyhow::ensure;
 use itertools::Itertools;
-use msi::Package;
+use whimsi_msi::Package;
 use tracing::debug;
 use tracing::trace;
 
@@ -18,18 +18,18 @@ pub(crate) trait MsiBuilderTable: MsiBuilderList {
 
     /// Utilized when creating the MSI using the `msi` crate.
     fn name(&self) -> &'static str;
-    fn columns(&self) -> Vec<msi::Column>;
+    fn columns(&self) -> Vec<whimsi_msi::Column>;
     fn entries(&self) -> &Vec<Self::TableValue>;
     fn entries_mut(&mut self) -> &mut Vec<Self::TableValue>;
 
-    fn rows(&self) -> Vec<Vec<msi::Value>> {
+    fn rows(&self) -> Vec<Vec<whimsi_msi::Value>> {
         MsiBuilderTable::entries(self).iter().map(IsDao::to_row).collect_vec()
     }
 
     /// Write the columns contained in the table to the package.
     fn write_to_package<F: std::io::Read + std::io::Write + std::io::Seek>(
         &self,
-        package: &mut msi::Package<F>,
+        package: &mut whimsi_msi::Package<F>,
     ) -> anyhow::Result<()> {
         debug!("Writing {}Table to package", self.name());
         let columns = self.columns();
@@ -40,7 +40,7 @@ pub(crate) trait MsiBuilderTable: MsiBuilderList {
             .iter()
             .enumerate()
             .for_each(|(index, r)| trace!("{index}: {r:?}"));
-        let query = msi::Insert::into(self.name()).rows(rows);
+        let query = whimsi_msi::Insert::into(self.name()).rows(rows);
         Ok(package.insert_rows(query)?)
     }
 }

@@ -41,7 +41,7 @@ impl Display for CabinetHandle {
     }
 }
 
-impl From<CabinetHandle> for msi::Value {
+impl From<CabinetHandle> for whimsi_msi::Value {
     fn from(value: CabinetHandle) -> Self {
         value.to_string().into()
     }

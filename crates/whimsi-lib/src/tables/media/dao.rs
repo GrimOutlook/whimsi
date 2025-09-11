@@ -66,7 +66,7 @@ impl MediaDao {
 }
 
 impl IsDao for MediaDao {
-    fn to_row(&self) -> Vec<msi::Value> {
+    fn to_row(&self) -> Vec<whimsi_msi::Value> {
         vec![
             self.disk_id.into(),
             self.last_sequence.into(),

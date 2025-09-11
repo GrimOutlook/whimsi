@@ -1,6 +1,6 @@
 use std::fs::File;
 
-use msi::Language;
+use whimsi_msi::Language;
 use tracing::level_filters::LevelFilter;
 use whimsi_lib::builder::MsiBuilder;
 use whimsi_lib::tables::meta::MetaInformation;
@@ -17,10 +17,10 @@ fn main() {
         .expect("Failed to open file");
 
     let meta =
-        MetaInformation::new(msi::PackageType::Installer, "PING".to_string())
+        MetaInformation::new(whimsi_msi::PackageType::Installer, "PING".to_string())
             .with_author(Some("manny".to_string()))
             .with_languages(vec![Language::from_code(1033)])
-            .with_architecture(Some(MsiArchitecture::X64));
+            .with_architecture(Some(MsiArchitecture::Intel));
 
     let mut builder = MsiBuilder::default();
     let manny_id = builder

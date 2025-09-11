@@ -9,7 +9,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use camino::{Utf8DirEntry, Utf8PathBuf};
-use msi::{Category, Column, Insert, Package, Value};
+use whimsi_msi::{Category, Column, Insert, Package, Value};
 
 use crate::{
     builder::{

@@ -17,20 +17,20 @@ define_identifier_generator!(Registry);
 define_generator_table!(
     Registry,
     vec![
-        msi::Column::build("Registry")
+        whimsi_msi::Column::build("Registry")
             .primary_key()
             .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-        msi::Column::build("Root").int16(),
-        msi::Column::build("Key")
-            .category(msi::Category::RegPath)
+        whimsi_msi::Column::build("Root").int16(),
+        whimsi_msi::Column::build("Key")
+            .category(whimsi_msi::Category::RegPath)
             .string(REGPATH_MAX_LEN),
-        msi::Column::build("Name")
+        whimsi_msi::Column::build("Name")
             .nullable()
             .formatted_string(REGISTRY_NAME_MAX_LEN),
-        msi::Column::build("Value")
+        whimsi_msi::Column::build("Value")
             .nullable()
             .formatted_string(REGISTRY_VALUE_MAX_LEN),
-        msi::Column::build("Component_").id_string(DEFAULT_IDENTIFIER_MAX_LEN),
+        whimsi_msi::Column::build("Component_").id_string(DEFAULT_IDENTIFIER_MAX_LEN),
     ]
 );
 

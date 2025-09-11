@@ -29,7 +29,9 @@ impl MsiBuilderTable for PropertyTable {
             whimsi_msi::Column::build("Property")
                 .primary_key()
                 .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-            whimsi_msi::Column::build("Value").text_string(PROPERTY_VALUE_MAX_LEN),
+            whimsi_msi::Column::build("Value")
+                .localizable()
+                .text_string(PROPERTY_VALUE_MAX_LEN),
         ]
     }
 }

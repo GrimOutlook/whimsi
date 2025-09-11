@@ -51,6 +51,7 @@ use crate::tables::media::table::MediaTable;
 use crate::tables::meta::MetaInformation;
 use crate::tables::msi_file_hash::dao::MsiFileHashDao;
 use crate::tables::msi_file_hash::table::MsiFileHashTable;
+use crate::tables::property::dao::PropertyDao;
 use crate::tables::property::table::PropertyTable;
 use crate::tables::registry::table::RegistryTable;
 use crate::types::column::default_dir::DefaultDir;
@@ -337,6 +338,27 @@ impl MsiBuilder {
         CabinetHandle::Internal(id)
     }
 
+    pub fn add_property(
+        &mut self,
+        key: impl ToString,
+        value: impl ToString,
+    ) -> anyhow::Result<()> {
+        self.property.add(PropertyDao::new(
+            key.to_string().parse()?,
+            value.to_string().parse()?,
+        ));
+        Ok(())
+    }
+
+    pub fn with_property(
+        mut self,
+        key: impl ToString,
+        value: impl ToString,
+    ) -> anyhow::Result<Self> {
+        self.add_property(key, value)?;
+        Ok(self)
+    }
+
     /// Build the MSI from all information given to MSIBuilder.
     pub fn build<F: std::io::Read + std::io::Write + std::io::Seek>(
         self,
@@ -409,6 +431,13 @@ impl MsiBuilder {
         self.advt_execute_sequence.write_to_package(package)?;
         self.install_execute_sequence.write_to_package(package)?;
         self.install_ui_sequence.write_to_package(package)?;
+        // Empty tables that seem to be required?
+        // self.signature.write_to_package(package)?;
+        // self.launch_condition.write_to_package(package)?;
+        // self.reg_locator.write_to_package(package)?;
+        // self.app_search.write_to_package(package)?;
+        // self.binary.write_to_package(package)?;
+        // self.custom_action.write_to_package(package)?;
         Ok(())
     }
 

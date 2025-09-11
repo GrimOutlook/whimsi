@@ -4,7 +4,7 @@ use crate::tables::property::property_text::PropertyText;
 use crate::types::column::identifier::Identifier;
 use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, derive_more::Constructor)]
 pub struct PropertyDao {
     property: Identifier,
     value: PropertyText,

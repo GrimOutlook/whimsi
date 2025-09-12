@@ -31,8 +31,8 @@ tempfile = "3.21.0"
 thiserror = "2.0.12"
 tracing = "0.1.41"
 uuid = { version = "1.17.0", features = ["v4"] }
-whimsi-macros = { path = "../whimsi-macros/" }
-whimsi-msi = { path = "../whimsi-msi/" }
+whimsi-macros = { path = "../macros/" }
+whimsi-msi = { path = "../msi/" }
 
 [dev-dependencies]
 assert_fs = "1.1.3"

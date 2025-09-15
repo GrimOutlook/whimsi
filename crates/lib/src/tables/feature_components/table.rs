@@ -23,7 +23,7 @@ impl MsiBuilderTable for FeatureComponentsTable {
         vec![
             whimsi_msi::Column::build("Feature_")
                 .primary_key()
-                .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
+                .id_string(FEATURE_IDENTIFIER_MAX_LEN),
             whimsi_msi::Column::build("Component_")
                 .primary_key()
                 .id_string(DEFAULT_IDENTIFIER_MAX_LEN),

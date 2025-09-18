@@ -14,7 +14,7 @@ use crate::internal::table::{Rows, Table};
 use crate::internal::value::{Value, ValueRef};
 use cfb;
 use std::borrow::Borrow;
-use std::collections::{btree_map, BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet, btree_map};
 use std::io::{self, Read, Seek, Write};
 use std::rc::Rc;
 use uuid::Uuid;
@@ -122,9 +122,7 @@ impl PackageType {
             PackageType::Installer => {
                 Uuid::parse_str(INSTALLER_PACKAGE_CLSID).unwrap()
             }
-            PackageType::Patch => {
-                Uuid::parse_str(PATCH_PACKAGE_CLSID).unwrap()
-            }
+            PackageType::Patch => Uuid::parse_str(PATCH_PACKAGE_CLSID).unwrap(),
             PackageType::Transform => {
                 Uuid::parse_str(TRANSFORM_PACKAGE_CLSID).unwrap()
             }
@@ -149,7 +147,7 @@ impl PackageType {
 /// # Examples
 ///
 /// ```
-/// use whimsi_whimsi_msi::{Column, Expr, Insert, Package, PackageType, Select, Value};
+/// use whimsi_msi::{Column, Expr, Insert, Package, PackageType, Select, Value};
 /// use std::io::Cursor;
 ///
 /// // Create an in-memory package using a Cursor:
@@ -278,7 +276,7 @@ impl<F: Read + Seek> Package<F> {
     /// underlying reader also supports the `Write` trait, then the `Package`
     /// object will be writable as well.
     pub fn open(inner: F) -> io::Result<Package<F>> {
-        let mut comp = cfb::CompoundFile::open(inner)?;
+        let mut comp = cfb::CompoundFile::open_strict(inner)?;
         let package_type = {
             let root_entry = comp.root_entry();
             let clsid = root_entry.clsid();
@@ -462,11 +460,8 @@ impl<F: Read + Seek> Package<F> {
                 }
                 columns.push(builder.with_bitfield(bitfield)?);
             }
-            let table = Table::new(
-                table_name,
-                columns,
-                string_pool.long_string_refs(),
-            );
+            let table =
+                Table::new(table_name, columns, string_pool.long_string_refs());
             all_tables.insert(table.name().to_string(), table);
         }
         Ok(Package {
@@ -484,11 +479,7 @@ impl<F: Read + Seek> Package<F> {
     /// fails (e.g. due to the column names being incorrect or the table(s) not
     /// existing).
     pub fn select_rows(&mut self, query: Select) -> io::Result<Rows<'_>> {
-        query.exec(
-            self.comp.as_mut().unwrap(),
-            &self.string_pool,
-            &self.tables,
-        )
+        query.exec(self.comp.as_mut().unwrap(), &self.string_pool, &self.tables)
     }
 
     /// Opens an existing binary stream in the package for reading.
@@ -516,7 +507,8 @@ impl<F: Read + Write + Seek> Package<F> {
         package_type: PackageType,
         inner: F,
     ) -> io::Result<Package<F>> {
-        let mut comp = cfb::CompoundFile::create(inner)?;
+        let mut comp =
+            cfb::CompoundFile::create_with_version(cfb::Version::V3, inner)?;
         comp.set_storage_clsid("/", package_type.clsid())?;
         let mut summary_info = SummaryInfo::new();
         summary_info.set_title(package_type.default_title().to_string());
@@ -935,10 +927,7 @@ mod tests {
         assert_eq!(rows.len(), 3);
         let values: Vec<(i32, String)> = rows
             .map(|row| {
-                (
-                    row[0].as_int().unwrap(),
-                    row[1].as_str().unwrap().to_string(),
-                )
+                (row[0].as_int().unwrap(), row[1].as_str().unwrap().to_string())
             })
             .collect();
         assert_eq!(

@@ -21,7 +21,7 @@ pub enum Category {
     /// # Examples
     ///
     /// ```
-    /// assert!(whimsi_whimsi_msi::Category::Text.validate("Hello, World!"));
+    /// assert!(whimsi_msi::Category::Text.validate("Hello, World!"));
     /// ```
     Text,
     /// A text string containing no lowercase letters.
@@ -34,9 +34,9 @@ pub enum Category {
     ///
     /// ```
     /// // Valid:
-    /// assert!(whimsi_whimsi_msi::Category::UpperCase.validate("HELLO, WORLD!"));
+    /// assert!(whimsi_msi::Category::UpperCase.validate("HELLO, WORLD!"));
     /// // Invalid:
-    /// assert!(!whimsi_whimsi_msi::Category::UpperCase.validate("Hello, World!"));
+    /// assert!(!whimsi_msi::Category::UpperCase.validate("Hello, World!"));
     /// ```
     UpperCase,
     /// A text string containing no uppercase letters.
@@ -49,9 +49,9 @@ pub enum Category {
     ///
     /// ```
     /// // Valid:
-    /// assert!(whimsi_whimsi_msi::Category::LowerCase.validate("hello, world!"));
+    /// assert!(whimsi_msi::Category::LowerCase.validate("hello, world!"));
     /// // Invalid:
-    /// assert!(!whimsi_whimsi_msi::Category::LowerCase.validate("Hello, World!"));
+    /// assert!(!whimsi_msi::Category::LowerCase.validate("Hello, World!"));
     /// ```
     LowerCase,
     /// A signed 16-bit integer.
@@ -64,10 +64,10 @@ pub enum Category {
     ///
     /// ```
     /// // Valid:
-    /// assert!(whimsi_whimsi_msi::Category::Integer.validate("32767"));
-    /// assert!(whimsi_whimsi_msi::Category::Integer.validate("-47"));
+    /// assert!(whimsi_msi::Category::Integer.validate("32767"));
+    /// assert!(whimsi_msi::Category::Integer.validate("-47"));
     /// // Invalid:
-    /// assert!(!whimsi_whimsi_msi::Category::Integer.validate("40000"));
+    /// assert!(!whimsi_msi::Category::Integer.validate("40000"));
     /// ```
     Integer,
     /// A signed 32-bit integer.
@@ -80,10 +80,10 @@ pub enum Category {
     ///
     /// ```
     /// // Valid:
-    /// assert!(whimsi_whimsi_msi::Category::DoubleInteger.validate("2147483647"));
-    /// assert!(whimsi_whimsi_msi::Category::DoubleInteger.validate("-99999"));
+    /// assert!(whimsi_msi::Category::DoubleInteger.validate("2147483647"));
+    /// assert!(whimsi_msi::Category::DoubleInteger.validate("-99999"));
     /// // Invalid:
-    /// assert!(!whimsi_whimsi_msi::Category::DoubleInteger.validate("3000000000"));
+    /// assert!(!whimsi_msi::Category::DoubleInteger.validate("3000000000"));
     /// ```
     DoubleInteger,
     /// Stores a civil datetime, with a 2-second resolution.
@@ -104,11 +104,11 @@ pub enum Category {
     ///
     /// ```
     /// // Valid:
-    /// assert!(whimsi_whimsi_msi::Category::Identifier.validate("HelloWorld"));
-    /// assert!(whimsi_whimsi_msi::Category::Identifier.validate("_99.Bottles"));
+    /// assert!(whimsi_msi::Category::Identifier.validate("HelloWorld"));
+    /// assert!(whimsi_msi::Category::Identifier.validate("_99.Bottles"));
     /// // Invalid:
-    /// assert!(!whimsi_whimsi_msi::Category::Identifier.validate("$HELLO"));
-    /// assert!(!whimsi_whimsi_msi::Category::Identifier.validate("3.14159"));
+    /// assert!(!whimsi_msi::Category::Identifier.validate("$HELLO"));
+    /// assert!(!whimsi_msi::Category::Identifier.validate("3.14159"));
     /// ```
     Identifier,
     /// A string that is either an identifier (see above), or a reference to an
@@ -123,11 +123,11 @@ pub enum Category {
     ///
     /// ```
     /// // Valid:
-    /// assert!(whimsi_whimsi_msi::Category::Property.validate("HelloWorld"));
-    /// assert!(whimsi_whimsi_msi::Category::Property.validate("%HelloWorld"));
+    /// assert!(whimsi_msi::Category::Property.validate("HelloWorld"));
+    /// assert!(whimsi_msi::Category::Property.validate("%HelloWorld"));
     /// // Invalid:
-    /// assert!(!whimsi_whimsi_msi::Category::Property.validate("%"));
-    /// assert!(!whimsi_whimsi_msi::Category::Property.validate("Hello%World"));
+    /// assert!(!whimsi_msi::Category::Property.validate("%"));
+    /// assert!(!whimsi_msi::Category::Property.validate("Hello%World"));
     /// ```
     Property,
     /// The name of a file or directory.
@@ -209,16 +209,16 @@ pub enum Category {
     ///
     /// ```
     /// // Valid:
-    /// assert!(whimsi_whimsi_msi::Category::Guid.validate(
+    /// assert!(whimsi_msi::Category::Guid.validate(
     ///     "{34AB5C53-9B30-4E14-AEF0-2C1C7BA826C0}"));
     /// // Invalid:
-    /// assert!(!whimsi_whimsi_msi::Category::Guid.validate(
+    /// assert!(!whimsi_msi::Category::Guid.validate(
     ///     "{34AB5C539B304E14AEF02C1C7BA826C0}")); // Must be hyphenated
-    /// assert!(!whimsi_whimsi_msi::Category::Guid.validate(
+    /// assert!(!whimsi_msi::Category::Guid.validate(
     ///     "{34ab5c53-9b30-4e14-aef0-2c1c7ba826c0}")); // Must be uppercase
-    /// assert!(!whimsi_whimsi_msi::Category::Guid.validate(
+    /// assert!(!whimsi_msi::Category::Guid.validate(
     ///     "34AB5C53-9B30-4E14-AEF0-2C1C7BA826C0")); // Must have braces
-    /// assert!(!whimsi_whimsi_msi::Category::Guid.validate(
+    /// assert!(!whimsi_msi::Category::Guid.validate(
     ///     "{HELLOWO-RLDH-ELLO-WORL-DHELLOWORLD0}"));
     /// ```
     Guid,
@@ -234,14 +234,14 @@ pub enum Category {
     ///
     /// ```
     /// // Valid:
-    /// assert!(whimsi_whimsi_msi::Category::Version.validate("1"));
-    /// assert!(whimsi_whimsi_msi::Category::Version.validate("1.22"));
-    /// assert!(whimsi_whimsi_msi::Category::Version.validate("1.22.3"));
-    /// assert!(whimsi_whimsi_msi::Category::Version.validate("1.22.3.444"));
+    /// assert!(whimsi_msi::Category::Version.validate("1"));
+    /// assert!(whimsi_msi::Category::Version.validate("1.22"));
+    /// assert!(whimsi_msi::Category::Version.validate("1.22.3"));
+    /// assert!(whimsi_msi::Category::Version.validate("1.22.3.444"));
     /// // Invalid:
-    /// assert!(!whimsi_whimsi_msi::Category::Version.validate("1.99999"));
-    /// assert!(!whimsi_whimsi_msi::Category::Version.validate(".12"));
-    /// assert!(!whimsi_whimsi_msi::Category::Version.validate("1.2.3.4.5"));
+    /// assert!(!whimsi_msi::Category::Version.validate("1.99999"));
+    /// assert!(!whimsi_msi::Category::Version.validate(".12"));
+    /// assert!(!whimsi_msi::Category::Version.validate("1.2.3.4.5"));
     /// ```
     Version,
     /// A string containing a comma-separated list of decimal language ID
@@ -255,13 +255,13 @@ pub enum Category {
     ///
     /// ```
     /// // Valid:
-    /// assert!(whimsi_whimsi_msi::Category::Language.validate("1033"));
-    /// assert!(whimsi_whimsi_msi::Category::Language.validate("1083,2107,3131"));
+    /// assert!(whimsi_msi::Category::Language.validate("1033"));
+    /// assert!(whimsi_msi::Category::Language.validate("1083,2107,3131"));
     /// // Invalid:
-    /// assert!(!whimsi_whimsi_msi::Category::Language.validate(""));
-    /// assert!(!whimsi_whimsi_msi::Category::Language.validate("1083,2107,3131,"));
-    /// assert!(!whimsi_whimsi_msi::Category::Language.validate("1083,,3131"));
-    /// assert!(!whimsi_whimsi_msi::Category::Language.validate("en-US"));
+    /// assert!(!whimsi_msi::Category::Language.validate(""));
+    /// assert!(!whimsi_msi::Category::Language.validate("1083,2107,3131,"));
+    /// assert!(!whimsi_msi::Category::Language.validate("1083,,3131"));
+    /// assert!(!whimsi_msi::Category::Language.validate("en-US"));
     /// ```
     Language,
     /// A string that refers to a binary data stream.
@@ -290,11 +290,11 @@ pub enum Category {
     ///
     /// ```
     /// // Valid:
-    /// assert!(whimsi_whimsi_msi::Category::Cabinet.validate("hello.txt"));
-    /// assert!(whimsi_whimsi_msi::Category::Cabinet.validate("#HelloWorld"));
+    /// assert!(whimsi_msi::Category::Cabinet.validate("hello.txt"));
+    /// assert!(whimsi_msi::Category::Cabinet.validate("#HelloWorld"));
     /// // Invalid:
-    /// assert!(!whimsi_whimsi_msi::Category::Cabinet.validate("longfilename.long"));
-    /// assert!(!whimsi_whimsi_msi::Category::Cabinet.validate("#123.456"));
+    /// assert!(!whimsi_msi::Category::Cabinet.validate("longfilename.long"));
+    /// assert!(!whimsi_msi::Category::Cabinet.validate("#123.456"));
     /// ```
     Cabinet,
     /// A string that refers to a shortcut.

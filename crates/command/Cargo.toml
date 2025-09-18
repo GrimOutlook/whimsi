@@ -16,7 +16,6 @@ flexstr = { version = "0.9.2", features = ["serde"] }
 getset = "0.1.5"
 itertools = "0.14.0"
 lcid = "0.3.0"
-msi = "0.9.0"
 roxygen = "1.0.4"
 serde = { version = "1.0.219", features = ["derive"] }
 serde-inline-default = "0.2.3"
@@ -25,6 +24,9 @@ toml = "0.9.3"
 tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
 uuid = { version = "1.16.0", features = ["v4"] }
+msi = "0.9.0"
+whimsi-msi = { path = "../msi/" }
+whimsi-lib = { path = "../lib/" }
 
 [dev-dependencies]
 similar-asserts = "1.7.0"

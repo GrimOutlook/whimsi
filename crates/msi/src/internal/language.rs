@@ -30,9 +30,9 @@ impl Language {
     /// # Examples
     ///
     /// ```
-    /// assert_eq!(whimsi_whimsi_msi::Language::from_code(9).code(), 9);
-    /// assert_eq!(whimsi_whimsi_msi::Language::from_code(1033).code(), 1033);
-    /// assert_eq!(whimsi_whimsi_msi::Language::from_code(3084).code(), 3084);
+    /// assert_eq!(whimsi_msi::Language::from_code(9).code(), 9);
+    /// assert_eq!(whimsi_msi::Language::from_code(1033).code(), 1033);
+    /// assert_eq!(whimsi_msi::Language::from_code(3084).code(), 3084);
     /// ```
     #[must_use]
     pub fn from_code(code: u16) -> Language {
@@ -44,9 +44,9 @@ impl Language {
     /// # Examples
     ///
     /// ```
-    /// assert_eq!(whimsi_whimsi_msi::Language::from_tag("en").tag(), "en");
-    /// assert_eq!(whimsi_whimsi_msi::Language::from_tag("en-US").tag(), "en-US");
-    /// assert_eq!(whimsi_whimsi_msi::Language::from_tag("fr-CA").tag(), "fr-CA");
+    /// assert_eq!(whimsi_msi::Language::from_tag("en").tag(), "en");
+    /// assert_eq!(whimsi_msi::Language::from_tag("en-US").tag(), "en-US");
+    /// assert_eq!(whimsi_msi::Language::from_tag("fr-CA").tag(), "fr-CA");
     /// ```
     #[must_use]
     pub fn from_tag(tag: &str) -> Language {
@@ -76,9 +76,9 @@ impl Language {
     /// # Examples
     ///
     /// ```
-    /// assert_eq!(whimsi_whimsi_msi::Language::from_tag("en").code(), 9);
-    /// assert_eq!(whimsi_whimsi_msi::Language::from_tag("en-US").code(), 1033);
-    /// assert_eq!(whimsi_whimsi_msi::Language::from_tag("fr-CA").code(), 3084);
+    /// assert_eq!(whimsi_msi::Language::from_tag("en").code(), 9);
+    /// assert_eq!(whimsi_msi::Language::from_tag("en-US").code(), 1033);
+    /// assert_eq!(whimsi_msi::Language::from_tag("fr-CA").code(), 3084);
     /// ```
     #[must_use]
     pub fn code(&self) -> u16 {
@@ -92,10 +92,10 @@ impl Language {
     /// # Examples
     ///
     /// ```
-    /// assert_eq!(whimsi_whimsi_msi::Language::from_code(9).tag(), "en");
-    /// assert_eq!(whimsi_whimsi_msi::Language::from_code(1033).tag(), "en-US");
-    /// assert_eq!(whimsi_whimsi_msi::Language::from_code(3084).tag(), "fr-CA");
-    /// assert_eq!(whimsi_whimsi_msi::Language::from_code(65535).tag(), "und");
+    /// assert_eq!(whimsi_msi::Language::from_code(9).tag(), "en");
+    /// assert_eq!(whimsi_msi::Language::from_code(1033).tag(), "en-US");
+    /// assert_eq!(whimsi_msi::Language::from_code(3084).tag(), "fr-CA");
+    /// assert_eq!(whimsi_msi::Language::from_code(65535).tag(), "und");
     /// ```
     #[must_use]
     pub fn tag(&self) -> &str {

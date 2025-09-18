@@ -110,8 +110,6 @@ pub const INSTALL_EXECUTE_SEQUENCE_DEFAULT_ACTIONS: &[StandardAction] = &[
     StandardAction::InstallFinalize,
 ];
 pub const INSTALL_UI_SEQUENCE_DEFAULT_ACTIONS: &[StandardAction] = &[
-    StandardAction::AppSearch,
-    StandardAction::LaunchConditions,
     StandardAction::ValidateProductId,
     StandardAction::CostInitialize,
     StandardAction::FileCost,

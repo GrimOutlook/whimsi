@@ -27,9 +27,13 @@ define_generator_table!(
         whimsi_msi::Column::build("Feature_Parent")
             .nullable()
             .id_string(FEATURE_IDENTIFIER_MAX_LEN),
-        whimsi_msi::Column::build("Title").nullable().string(TITLE_MAX_LEN),
+        whimsi_msi::Column::build("Title")
+            .nullable()
+            .localizable()
+            .string(TITLE_MAX_LEN),
         whimsi_msi::Column::build("Description")
             .nullable()
+            .localizable()
             .string(DESCRIPTION_MAX_LEN),
         whimsi_msi::Column::build("Display").nullable().int16(),
         whimsi_msi::Column::build("Level").int16(),

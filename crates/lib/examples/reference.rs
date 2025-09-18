@@ -34,11 +34,11 @@ fn main() {
 
     builder
         .with_meta(meta)
-        .with_path_contents(
-            "./crates/whimsi-lib/examples/reference/root_dir/",
-            ping_id,
-        )
-        .expect("Failed to add path to MSIBuilder")
+        // .with_path_contents(
+        //     "./crates/lib/examples/reference/root_dir/",
+        //     ping_id,
+        // )
+        // .expect("Failed to add path to MSIBuilder")
         .with_property("Manufacturer", "MANNY")
         .expect("Failed to set Manufacturer")
         .with_property("ProgramName", "PING")

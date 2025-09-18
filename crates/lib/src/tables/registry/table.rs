@@ -22,15 +22,19 @@ define_generator_table!(
             .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
         whimsi_msi::Column::build("Root").int16(),
         whimsi_msi::Column::build("Key")
+            .localizable()
             .category(whimsi_msi::Category::RegPath)
             .string(REGPATH_MAX_LEN),
         whimsi_msi::Column::build("Name")
+            .localizable()
             .nullable()
             .formatted_string(REGISTRY_NAME_MAX_LEN),
         whimsi_msi::Column::build("Value")
+            .localizable()
             .nullable()
             .formatted_string(REGISTRY_VALUE_MAX_LEN),
-        whimsi_msi::Column::build("Component_").id_string(DEFAULT_IDENTIFIER_MAX_LEN),
+        whimsi_msi::Column::build("Component_")
+            .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
     ]
 );
 

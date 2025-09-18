@@ -374,15 +374,19 @@ impl MsiBuilder {
     /// Build the MSI from all information given to MSIBuilder.
     pub fn build<F: std::io::Read + std::io::Write + std::io::Seek>(
         self,
-        container: F,
+        mut container: F,
     ) -> anyhow::Result<whimsi_msi::Package<F>> {
         let Some(ref meta) = self.meta else {
             bail!("Meta information cannot be blank");
         };
         info!("Building MSI");
 
-        let mut package =
-            whimsi_msi::Package::create(*meta.package_type(), container)?;
+        // Copy the information from the blank reference MSI to the container.
+        let mut reference_msi =
+            std::io::Cursor::new(include_bytes!("../resources/Schema.msi"));
+        std::io::copy(&mut reference_msi, &mut container);
+
+        let mut package = whimsi_msi::Package::open(container)?;
         self.write_meta_info_to_package(&mut package, meta)?;
         self.write_tables_to_package(&mut package)?;
         self.write_cabinets_to_package(&mut package)?;
@@ -397,6 +401,7 @@ impl MsiBuilder {
         package: &mut whimsi_msi::Package<F>,
         meta: &MetaInformation,
     ) -> anyhow::Result<()> {
+        package.set_database_codepage(whimsi_msi::CodePage::Windows1252);
         let summary_info = package.summary_info_mut();
         summary_info.set_codepage(whimsi_msi::CodePage::Windows1252);
         summary_info.set_subject(meta.subject());
@@ -462,14 +467,14 @@ impl MsiBuilder {
         let previous_last_sequence = 1;
         for media in MsiBuilderTable::entries(&self.media)
             .iter()
-            .sorted_by_key(|dao| Into::<i16>::into(*dao.last_sequence()))
+            .sorted_by_key(|dao| Into::<i32>::into(*dao.last_sequence()))
         {
             let Some(cabinet_id) = media.cabinet_id() else {
                 // Ignore media listings that don't represent an internal
                 // cabinet file
                 continue;
             };
-            let last_sequence = Into::<i16>::into(*media.last_sequence());
+            let last_sequence = Into::<i32>::into(*media.last_sequence());
             if last_sequence == 0 {
                 // Skip this cabinet file if no files are to be written to it.
                 continue;

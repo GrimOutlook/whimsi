@@ -2,7 +2,7 @@
 mod testutil;
 
 use std::io::{Cursor, ErrorKind};
-use whimsi_whimsi_msi::{
+use whimsi_msi::{
     Column, ColumnType, Expr, Insert, Package, PackageType, Select, Value,
 };
 

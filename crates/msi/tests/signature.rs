@@ -1,6 +1,6 @@
 use cfb::CompoundFile;
 use std::io::{self, Cursor, Write};
-use whimsi_whimsi_msi::{Package, PackageType};
+use whimsi_msi::{Package, PackageType};
 
 //===========================================================================//
 

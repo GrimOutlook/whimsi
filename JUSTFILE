@@ -16,5 +16,6 @@ alias tp: test-print
 test-print:
     cargo test -- --nocapture
 
+alias e := example-reference
 example-reference:
     cargo run --example reference

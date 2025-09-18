@@ -4,7 +4,7 @@ use crate::types::column::sequence::Sequence;
 use crate::types::helpers::cabinet_info::CabinetInfo;
 
 #[derive(Debug, Clone, Copy, derive_more::Into, PartialEq)]
-pub struct LastSequence(i16);
+pub struct LastSequence(i32);
 
 macro_rules! try_from_integer {
     ($($t:ty),*) => ($(
@@ -18,17 +18,17 @@ macro_rules! try_from_integer {
                 // TODO: Create real errors
                 anyhow::ensure!(value >= LAST_SEQUENCE_MIN.try_into().unwrap(), format!("LastSequence number [{}] must be greater than or equal to [{}]", value, LAST_SEQUENCE_MIN));
                 anyhow::ensure!(value < LAST_SEQUENCE_MAX.try_into().unwrap(), format!("LastSequence number [{}] must be less than [{}]", value, LAST_SEQUENCE_MAX));
-                let value = i16::try_from(value)?;
+                let value = i32::try_from(value)?;
                 Ok(LastSequence(value))
             }
         }
     )*)
 }
 
-try_from_integer!(i16, u16, i32, u32, i64, u64, isize, usize);
+try_from_integer!(u8, i8, i16, u16, i32, u32, i64, u64, isize, usize);
 
 impl From<LastSequence> for whimsi_msi::Value {
     fn from(value: LastSequence) -> Self {
-        Into::<i16>::into(value).into()
+        Into::<i32>::into(value).into()
     }
 }

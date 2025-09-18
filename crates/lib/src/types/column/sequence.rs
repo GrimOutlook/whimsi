@@ -3,7 +3,7 @@ use super::identifier::Identifier;
 #[derive(
     Clone, Debug, Default, PartialEq, strum::EnumTryAs, derive_more::Display,
 )]
-#[display("{}", Into::<i16>::into(self.clone()))]
+#[display("{}", Into::<i32>::into(self.clone()))]
 pub enum Sequence {
     Included(IncludedSequence),
     // I was curious if there was a usecase where a FileTable entry could be
@@ -23,23 +23,23 @@ pub enum Sequence {
 
 #[derive(Clone, Debug, PartialEq, derive_more::Constructor)]
 pub struct IncludedSequence {
-    inner: i16,
+    inner: i32,
 }
 
 impl IncludedSequence {
-    pub fn to_i16(&self) -> i16 {
+    pub fn to_i16(&self) -> i32 {
         self.inner
     }
 }
 
-impl Into<i16> for IncludedSequence {
-    fn into(self) -> i16 {
+impl Into<i32> for IncludedSequence {
+    fn into(self) -> i32 {
         self.inner
     }
 }
 
-impl Into<i16> for Sequence {
-    fn into(self) -> i16 {
+impl Into<i32> for Sequence {
+    fn into(self) -> i32 {
         match self {
             Sequence::Included(included_sequence) => included_sequence.into(),
             Sequence::NotIncluded => 0,
@@ -49,6 +49,6 @@ impl Into<i16> for Sequence {
 
 impl From<Sequence> for whimsi_msi::Value {
     fn from(value: Sequence) -> Self {
-        Into::<i16>::into(value).into()
+        Into::<i32>::into(value).into()
     }
 }

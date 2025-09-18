@@ -2,7 +2,7 @@
 mod testutil;
 
 use std::io::{Cursor, ErrorKind, Read, Write};
-use whimsi_whimsi_msi::{Package, PackageType};
+use whimsi_msi::{Package, PackageType};
 
 // ========================================================================= //
 

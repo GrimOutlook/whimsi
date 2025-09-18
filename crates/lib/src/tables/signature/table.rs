@@ -29,7 +29,7 @@ define_generator_table!(
         whimsi_msi::Column::build("MaxSize").nullable().int32(),
         whimsi_msi::Column::build("MinDate").nullable().int32(),
         whimsi_msi::Column::build("MaxDate").nullable().int32(),
-        whimsi_msi::Column::build("Language").nullable().text_string(255),
+        whimsi_msi::Column::build("Languages").nullable().text_string(255),
     ]
 );
 

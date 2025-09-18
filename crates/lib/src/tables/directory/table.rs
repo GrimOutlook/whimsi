@@ -32,6 +32,7 @@ define_generator_table!(
             .nullable()
             .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
         whimsi_msi::Column::build("DefaultDir")
+            .localizable()
             .category(whimsi_msi::Category::DefaultDir)
             .string(DEFAULT_DIR_MAX_LEN),
     ]

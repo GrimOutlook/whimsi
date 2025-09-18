@@ -38,9 +38,10 @@ impl MsiBuilderTable for MediaTable {
     fn columns(&self) -> Vec<whimsi_msi::Column> {
         vec![
             whimsi_msi::Column::build("DiskId").primary_key().int16(),
-            whimsi_msi::Column::build("LastSequence").int16(),
+            whimsi_msi::Column::build("LastSequence").int32(),
             whimsi_msi::Column::build("DiskPrompt")
                 .nullable()
+                .localizable()
                 .text_string(DISK_PROMPT_MAX_LEN),
             whimsi_msi::Column::build("Cabinet")
                 .nullable()

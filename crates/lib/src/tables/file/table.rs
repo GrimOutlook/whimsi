@@ -26,8 +26,10 @@ define_generator_table!(
         whimsi_msi::Column::build("File")
             .primary_key()
             .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-        whimsi_msi::Column::build("Component_").id_string(DEFAULT_IDENTIFIER_MAX_LEN),
+        whimsi_msi::Column::build("Component_")
+            .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
         whimsi_msi::Column::build("FileName")
+            .localizable()
             .category(whimsi_msi::Category::Filename)
             .string(FILENAME_MAX_LEN),
         whimsi_msi::Column::build("FileSize").int32(),
@@ -40,12 +42,12 @@ define_generator_table!(
             .category(whimsi_msi::Category::Language)
             .string(LANGUAGE_MAX_LEN),
         whimsi_msi::Column::build("Attributes").nullable().int16(),
-        whimsi_msi::Column::build("Sequence").int16(),
+        whimsi_msi::Column::build("Sequence").int32(),
     ]
 );
 
 impl FileTable {
-    pub fn in_sequence_range(&self, min: i16, max: i16) -> Vec<&FileDao> {
+    pub fn in_sequence_range(&self, min: i32, max: i32) -> Vec<&FileDao> {
         self.entries
             .iter()
             .filter(|file| {

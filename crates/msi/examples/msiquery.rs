@@ -6,13 +6,13 @@ extern crate pest_derive;
 
 use clap::{App, Arg};
 use pest::Parser;
-use whimsi_whimsi_msi::{Delete, Expr, Insert, Select, Update, Value};
+use whimsi_msi::{Delete, Expr, Insert, Select, Update, Value};
 
 #[derive(Parser)]
 #[grammar = "../examples/msiquery.pest"]
 struct QueryParser;
 
-type Package = whimsi_whimsi_msi::Package<std::fs::File>;
+type Package = whimsi_msi::Package<std::fs::File>;
 type Pair<'a> = pest::iterators::Pair<'a, Rule>;
 type Pairs<'a> = pest::iterators::Pairs<'a, Rule>;
 
@@ -26,7 +26,7 @@ fn main() {
         .get_matches();
     let path = matches.value_of("path").unwrap();
     let query = matches.value_of("query").unwrap();
-    let mut package = whimsi_whimsi_msi::open_rw(path).expect("open package");
+    let mut package = whimsi_msi::open_rw(path).expect("open package");
     for pair in QueryParser::parse(Rule::QueryList, query).expect("parse") {
         process_query(pair, &mut package);
     }

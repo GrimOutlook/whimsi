@@ -1,4 +1,4 @@
-use crate::constants::DEFAULT_IDENTIFIER_MAX_LEN;
+use crate::constants::*;
 use crate::msi_list_boilerplate;
 use crate::msi_table_boilerplate;
 use crate::tables::builder_list::MsiBuilderList;

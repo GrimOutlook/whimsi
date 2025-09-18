@@ -29,7 +29,9 @@ impl MsiBuilderTable for LaunchConditionTable {
                 .category(whimsi_msi::Category::Condition)
                 .string(CONDITION_MAX_LEN),
             // TODO: Make this a proper constant.
-            whimsi_msi::Column::build("Description").formatted_string(255),
+            whimsi_msi::Column::build("Description")
+                .localizable()
+                .formatted_string(255),
         ]
     }
 }

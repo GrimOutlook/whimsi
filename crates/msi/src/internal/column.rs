@@ -186,10 +186,10 @@ impl Column {
     /// # Examples
     ///
     /// ```
-    /// let column = whimsi_whimsi_msi::Column::build("Foo").nullable().int16();
+    /// let column = whimsi_msi::Column::build("Foo").nullable().int16();
     /// assert_eq!(column.name(), "Foo");
     /// assert!(column.is_nullable());
-    /// assert_eq!(column.coltype(), whimsi_whimsi_msi::ColumnType::Int16);
+    /// assert_eq!(column.coltype(), whimsi_msi::ColumnType::Int16);
     /// ```
     pub fn build<S: Into<String>>(name: S) -> ColumnBuilder {
         ColumnBuilder::new(name.into())

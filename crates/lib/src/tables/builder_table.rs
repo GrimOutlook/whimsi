@@ -4,9 +4,9 @@ use std::io::Write;
 
 use anyhow::ensure;
 use itertools::Itertools;
-use whimsi_msi::Package;
 use tracing::debug;
 use tracing::trace;
+use whimsi_msi::Package;
 
 use crate::tables::builder_list::MsiBuilderList;
 use crate::tables::builder_list_entry::MsiBuilderListEntry;
@@ -33,8 +33,16 @@ pub(crate) trait MsiBuilderTable: MsiBuilderList {
     ) -> anyhow::Result<()> {
         debug!("Writing {}Table to package", self.name());
         let columns = self.columns();
-        package.create_table(self.name(), columns)?;
+
+        if !package.has_table(self.name()) {
+            package.create_table(self.name(), columns)?;
+        }
+
         let rows = self.rows();
+        if rows.is_empty() {
+            return Ok(());
+        }
+
         trace!("Inserting rows into {}Table:", self.name());
         rows.clone()
             .iter()

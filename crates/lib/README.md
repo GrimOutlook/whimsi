@@ -56,3 +56,8 @@ I also could not find other documentation on if this is valid or if a sequence
 number of 0 will cause issues so I'm going to take the LLMs word on it as it
 sounds plausible and the issues can be dealt with in the future should they
 arise.
+
+### Links
+
+- [MSI Errorcode Reference](https://learn.microsoft.com/en-us/windows/win32/msi/windows-installer-error-messages)
+- [Windows Errorcode Reference](https://winprotocoldoc.z19.web.core.windows.net/MS-ERREF/%5bMS-ERREF%5d.pdf)

@@ -1,7 +1,7 @@
 use std::io::{Cursor, Write};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
-use whimsi_whimsi_msi::{CodePage, Package, PackageType};
+use whimsi_msi::{CodePage, Package, PackageType};
 
 // ========================================================================= //
 

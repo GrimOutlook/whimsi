@@ -1845,6 +1845,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "whimsi-cfb"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "assert_fs",
+ "assertables",
+ "bitmask-enum",
+ "bytemuck",
+ "camino",
+ "chrono",
+ "derivative",
+ "derive_more",
+ "getset",
+ "itertools 0.14.0",
+ "pastey",
+ "rand 0.9.2",
+ "regex",
+ "roxygen",
+ "similar-asserts",
+ "strum",
+ "subenum",
+ "tempfile",
+ "test-case",
+ "thiserror",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
 name = "whimsi-lib"
 version = "0.0.0"
 dependencies = [

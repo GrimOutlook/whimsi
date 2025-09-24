@@ -69,6 +69,7 @@ use crate::types::helpers::architecture::MsiArchitecture;
 use crate::types::helpers::cabinet_info::CabinetInfo;
 use crate::types::helpers::cabinets::Cabinets;
 use crate::types::helpers::id_generator::IdGenerator;
+use crate::types::helpers::security_flag::DocSecurity;
 use crate::types::properties::system_folder::SystemFolder;
 
 /// An in-memory representation of the final MSI to be created.
@@ -401,6 +402,7 @@ impl MsiBuilder {
         package: &mut whimsi_msi::Package<F>,
         meta: &MetaInformation,
     ) -> anyhow::Result<()> {
+        let package_type = package.package_type();
         package.set_database_codepage(whimsi_msi::CodePage::Windows1252);
         let summary_info = package.summary_info_mut();
         summary_info.set_codepage(whimsi_msi::CodePage::Windows1252);
@@ -413,11 +415,20 @@ impl MsiBuilder {
         if let Some(arch) = meta.architecture() {
             summary_info.set_arch(arch.to_string());
         }
-        summary_info.set_creating_application("WHIMSI");
+        if let Some(comments) = meta.comments() {
+            summary_info.set_comments(comments);
+        }
+        // TODO: Change this after testing. Just trying to make everything exactly the same.
+        summary_info.set_creating_application("msitools 0.106");
         summary_info.set_creation_time_to_now();
+        summary_info.set_last_save_time_to_now();
+        summary_info.set_keywords(meta.keywords());
         summary_info.set_uuid(Uuid::new_v4());
         summary_info.set_word_count(2);
         summary_info.set_page_count(200);
+        summary_info.set_doc_security(DocSecurity::from_package_type(
+            &package_type,
+        ) as i32);
         Ok(())
     }
 

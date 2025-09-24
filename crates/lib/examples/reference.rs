@@ -20,9 +20,11 @@ fn main() {
         whimsi_msi::PackageType::Installer,
         "PING".to_string(),
     )
-    .with_author(Some("manny".to_string()))
+    .with_author(Some("Manny".to_string()))
     .with_languages(vec![Language::from_code(1033)])
-    .with_architecture(Some(MsiArchitecture::Intel));
+    .with_comments(Some("Summary of PING application".to_string()))
+    .with_keywords(vec!["Installer".to_string(), "0.1.0".to_string()])
+    .with_architecture(Some(MsiArchitecture::X64));
 
     let mut builder = MsiBuilder::default();
     let manny_id = builder

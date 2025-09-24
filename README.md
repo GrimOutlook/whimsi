@@ -30,6 +30,7 @@ if you get any use out of it!
 
 - [MSI Reference
   Material](https://learn.microsoft.com/en-us/windows/win32/msi/specifying-directory-structure)
+- [Property Set](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-oleps/bf7aeae8-c47a-4939-9f45-700158dac3bc)
 
 ## CI/CD Desires
 

@@ -42,6 +42,10 @@ pub struct SummaryInfo {
 }
 
 impl SummaryInfo {
+    pub fn properties_mut(&mut self) -> &mut PropertySet {
+        &mut self.properties
+    }
+
     /// Creates an empty `SummaryInfo` with no properties set.
     pub(crate) fn new() -> SummaryInfo {
         let properties = PropertySet::new(OperatingSystem::Win32, 10, FMTID);
@@ -50,7 +54,7 @@ impl SummaryInfo {
         summary
     }
 
-    pub(crate) fn read<R: Read + Seek>(reader: R) -> io::Result<SummaryInfo> {
+    pub fn read<R: Read + Seek>(reader: R) -> io::Result<SummaryInfo> {
         let properties = PropertySet::read(reader)?;
         if properties.format_identifier() != &FMTID {
             invalid_data!("Property set has wrong format identifier");

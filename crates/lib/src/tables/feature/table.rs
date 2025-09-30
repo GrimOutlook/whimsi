@@ -37,7 +37,7 @@ define_generator_table!(
             .string(DESCRIPTION_MAX_LEN),
         whimsi_msi::Column::build("Display").nullable().int16(),
         whimsi_msi::Column::build("Level").int16(),
-        whimsi_msi::Column::build("Directory")
+        whimsi_msi::Column::build("Directory_")
             .nullable()
             .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
         whimsi_msi::Column::build("Attributes").int16(),

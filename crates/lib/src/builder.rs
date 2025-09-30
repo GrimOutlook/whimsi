@@ -386,11 +386,83 @@ impl MsiBuilder {
         let mut reference_msi =
             std::io::Cursor::new(include_bytes!("../resources/Schema.msi"));
         std::io::copy(&mut reference_msi, &mut container);
-
         let mut package = whimsi_msi::Package::open(container)?;
+
+        // TODO: Remove after getting everything working
+        let extra_tables = [
+            "ActionText",
+            // "Media",
+            // "File",
+            // "Shortcut",
+            // "CustomAction",
+            "AdvtUISequence",
+            "AppId",
+            "BBControl",
+            "Billboard",
+            "BindImage",
+            "CCPSearch",
+            "CheckBox",
+            "Class",
+            "ComboBox",
+            "CompLocator",
+            "Complus",
+            // "Control",
+            "ControlCondition",
+            "ControlEvent",
+            "Dialog",
+            "DrLocator",
+            "DuplicateFile",
+            "Environment",
+            "EventMapping",
+            "Extension",
+            "FileSFPCatalog",
+            "Font",
+            "IniFile",
+            "IniLocator",
+            "IsolatedComponent",
+            "ListBox",
+            "ListView",
+            "LockPermissions",
+            "MIME",
+            "MoveFile",
+            "MsiAssembly",
+            "MsiAssemblyName",
+            "MsiDigitalCertificate",
+            "MsiDigitalSignature",
+            "MsiPatchHeaders",
+            "ODBCAttribute",
+            "ODBCDataSource",
+            "ODBCDriver",
+            "ODBCSourceAttribute",
+            "ODBCTranslator",
+            "Patch",
+            "PatchPackage",
+            "ProgId",
+            "PublishComponent",
+            "RadioButton",
+            "RemoveIniFile",
+            "RemoveRegistry",
+            "ReserveCost",
+            "SFPCatalog",
+            "SelfReg",
+            "TextStyle",
+            "TypeLib",
+            "UIText",
+            "Verb",
+            "_Validation",
+        ];
+        for table in extra_tables {
+            package.drop_table(table);
+        }
+
+        // let mut package = whimsi_msi::Package::create(
+        //     whimsi_msi::PackageType::Installer,
+        //     container,
+        // )?;
         self.write_meta_info_to_package(&mut package, meta)?;
         self.write_tables_to_package(&mut package)?;
         self.write_cabinets_to_package(&mut package)?;
+
         info!("Finished building MSI");
         Ok(package)
     }
@@ -466,6 +538,10 @@ impl MsiBuilder {
         self.app_search.write_to_package(package)?;
         self.binary.write_to_package(package)?;
         self.custom_action.write_to_package(package)?;
+        println!(
+            "Tables: {:?}",
+            package.tables().map(|t| t.name()).collect_vec()
+        );
         Ok(())
     }
 

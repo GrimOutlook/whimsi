@@ -28,7 +28,7 @@ fn main() {
 
     let mut builder = MsiBuilder::default();
     let manny_id = builder
-        .add_directory("manny", SystemFolder::ProgramFilesFolder)
+        .add_directory("manny", SystemFolder::ProgramFiles64Folder)
         .expect("Failed to create manny directory");
     let ping_id = builder
         .add_directory("PING", manny_id)
@@ -36,16 +36,17 @@ fn main() {
 
     builder
         .with_meta(meta)
-        // .with_path_contents(
-        //     "./crates/lib/examples/reference/root_dir/",
-        //     ping_id,
-        // )
-        // .expect("Failed to add path to MSIBuilder")
-        .with_property("Manufacturer", "MANNY")
+        .with_path_contents(
+            "./crates/lib/examples/reference/root_dir/",
+            ping_id,
+        )
+        .expect("Failed to add path to MSIBuilder")
+        .with_property("Manufacturer", "Manny")
         .expect("Failed to set Manufacturer")
-        .with_property("ProgramName", "PING")
-        .expect("Failed to set ProgramName")
-        .with_property("ProductCode", uuid::Uuid::new_v4().braced())
+        .with_property("ProductName", "PING")
+        .expect("Failed to set ProductName")
+        // .with_property("ProductCode", uuid::Uuid::new_v4().braced())
+        .with_property("ProductCode", "{328FDEA1-B4AF-4461-91A9-60F0B3C63DB5}")
         .expect("Failed to set ProductCode")
         .with_property("ProductLanguage", "1033")
         .expect("Failed to set ProgramLanguage")
@@ -53,6 +54,10 @@ fn main() {
         .expect("Failed to set ProductVersion")
         .with_property("UpgradeCode", "{*}")
         .expect("Failed to set UpgradeCode")
+        .with_property("ALLUSERS", "1")
+        .expect("Failed to set ALLUSERS")
+        .with_property("DiskPrompt", "PING Installation [1]")
+        .expect("Failed to set DISKPROMPT")
         .build(file)
         .expect("Failed to build MSI");
 }

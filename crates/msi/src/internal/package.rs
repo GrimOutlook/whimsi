@@ -335,7 +335,6 @@ impl<F: Read + Seek> Package<F> {
                 .map(|name| (name, BTreeMap::new()))
                 .collect();
         {
-            println!("Long string refs: {}", string_pool.long_string_refs());
             let table = make_columns_table(string_pool.long_string_refs());
             let stream_name = table.stream_name();
             if comp.exists(&stream_name) {
@@ -358,10 +357,6 @@ impl<F: Read + Seek> Package<F> {
                         }
                         let col_name = row[2].as_str().unwrap().to_string();
                         let type_bits = row[3].as_int().unwrap();
-                        println!(
-                            "Got table [{}] - index [{}] - col_name [{}] - type [{}]",
-                            table_name, col_index, col_name, type_bits
-                        );
                         cols.insert(col_index, (col_name, type_bits));
                     } else {
                         invalid_data!(

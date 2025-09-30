@@ -10,6 +10,7 @@ use crate::tables::dao::IsDao;
 use crate::types::column::default_dir::DefaultDir;
 use crate::types::column::filename::Filename;
 use crate::types::column::identifier::{Identifier, ToIdentifier};
+use crate::types::helpers::to_msi_value::ToMsiOptionalValue;
 use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 use crate::types::properties::system_folder::SystemFolder;
 
@@ -18,7 +19,7 @@ use crate::types::properties::system_folder::SystemFolder;
 pub struct DirectoryDao {
     default_dir: DefaultDir,
     directory: DirectoryIdentifier,
-    parent: DirectoryIdentifier,
+    parent: Option<DirectoryIdentifier>,
 }
 
 impl DirectoryDao {
@@ -30,7 +31,7 @@ impl DirectoryDao {
         Self {
             default_dir: name.into(),
             directory: path_id.into(),
-            parent: parent_id.into(),
+            parent: Some(parent_id.into()),
         }
     }
 }
@@ -39,7 +40,7 @@ impl IsDao for DirectoryDao {
     fn to_row(&self) -> Vec<whimsi_msi::Value> {
         vec![
             self.directory.clone().into(),
-            self.parent.clone().into(),
+            self.parent.to_optional_value(),
             self.default_dir.clone().into(),
         ]
     }
@@ -62,13 +63,13 @@ impl From<SystemFolder> for DirectoryDao {
             // ID for `parent` and `directory` fields.
             return Self {
                 directory: value.into(),
-                parent: value.into(),
+                parent: None,
                 default_dir: "SourceDir".parse::<Identifier>().unwrap().into(),
             };
         }
         Self {
             directory: value.into(),
-            parent: SystemFolder::TARGETDIR.into(),
+            parent: Some(SystemFolder::TARGETDIR.into()),
             default_dir: Filename::parse(".").unwrap().into(),
         }
     }

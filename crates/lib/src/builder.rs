@@ -275,6 +275,14 @@ impl MsiBuilder {
         &mut self,
         dao: DirectoryDao,
     ) -> anyhow::Result<()> {
+        if let Some(parent) = dao.parent()
+            && let Ok(system_folder) =
+                SystemFolder::try_from(parent.to_identifier())
+        {
+            // Just ignore any errors when adding this directory since this will likely already be
+            // in the table.
+            let _ = self.add_directory_dao(system_folder.into());
+        }
         IdGeneratorBuilderList::add(&mut self.directory, dao)
     }
 
@@ -391,6 +399,7 @@ impl MsiBuilder {
         // TODO: Remove after getting everything working
         let extra_tables = [
             "ActionText",
+            // "Directory",
             // "Media",
             // "File",
             // "Shortcut",
@@ -449,7 +458,6 @@ impl MsiBuilder {
             "TypeLib",
             "UIText",
             "Verb",
-            "_Validation",
         ];
         for table in extra_tables {
             package.drop_table(table);

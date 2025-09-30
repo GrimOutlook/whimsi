@@ -31,7 +31,6 @@ impl MsiBuilderTable for PropertyTable {
                 .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
             whimsi_msi::Column::build("Value")
                 .localizable()
-                .category(whimsi_msi::Category::Text)
                 .text_string(PROPERTY_VALUE_MAX_LEN),
         ]
     }

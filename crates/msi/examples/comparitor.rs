@@ -1,7 +1,6 @@
 use assert2::check;
 use cfb::CompoundFile;
 use clap::Parser;
-use clap_derive::Parser as DParser;
 use itertools::Itertools;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
@@ -48,7 +47,7 @@ macro_rules! print_assert_eq {
     });
 }
 
-#[derive(DParser, Debug)]
+#[derive(Parser, Debug)]
 #[command(version)]
 struct Args {
     first: PathBuf,

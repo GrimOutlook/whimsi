@@ -30,6 +30,7 @@ use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 pub enum SystemFolder {
     TARGETDIR,
     ProgramFilesFolder,
+    ProgramFiles64Folder,
 }
 
 impl SystemFolder {

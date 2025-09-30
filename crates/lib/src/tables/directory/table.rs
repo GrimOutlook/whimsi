@@ -68,7 +68,13 @@ impl DirectoryTable {
     ) -> Vec<&DirectoryDao> {
         self.entries
             .iter()
-            .filter(|d| d.parent().to_identifier() == *parent_id)
+            .filter(|d| {
+                if let Some(d) = d.parent() {
+                    d.to_identifier() == *parent_id
+                } else {
+                    false
+                }
+            })
             .collect_vec()
     }
 

@@ -16,7 +16,7 @@ pub(crate) trait IdGenerator {
 
     fn generate_id(&mut self) -> Self::IdentifierType {
         loop {
-            let new_id = &format!("{}{}", self.id_prefix(), self.count());
+            let new_id = &format!("_{}{}", self.id_prefix(), self.count());
             let new_identifier = Self::IdentifierType::from_str(&new_id)
                 .with_context(|| {
                     format!(

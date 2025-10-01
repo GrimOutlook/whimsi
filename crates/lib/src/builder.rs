@@ -20,6 +20,8 @@ use rand::distr::SampleString;
 use tracing::debug;
 use tracing::info;
 use uuid::Uuid;
+use whimsi_msi::Insert;
+use whimsi_msi::Value;
 
 use crate::constants::*;
 use crate::tables::admin_execute_sequence::table::AdminExecuteSequenceTable;
@@ -44,6 +46,8 @@ use crate::tables::feature_components::table::FeatureComponentsTable;
 use crate::tables::file::dao::FileDao;
 use crate::tables::file::table::FileIdentifier;
 use crate::tables::file::table::FileTable;
+use crate::tables::generic_sequence::action_identifier::ActionIdentifier;
+use crate::tables::generic_sequence::dao::GenericSequenceDao;
 use crate::tables::id_generator_builder_list::IdGeneratorBuilderList;
 use crate::tables::install_execute_sequence::table::InstallExecuteSequenceTable;
 use crate::tables::install_ui_sequence::table::InstallUiSequenceTable;
@@ -71,6 +75,7 @@ use crate::types::helpers::cabinets::Cabinets;
 use crate::types::helpers::id_generator::IdGenerator;
 use crate::types::helpers::security_flag::DocSecurity;
 use crate::types::properties::system_folder::SystemFolder;
+use crate::types::standard_action::StandardAction;
 
 /// An in-memory representation of the final MSI to be created.
 #[derive(Debug, Getters, Setters)]
@@ -526,6 +531,7 @@ impl MsiBuilder {
     ) -> anyhow::Result<()> {
         info!("Writing tables to package");
         self.directory.write_to_package(package)?;
+        // NOTE: The order in which the tables are written to matters. WTF.
         self.component.write_to_package(package)?;
         self.file.write_to_package(package)?;
         self.media.write_to_package(package)?;
@@ -534,12 +540,14 @@ impl MsiBuilder {
         self.property.write_to_package(package)?;
         self.registry.write_to_package(package)?;
         self.msi_file_hash.write_to_package(package)?;
-        self.admin_execute_sequence.write_to_package(package)?;
+        // If this isn't the first sequence table to be filled, it is corrupted for some reason?
         self.admin_ui_sequence.write_to_package(package)?;
+        self.admin_execute_sequence.write_to_package(package)?;
         self.advt_execute_sequence.write_to_package(package)?;
         self.install_execute_sequence.write_to_package(package)?;
         self.install_ui_sequence.write_to_package(package)?;
-        // Empty tables that seem to be required?
+
+        // NOTE: Empty tables that seem to be required?
         self.signature.write_to_package(package)?;
         self.launch_condition.write_to_package(package)?;
         self.reg_locator.write_to_package(package)?;

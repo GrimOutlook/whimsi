@@ -75,8 +75,10 @@ fn main() {
     let string_pool1 = get_string_pool(&mut comp1);
     let string_pool2 = get_string_pool(&mut comp2);
 
-    let (table_names1, mut all_tables1) = get_tables(&string_pool1, &mut comp1);
-    let (table_names2, mut all_tables2) = get_tables(&string_pool2, &mut comp2);
+    let (table_names1, mut all_tables1) =
+        get_table_info(&string_pool1, &mut comp1);
+    let (table_names2, mut all_tables2) =
+        get_table_info(&string_pool2, &mut comp2);
 
     let missing_table_names1 = table_names2.difference(&table_names1);
     print_assert_eq!(
@@ -162,7 +164,7 @@ fn get_string_pool<F: Read + Seek>(comp: &mut CompoundFile<F>) -> StringPool {
 }
 
 /// Gets the tables present in the given MSI
-fn get_tables<F: Read + Seek>(
+fn get_table_info<F: Read + Seek>(
     string_pool: &StringPool,
     comp: &mut CompoundFile<F>,
 ) -> (HashSet<String>, BTreeMap<String, Rc<Table>>) {

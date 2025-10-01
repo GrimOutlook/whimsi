@@ -23,7 +23,15 @@ pub(crate) trait MsiBuilderTable: MsiBuilderList {
     fn entries_mut(&mut self) -> &mut Vec<Self::TableValue>;
 
     fn rows(&self) -> Vec<Vec<whimsi_msi::Value>> {
-        MsiBuilderTable::entries(self).iter().map(IsDao::to_row).collect_vec()
+        MsiBuilderTable::entries(self)
+            .into_iter()
+            .map(IsDao::to_row)
+            .sorted_by_key(|row| {
+                // TODO: Determine if this needs to be sorted by the first column or by the primary
+                // key. My guess is the primary key but this is easier to do for now.
+                row.first().unwrap().clone()
+            })
+            .collect_vec()
     }
 
     /// Write the columns contained in the table to the package.
@@ -49,7 +57,8 @@ pub(crate) trait MsiBuilderTable: MsiBuilderList {
             .enumerate()
             .for_each(|(index, r)| trace!("{index}: {r:?}"));
         let query = whimsi_msi::Insert::into(self.name()).rows(rows);
-        Ok(package.insert_rows(query)?)
+        package.insert_rows(query)?;
+        Ok(package.flush()?)
     }
 }
 

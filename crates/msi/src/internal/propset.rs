@@ -223,6 +223,7 @@ impl PropertySet {
         let os_version = reader.read_u16::<LittleEndian>()?;
         let os = {
             let os_number = reader.read_u16::<LittleEndian>()?;
+            println!("Got os_number {os_number}");
             match os_number {
                 0 => OperatingSystem::Win16,
                 1 => OperatingSystem::Macintosh,
@@ -267,6 +268,7 @@ impl PropertySet {
                 PropertyValue::read(reader.by_ref(), CodePage::default())?;
             if let PropertyValue::I2(codepage_id) = value {
                 let codepage_id = codepage_id as u16;
+
                 if let Some(codepage) = CodePage::from_id(codepage_id as i32) {
                     codepage
                 } else {

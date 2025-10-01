@@ -65,7 +65,6 @@ pub const ADVT_EXECUTE_SEQUENCE_DEFAULT_ACTIONS: &[AdvtAction] = &[
     AdvtAction::CostFinalize,
     AdvtAction::InstallFinalize,
     AdvtAction::PublishFeatures,
-    AdvtAction::InstallInitialize,
     AdvtAction::PublishProduct,
 ];
 pub const ADMIN_EXECUTE_SEQUENCE_DEFAULT_ACTIONS: &[StandardAction] = &[
@@ -85,24 +84,11 @@ pub const ADMIN_UI_SEQUENCE_DEFAULT_ACTIONS: &[StandardAction] = &[
     StandardAction::ExecuteAction,
 ];
 pub const INSTALL_EXECUTE_SEQUENCE_DEFAULT_ACTIONS: &[StandardAction] = &[
-    StandardAction::ValidateProductId,
-    StandardAction::CostInitialize,
-    StandardAction::FileCost,
-    StandardAction::CostFinalize,
     StandardAction::InstallValidate,
+    StandardAction::FileCost,
+    StandardAction::CostInitialize,
+    StandardAction::CostFinalize,
     StandardAction::InstallInitialize,
-    StandardAction::ProcessComponents,
-    StandardAction::UnpublishFeatures,
-    StandardAction::StopServices,
-    StandardAction::DeleteServices,
-    StandardAction::RemoveRegistryValues,
-    StandardAction::RemoveShortcuts,
-    StandardAction::RemoveFiles,
-    StandardAction::InstallFiles,
-    StandardAction::CreateShortcuts,
-    StandardAction::WriteRegistryValues,
-    StandardAction::InstallServices,
-    StandardAction::StartServices,
     StandardAction::RegisterUser,
     StandardAction::RegisterProduct,
     StandardAction::PublishFeatures,
@@ -110,7 +96,6 @@ pub const INSTALL_EXECUTE_SEQUENCE_DEFAULT_ACTIONS: &[StandardAction] = &[
     StandardAction::InstallFinalize,
 ];
 pub const INSTALL_UI_SEQUENCE_DEFAULT_ACTIONS: &[StandardAction] = &[
-    StandardAction::ValidateProductId,
     StandardAction::CostInitialize,
     StandardAction::FileCost,
     StandardAction::CostFinalize,

@@ -17,5 +17,5 @@ test-print:
     cargo test -- --nocapture
 
 alias e := example-reference
-example-reference:
-    cargo run --example reference
+example-reference OUTPUT_LOCATION:
+    cargo run --example reference {{OUTPUT_LOCATION}}

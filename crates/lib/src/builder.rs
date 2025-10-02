@@ -541,8 +541,8 @@ impl MsiBuilder {
         self.registry.write_to_package(package)?;
         self.msi_file_hash.write_to_package(package)?;
         // If this isn't the first sequence table to be filled, it is corrupted for some reason?
-        self.admin_ui_sequence.write_to_package(package)?;
         self.admin_execute_sequence.write_to_package(package)?;
+        self.admin_ui_sequence.write_to_package(package)?;
         self.advt_execute_sequence.write_to_package(package)?;
         self.install_execute_sequence.write_to_package(package)?;
         self.install_ui_sequence.write_to_package(package)?;
@@ -554,8 +554,8 @@ impl MsiBuilder {
         self.app_search.write_to_package(package)?;
         self.binary.write_to_package(package)?;
         self.custom_action.write_to_package(package)?;
-        println!(
-            "Tables: {:?}",
+        debug!(
+            "Wrote tables to MSI: {:?}",
             package.tables().map(|t| t.name()).collect_vec()
         );
         Ok(())

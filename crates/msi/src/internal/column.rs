@@ -329,7 +329,6 @@ impl Column {
                         return false;
                     }
                     if !self.enum_values.is_empty() {
-                        println!("Valid values: {:?}", self.enum_values);
                         if !self.enum_values.contains(string) {
                             return false;
                         }

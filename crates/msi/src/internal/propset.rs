@@ -223,7 +223,6 @@ impl PropertySet {
         let os_version = reader.read_u16::<LittleEndian>()?;
         let os = {
             let os_number = reader.read_u16::<LittleEndian>()?;
-            println!("Got os_number {os_number}");
             match os_number {
                 0 => OperatingSystem::Win16,
                 1 => OperatingSystem::Macintosh,

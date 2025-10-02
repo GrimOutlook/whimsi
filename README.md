@@ -15,34 +15,19 @@ If you end up using this package I'd love to know as it helps me stay motivated
 to continue working on projects like these! So drop a star or shoot me a message
 if you get any use out of it!
 
-## Todo
 
-### Capabilities
+## Capabilities
 
-- [ ] Read contents of directory to create file structure in MSI.
-- [ ] Set permissions on files in file structure.
-- [ ] Set registry values.
-- [ ] PowerShell post install script.
-- [ ] Create services.
-- [ ] Sign MSI?
+- N/A (Working on it ;p)
 
 ## Development
 
-- [MSI Reference
-  Material](https://learn.microsoft.com/en-us/windows/win32/msi/specifying-directory-structure)
-- [Property Set](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-oleps/bf7aeae8-c47a-4939-9f45-700158dac3bc)
+- [Compound File Binary File Format](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-cfb/53989ce4-7b05-4f8d-829b-d08d6148375b):
+Information on how to read a file and interpret the data as a CFB file.
+- [OLE Property Set](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-oleps/bf7aeae8-c47a-4939-9f45-700158dac3bc):
+Information on how to parse the "_SummaryInformation" CFB stream into usable summary information.
+- [OLE Data Structures](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-oleds/85583d21-c1cf-4afe-a35f-d6701c5fbb6f):
+Information on how to parse the CFB stream data into MSI tables and streams.
+- [MSI Reference Material](https://learn.microsoft.com/en-us/windows/win32/msi/windows-installer-reference):
+Information on MSI table layouts, data types, and relations.
 
-## CI/CD Desires
-
-- [Fuzzing?](https://github.com/rust-fuzz/afl.rs)
-- [cargo-bloat](https://github.com/RazrFalcon/cargo-bloat)
-- [cargo-audit](https://rustsec.org/)
-- [cargo-auditable](https://github.com/rust-secure-code/cargo-auditable)
-- [cargo-deny](https://embarkstudios.github.io/cargo-deny/)
-- [cargo-udeps](https://github.com/est31/cargo-udeps)
-- [cargo-semver-checks](https://crates.io/crates/cargo-semver-checks)
-- [cargo-spellcheck](https://github.com/drahnr/cargo-spellcheck)
-- [cargo-unused-features](https://github.com/TimonPost/cargo-unused-features)
-- [kani](https://github.com/model-checking/kani)
-- [lockbud](https://github.com/BurtonQin/lockbud)
-- [mirai](https://github.com/endorlabs/MIRAI)

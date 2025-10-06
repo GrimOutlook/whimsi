@@ -1,5 +1,15 @@
 use crate::types::column::identifier::{Identifier, ToIdentifier};
 
+pub trait ToMsiValue {
+    fn to_msi_value(&self) -> whimsi_msi::Value;
+}
+
+impl<T: Into<whimsi_msi::Value> + Clone> ToMsiValue for T {
+    fn to_msi_value(&self) -> whimsi_msi::Value {
+        <T as Into<whimsi_msi::Value>>::into(self.clone())
+    }
+}
+
 pub trait ToMsiOptionalValue {
     fn to_optional_value(&self) -> whimsi_msi::Value;
 }

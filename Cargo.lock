@@ -1896,6 +1896,7 @@ dependencies = [
  "anyhow",
  "assert_fs",
  "assertables",
+ "bitflags",
  "bitmask-enum",
  "bytemuck",
  "cab",

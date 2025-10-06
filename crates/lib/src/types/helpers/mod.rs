@@ -3,6 +3,7 @@ pub mod cabinet_info;
 pub mod cabinets;
 pub(crate) mod id_generator;
 pub mod invalid_char;
+pub mod page_count;
 pub mod security_flag;
 pub mod to_msi_value;
 pub mod to_unique_msi_identifier;

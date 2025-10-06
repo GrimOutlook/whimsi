@@ -22,7 +22,7 @@ define_generator_table!(
             .primary_key()
             .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
         whimsi_msi::Column::build("FileName").text_string(FILENAME_MAX_LEN),
-        // TODO: Fix these later when I'm not trying to get things working.
+        // TODO: Make these constant when I'm not trying to get things working.
         whimsi_msi::Column::build("MinVersion").nullable().text_string(20),
         whimsi_msi::Column::build("MaxVersion").nullable().text_string(20),
         whimsi_msi::Column::build("MinSize").nullable().int32(),

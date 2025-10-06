@@ -10,9 +10,8 @@ use crate::msi_table_boilerplate;
 use crate::tables::builder_list::MsiBuilderList;
 use crate::tables::builder_table::MsiBuilderTable;
 use crate::tables::registry::dao::RegistryDao;
+use crate::tables::registry::dao::RegistryIdentifier;
 
-define_specific_identifier!(Registry);
-define_specific_identifier_parsing!(Registry);
 define_identifier_generator!(Registry);
 define_generator_table!(
     Registry,

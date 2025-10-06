@@ -48,10 +48,12 @@ use crate::tables::file::table::FileIdentifier;
 use crate::tables::file::table::FileTable;
 use crate::tables::generic_sequence::action_identifier::ActionIdentifier;
 use crate::tables::generic_sequence::dao::GenericSequenceDao;
+use crate::tables::icon::table::IconTable;
 use crate::tables::id_generator_builder_list::IdGeneratorBuilderList;
 use crate::tables::install_execute_sequence::table::InstallExecuteSequenceTable;
 use crate::tables::install_ui_sequence::table::InstallUiSequenceTable;
 use crate::tables::launch_condition::table::LaunchConditionTable;
+use crate::tables::lock_permissions::table::LockPermissionsTable;
 use crate::tables::media::cabinet_identifier::CabinetHandle;
 use crate::tables::media::cabinet_identifier::CabinetIdentifier;
 use crate::tables::media::dao::MediaDao;
@@ -63,6 +65,9 @@ use crate::tables::property::dao::PropertyDao;
 use crate::tables::property::table::PropertyTable;
 use crate::tables::reg_locator::table::RegLocatorTable;
 use crate::tables::registry::table::RegistryTable;
+use crate::tables::service_control::table::ServiceControlTable;
+use crate::tables::service_install::table::ServiceInstallTable;
+use crate::tables::shortcut::table::ShortcutTable;
 use crate::tables::signature::table::SignatureTable;
 use crate::types::column::default_dir::DefaultDir;
 use crate::types::column::filename::Filename;
@@ -73,6 +78,7 @@ use crate::types::helpers::architecture::MsiArchitecture;
 use crate::types::helpers::cabinet_info::CabinetInfo;
 use crate::types::helpers::cabinets::Cabinets;
 use crate::types::helpers::id_generator::IdGenerator;
+use crate::types::helpers::page_count::PageCount;
 use crate::types::helpers::security_flag::DocSecurity;
 use crate::types::properties::system_folder::SystemFolder;
 use crate::types::standard_action::StandardAction;
@@ -122,6 +128,11 @@ pub struct MsiBuilder {
     reg_locator: RegLocatorTable,
     app_search: AppSearchTable,
     custom_action: CustomActionTable,
+    service_control: ServiceControlTable,
+    service_install: ServiceInstallTable,
+    shortcut: ShortcutTable,
+    icon: IconTable,
+    msi_lock_permissions_ex: LockPermissionsTable,
 }
 
 impl MsiBuilder {
@@ -510,7 +521,9 @@ impl MsiBuilder {
         summary_info.set_keywords(meta.keywords());
         summary_info.set_uuid(Uuid::new_v4());
         summary_info.set_word_count(2);
-        summary_info.set_page_count(200);
+        // TODO: Determine if older versions should be supported.
+        // Only support versions after 5.0
+        summary_info.set_page_count(PageCount::_5_0 as i32);
         summary_info.set_doc_security(DocSecurity::from_package_type(
             &package_type,
         ) as i32);
@@ -546,6 +559,10 @@ impl MsiBuilder {
         self.advt_execute_sequence.write_to_package(package)?;
         self.install_execute_sequence.write_to_package(package)?;
         self.install_ui_sequence.write_to_package(package)?;
+        self.service_control.write_to_package(package)?;
+        self.service_install.write_to_package(package)?;
+        self.msi_lock_permissions_ex.write_to_package(package)?;
+        self.shortcut.write_to_package(package)?;
 
         // NOTE: Empty tables that seem to be required?
         self.signature.write_to_package(package)?;
@@ -742,17 +759,23 @@ impl Default for MsiBuilder {
             reg_locator: Default::default(),
             app_search: Default::default(),
             custom_action: Default::default(),
+            msi_lock_permissions_ex: Default::default(),
+            service_control: Default::default(),
 
             // Non-tables that need access to all or generate entity IDs.
             identifiers: empty_entries.clone(),
             cabinets: Cabinets::new(empty_entries.clone()),
 
-            // Tables that can generate IDs for their entries.
+            // Tables that can generate IDs for their entries and the IDs must be uniqe across the
+            // MSI.
             component: ComponentTable::new(empty_entries.clone()),
             directory: DirectoryTable::new(empty_entries.clone()),
             feature: FeatureTable::new(empty_entries.clone()),
             file: FileTable::new(empty_entries.clone()),
             registry: RegistryTable::new(empty_entries.clone()),
+            service_install: ServiceInstallTable::new(empty_entries.clone()),
+            shortcut: ShortcutTable::new(empty_entries.clone()),
+            icon: IconTable::new(empty_entries.clone()),
         }
     }
 }

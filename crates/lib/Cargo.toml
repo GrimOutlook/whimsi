@@ -8,6 +8,7 @@ license = "MIT"
 [dependencies]
 ambassador = "0.4.1"
 anyhow = "1.0.100"
+bitflags = "2.9.1"
 bitmask-enum = "2.2.5"
 bytemuck = "1.23.2"
 cab = "0.6.0"

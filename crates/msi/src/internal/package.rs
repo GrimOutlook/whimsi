@@ -13,10 +13,12 @@ use crate::internal::summary::SummaryInfo;
 use crate::internal::table::{Rows, Table};
 use crate::internal::value::{Value, ValueRef};
 use cfb;
+use itertools::Itertools;
 use std::borrow::Borrow;
 use std::collections::{BTreeMap, HashMap, HashSet, btree_map};
 use std::io::{self, Read, Seek, Write};
 use std::rc::Rc;
+use strum::IntoEnumIterator;
 use uuid::Uuid;
 
 // ========================================================================= //
@@ -60,8 +62,7 @@ fn make_tables_table(long_string_refs: bool) -> Rc<Table> {
 fn make_validation_columns() -> Vec<Column> {
     let min = -0x7fff_ffff;
     let max = 0x7fff_ffff;
-    let values: Vec<&str> =
-        Category::all().into_iter().map(Category::as_str).collect();
+    let values: Vec<String> = Category::iter().map(|s| s.to_string()).collect();
     vec![
         Column::build("Table").primary_key().id_string(32),
         Column::build("Column").primary_key().id_string(32),
@@ -70,7 +71,12 @@ fn make_validation_columns() -> Vec<Column> {
         Column::build("MaxValue").nullable().range(min, max).int32(),
         Column::build("KeyTable").nullable().id_string(255),
         Column::build("KeyColumn").nullable().range(1, 32).int16(),
-        Column::build("Category").nullable().enum_values(&values).string(32),
+        Column::build("Category")
+            .nullable()
+            .enum_values(
+                values.iter().map(|s| s.as_str()).collect_vec().as_slice(),
+            )
+            .string(32),
         Column::build("Set").nullable().text_string(255),
         Column::build("Description").nullable().text_string(255),
     ]

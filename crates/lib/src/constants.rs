@@ -1,5 +1,9 @@
 use crate::types::standard_action::{AdvtAction, StandardAction};
 
+// -- Table/Column Specific Lengths -__----------------------------------------
+// I have no idea why the data type doesn't govern the size of the column but
+// whatever.
+//
 // Found by inspecting MSIs made by other tools. Couldn't find official
 // documentation on these values.
 pub const CABINET_MAX_LEN: usize = 255;
@@ -15,18 +19,18 @@ pub const VERSION_MAX_LEN: usize = 72;
 pub const VOLUME_LABEL_MAX_LEN: usize = 32;
 pub const TITLE_MAX_LEN: usize = 64;
 pub const DESCRIPTION_MAX_LEN: usize = 255;
-// I assume this means, unbounded?
 pub const PROPERTY_VALUE_MAX_LEN: usize = 0;
 pub const REGISTRY_VALUE_MAX_LEN: usize = 0;
 pub const REGISTRY_NAME_MAX_LEN: usize = 255;
 pub const REGPATH_MAX_LEN: usize = 255;
+// This one is actually included in the docs for some reason:
+// https://learn.microsoft.com/en-us/windows/win32/msi/feature-table
+pub const FEATURE_IDENTIFIER_MAX_LEN: usize = 38;
 
+// -- Other Column Data Validation Constants ----------------------------------
 // Found here: https://learn.microsoft.com/en-us/windows/win32/msi/filename
 pub const SHORT_FILENAME_MAX_LEN: usize = 8;
 // TODO: Move filename invalid character array list here.
-
-// Found here: https://learn.microsoft.com/en-us/windows/win32/msi/feature-table
-pub const FEATURE_IDENTIFIER_MAX_LEN: usize = 38;
 
 // Found here: https://learn.microsoft.com/en-us/windows/win32/msi/media-table
 pub const LAST_SEQUENCE_MIN: usize = 0;
@@ -35,21 +39,7 @@ pub const LAST_SEQUENCE_MAX: usize = 32767;
 // Found here: https://learn.microsoft.com/en-us/windows/win32/msi/media-table
 pub const DISK_ID_MIN: usize = 1;
 
-// Automatically generated Identifier prefixes
-pub const CABINET_IDENTIFIER_PREFIX: &str = "CABINET_";
-pub const COMPONENT_IDENTIFIER_PREFIX: &str = "COMPONENT_";
-pub const DIRECTORY_IDENTIFIER_PREFIX: &str = "DIRECTORY_";
-pub const FEATURE_IDENTIFIER_PREFIX: &str = "FEATURE_";
-pub const FILE_IDENTIFIER_PREFIX: &str = "FILE_";
-pub const MEDIA_IDENTIFIER_PREFIX: &str = "MEDIA_";
-pub const PROPERTY_IDENTIFIER_PREFIX: &str = "PROPERTY_";
-pub const REGISTRY_IDENTIFIER_PREFIX: &str = "REGISTRY_";
-pub const SIGNATURE_IDENTIFIER_PREFIX: &str = "SIGNATURE_";
-pub const BINARY_IDENTIFIER_PREFIX: &str = "BINARY_";
-pub const SERVICEINSTALL_IDENTIFIER_PREFIX: &str = "SERVICE_";
-pub const SHORTCUT_IDENTIFIER_PREFIX: &str = "SHORTCUT_";
-pub const ICON_IDENTIFIER_PREFIX: &str = "ICON_";
-
+// -- Default Table Contents --------------------------------------------------
 // Default identifiers
 pub const DEFAULT_CABINET_IDENTIFIER: &str = "DEFAULT_CABINET";
 pub const DEFAULT_FEATURE_IDENTIFIER: &str = "DEFAULT_FEATURE";

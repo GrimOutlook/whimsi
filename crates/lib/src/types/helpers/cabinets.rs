@@ -1,20 +1,69 @@
 use anyhow::ensure;
 
-use crate::define_identifier_generator;
-use crate::define_specific_identifier;
-use crate::implement_id_generator_for_table;
-use crate::implement_new_for_id_generator_table;
-use crate::msi_list_boilerplate;
-use crate::tables::builder_list::MsiBuilderList;
-use crate::tables::media::cabinet_identifier::CabinetIdGenerator;
-use crate::tables::media::cabinet_identifier::CabinetIdentifier;
-use crate::types::column::identifier::Identifier;
+use crate::types::column::identifier::{Identifier, ToIdentifier};
 use crate::types::helpers::cabinet_info::CabinetInfo;
+use crate::types::helpers::id_generator::IdentifierGenerator;
+
+// TODO: This area could be almost completely removed by making the MsiTables derive macro more
+// modular.
+//
+// -- Begin section that could be basically removed by an altered derive macro
+struct CabinetIdentifier(Identifier);
+impl ToIdentifier for CabinetIdentifier {
+    fn to_identifier(&self) -> Identifier {
+        self.0
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) struct CabinetIdentifierGenerator {
+    count: usize,
+    // A reference to a vec of all used Identifiers that should not be generated again.
+    // These are all identifiers that inhabit a primary_key column.
+    used: std::rc::Rc<std::cell::RefCell<Vec<Identifier>>>,
+}
+
+impl IdentifierGenerator for CabinetIdentifierGenerator {
+    type IdentifierType = CabinetIdentifier;
+
+    fn id_prefix(&self) -> &str {
+        "CABINET"
+    }
+
+    fn used(&self) -> &std::rc::Rc<std::cell::RefCell<Vec<Identifier>>> {
+        &self.used
+    }
+
+    fn count(&self) -> usize {
+        self.count
+    }
+
+    fn count_mut(&mut self) -> &mut usize {
+        &mut self.count
+    }
+}
+
+impl From<std::rc::Rc<std::cell::RefCell<Vec<Identifier>>>>
+    for CabinetIdentifierGenerator
+{
+    fn from(value: std::rc::Rc<std::cell::RefCell<Vec<Identifier>>>) -> Self {
+        let count = value.borrow().len();
+        Self { used: value, count: 0 }
+    }
+}
+impl std::str::FromStr for CabinetIdentifier {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> anyhow::Result<Self> {
+        Ok(Self(Identifier::from_str(s)?))
+    }
+}
+// -- End section that could be removed with derive macro changes -------------
 
 #[derive(Debug)]
 pub(crate) struct Cabinets {
     entries: Vec<CabinetInfo>,
-    generator: CabinetIdGenerator,
+    generator: CabinetIdentifierGenerator,
 }
 
 impl Cabinets {
@@ -47,7 +96,3 @@ impl Cabinets {
         &self.entries
     }
 }
-
-msi_list_boilerplate!(Cabinets, CabinetInfo);
-implement_new_for_id_generator_table!(Cabinets, CabinetIdGenerator);
-implement_id_generator_for_table!(Cabinets, CabinetIdGenerator);

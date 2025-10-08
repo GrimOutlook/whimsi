@@ -4,28 +4,27 @@ use std::io::Write;
 
 use anyhow::ensure;
 use itertools::Itertools;
+use msi::Package;
 use tracing::debug;
 use tracing::trace;
-use msi::Package;
 
-use crate::tables::builder_list::MsiBuilderList;
-use crate::tables::builder_list_entry::MsiBuilderListEntry;
-use crate::tables::dao::IsDao;
-use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
+use crate::tables::dao::MsiDao;
+use crate::types::helpers::primary_identifier::PrimaryIdentifier;
 
-pub(crate) trait MsiBuilderTable: MsiBuilderList {
-    type TableValue: IsDao + ToUniqueMsiIdentifier + MsiBuilderListEntry;
+pub trait MsiTable {
+    type TableValue: MsiDao + PrimaryIdentifier;
 
     /// Utilized when creating the MSI using the `msi` crate.
     fn name(&self) -> &'static str;
     fn columns(&self) -> Vec<msi::Column>;
     fn entries(&self) -> &Vec<Self::TableValue>;
     fn entries_mut(&mut self) -> &mut Vec<Self::TableValue>;
-
+    fn primary_key_indices(&self) -> Vec<usize>;
+    fn primary_keys(&self) -> Vec<msi::ColumnType>;
     fn rows(&self) -> Vec<Vec<msi::Value>> {
-        MsiBuilderTable::entries(self)
+        self.entries()
             .into_iter()
-            .map(IsDao::to_row)
+            .map(MsiDao::to_row)
             .sorted_by_key(|row| {
                 // TODO: Determine if this needs to be sorted by the first column or by the primary
                 // key. My guess is the primary key but this is easier to do for now.
@@ -60,17 +59,4 @@ pub(crate) trait MsiBuilderTable: MsiBuilderList {
         package.insert_rows(query)?;
         Ok(package.flush()?)
     }
-}
-
-#[macro_export]
-macro_rules! msi_table_boilerplate {
-    () => {
-        fn entries(&self) -> &Vec<Self::TableValue> {
-            &self.entries
-        }
-
-        fn entries_mut(&mut self) -> &mut Vec<Self::TableValue> {
-            &mut self.entries
-        }
-    };
 }

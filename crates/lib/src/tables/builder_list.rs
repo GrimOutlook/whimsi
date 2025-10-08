@@ -1,10 +1,12 @@
 use anyhow::ensure;
 
-use crate::tables::builder_list_entry::MsiBuilderListEntry;
-use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
+use crate::{
+    tables::dao::MsiDao,
+    types::helpers::to_unique_msi_identifier::PrimaryIdentifier,
+};
 
 pub(crate) trait MsiBuilderList {
-    type ListValue: MsiBuilderListEntry + ToUniqueMsiIdentifier;
+    type ListValue: MsiDao + PrimaryIdentifier;
 
     // Handled by boilerplate macro defined below
     fn entries(&self) -> &Vec<Self::ListValue>;
@@ -38,21 +40,4 @@ pub(crate) trait MsiBuilderList {
     fn contains(&self, other: &Self::ListValue) -> bool {
         self.entries().iter().find(|entry| entry.conflicts(other)).is_some()
     }
-}
-
-#[macro_export]
-macro_rules! msi_list_boilerplate {
-    ($struct_type:ty, $list_value_type:ty) => {
-        impl $crate::tables::builder_list::MsiBuilderList for $struct_type {
-            type ListValue = $list_value_type;
-
-            fn entries(&self) -> &Vec<Self::ListValue> {
-                &self.entries
-            }
-
-            fn entries_mut(&mut self) -> &mut Vec<Self::ListValue> {
-                &mut self.entries
-            }
-        }
-    };
 }

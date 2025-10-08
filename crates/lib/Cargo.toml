@@ -33,6 +33,7 @@ thiserror = "2.0.12"
 tracing = "0.1.41"
 uuid = { version = "1.17.0", features = ["v4"] }
 whimsi-macros = { path = "../macros/" }
+whimsi-table-macro = { path = "../../../whimsi-table-macro/" }
 msi = { path = "../../../rust-msi/" }
 
 [dev-dependencies]

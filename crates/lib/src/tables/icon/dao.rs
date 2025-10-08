@@ -25,7 +25,7 @@ pub struct IconDao {
 }
 
 impl IsDao for IconDao {
-    fn to_row(&self) -> Vec<whimsi_msi::Value> {
+    fn to_row(&self) -> Vec<msi::Value> {
         vec![self.name.to_identifier().into(), self.data.clone().into()]
     }
 }

@@ -23,41 +23,41 @@ define_identifier_generator!(Shortcut);
 define_generator_table!(
     Shortcut,
     vec![
-        whimsi_msi::Column::build("Shortcut")
+        msi::Column::build("Shortcut")
             .primary_key()
             .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-        whimsi_msi::Column::build("Directory_")
+        msi::Column::build("Directory_")
             .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-        whimsi_msi::Column::build("Name")
+        msi::Column::build("Name")
             .localizable()
-            .category(whimsi_msi::Category::Filename)
+            .category(msi::Category::Filename)
             .string(255),
-        whimsi_msi::Column::build("Component_")
+        msi::Column::build("Component_")
             .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-        whimsi_msi::Column::build("Target")
-            .category(whimsi_msi::Category::Shortcut)
+        msi::Column::build("Target")
+            .category(msi::Category::Shortcut)
             .string(255),
-        whimsi_msi::Column::build("Arguments").nullable().formatted_string(255),
-        whimsi_msi::Column::build("Description")
+        msi::Column::build("Arguments").nullable().formatted_string(255),
+        msi::Column::build("Description")
             .nullable()
             .formatted_string(255),
-        whimsi_msi::Column::build("Hotkey").nullable().int16(),
-        whimsi_msi::Column::build("Icon_")
+        msi::Column::build("Hotkey").nullable().int16(),
+        msi::Column::build("Icon_")
             .nullable()
             .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-        whimsi_msi::Column::build("IconIndex").nullable().int16(),
-        whimsi_msi::Column::build("ShowCmd").nullable().int16(),
-        whimsi_msi::Column::build("WkDir")
+        msi::Column::build("IconIndex").nullable().int16(),
+        msi::Column::build("ShowCmd").nullable().int16(),
+        msi::Column::build("WkDir")
             .nullable()
             .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-        whimsi_msi::Column::build("DisplayResourceDLL")
+        msi::Column::build("DisplayResourceDLL")
             .nullable()
             .formatted_string(255),
-        whimsi_msi::Column::build("DisplayResourceId").nullable().int16(),
-        whimsi_msi::Column::build("DescriptionResourceDLL")
+        msi::Column::build("DisplayResourceId").nullable().int16(),
+        msi::Column::build("DescriptionResourceDLL")
             .nullable()
             .formatted_string(255),
-        whimsi_msi::Column::build("DescriptionResourceId").nullable().int16(),
+        msi::Column::build("DescriptionResourceId").nullable().int16(),
     ]
 );
 

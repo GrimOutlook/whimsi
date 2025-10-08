@@ -21,21 +21,21 @@ impl MsiBuilderTable for CustomActionTable {
         "CustomAction"
     }
 
-    fn columns(&self) -> Vec<whimsi_msi::Column> {
+    fn columns(&self) -> Vec<msi::Column> {
         vec![
-            whimsi_msi::Column::build("Action")
+            msi::Column::build("Action")
                 .primary_key()
                 .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-            whimsi_msi::Column::build("Type").int16(),
+            msi::Column::build("Type").int16(),
             // TODO: Make constant
-            whimsi_msi::Column::build("Source")
+            msi::Column::build("Source")
                 .nullable()
-                .category(whimsi_msi::Category::CustomSource)
+                .category(msi::Category::CustomSource)
                 .string(DEFAULT_IDENTIFIER_MAX_LEN),
-            whimsi_msi::Column::build("Target")
+            msi::Column::build("Target")
                 .nullable()
                 .formatted_string(255),
-            whimsi_msi::Column::build("ExtendedType").nullable().int32(),
+            msi::Column::build("ExtendedType").nullable().int32(),
         ]
     }
 }

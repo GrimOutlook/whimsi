@@ -72,8 +72,8 @@ macro_rules! define_specific_identifier {
                 }
             }
 
-            impl From<[<$id_type:camel Identifier>]> for whimsi_msi::Value {
-                fn from(value: [<$id_type:camel Identifier>]) -> whimsi_msi::Value {
+            impl From<[<$id_type:camel Identifier>]> for msi::Value {
+                fn from(value: [<$id_type:camel Identifier>]) -> msi::Value {
                     value.to_string().into()
                 }
             }

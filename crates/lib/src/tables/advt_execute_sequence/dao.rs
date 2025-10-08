@@ -17,7 +17,7 @@ pub struct AdvtExecuteSequenceDao {
 }
 
 impl IsDao for AdvtExecuteSequenceDao {
-    fn to_row(&self) -> Vec<whimsi_msi::Value> {
+    fn to_row(&self) -> Vec<msi::Value> {
         vec![
             self.action.to_string().into(),
             self.condition.to_optional_value(),

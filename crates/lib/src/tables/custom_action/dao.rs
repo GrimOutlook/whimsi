@@ -22,7 +22,7 @@ pub struct CustomActionDao {
 }
 
 impl IsDao for CustomActionDao {
-    fn to_row(&self) -> Vec<whimsi_msi::Value> {
+    fn to_row(&self) -> Vec<msi::Value> {
         vec![
             self.action.clone().into(),
             self.typ.into(),

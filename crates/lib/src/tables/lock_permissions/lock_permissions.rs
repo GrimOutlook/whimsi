@@ -1,4 +1,4 @@
-use whimsi_msi::Value;
+use msi::Value;
 
 #[derive(Debug, Clone)]
 pub enum LockPermissions {

@@ -11,7 +11,7 @@ pub struct PropertyDao {
 }
 
 impl IsDao for PropertyDao {
-    fn to_row(&self) -> Vec<whimsi_msi::Value> {
+    fn to_row(&self) -> Vec<msi::Value> {
         vec![self.property.clone().into(), self.value.clone().into()]
     }
 }

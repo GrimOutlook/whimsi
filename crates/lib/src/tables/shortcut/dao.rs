@@ -72,7 +72,7 @@ impl ShortcutDao {
 }
 
 impl IsDao for ShortcutDao {
-    fn to_row(&self) -> Vec<whimsi_msi::Value> {
+    fn to_row(&self) -> Vec<msi::Value> {
         vec![
             self.identifier.to_identifier().into(),
             self.directory_.to_identifier().into(),

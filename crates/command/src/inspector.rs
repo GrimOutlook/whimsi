@@ -3,7 +3,7 @@ use camino::Utf8PathBuf;
 use cli_table::{Cell, CellStruct, Style, Table};
 use flexstr::{LocalStr, SharedStr};
 use itertools::Itertools;
-use whimsi_msi::{Package, Select};
+use msi::{Package, Select};
 use std::fs::File;
 use tracing::{debug, info};
 
@@ -13,7 +13,7 @@ pub(crate) fn inspect(input_file: &Utf8PathBuf, list_item: Listable) -> Result<S
     info!("Reading MSI {}", input_file);
     validate_paths(input_file)?;
 
-    let mut msi = whimsi_msi::open_rw(input_file).context(format!("Failed to open MSI {input_file}"))?;
+    let mut msi = msi::open_rw(input_file).context(format!("Failed to open MSI {input_file}"))?;
 
     match list_item {
         Listable::Author => list_author(msi),

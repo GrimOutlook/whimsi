@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use derivative::Derivative;
 use getset::{Getters, Setters, WithSetters};
-use whimsi_msi::{Language, PackageType};
+use msi::{Language, PackageType};
 
 use crate::types::{
     column::version::Version,

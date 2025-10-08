@@ -7,7 +7,7 @@ use whimsi_lib::builder::MsiBuilder;
 use whimsi_lib::tables::meta::MetaInformation;
 use whimsi_lib::types::helpers::architecture::MsiArchitecture;
 use whimsi_lib::types::properties::system_folder::SystemFolder;
-use whimsi_msi::Language;
+use msi::Language;
 
 #[derive(Parser)]
 struct Args {
@@ -25,7 +25,7 @@ fn main() {
         .expect("Failed to open file");
 
     let meta = MetaInformation::new(
-        whimsi_msi::PackageType::Installer,
+        msi::PackageType::Installer,
         "PING".to_string(),
     )
     .with_author(Some("Manny".to_string()))

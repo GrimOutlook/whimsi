@@ -24,16 +24,16 @@ impl MsiBuilderTable for AdminExecuteSequenceTable {
         "AdminExecuteSequence"
     }
 
-    fn columns(&self) -> Vec<whimsi_msi::Column> {
+    fn columns(&self) -> Vec<msi::Column> {
         vec![
-            whimsi_msi::Column::build("Action")
+            msi::Column::build("Action")
                 .primary_key()
                 .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-            whimsi_msi::Column::build("Condition")
+            msi::Column::build("Condition")
                 .nullable()
-                .category(whimsi_msi::Category::Condition)
+                .category(msi::Category::Condition)
                 .string(CONDITION_MAX_LEN),
-            whimsi_msi::Column::build("Sequence").nullable().int16(),
+            msi::Column::build("Sequence").nullable().int16(),
         ]
     }
 }

@@ -21,7 +21,7 @@ pub struct LockPermissionsDao {
 }
 
 impl IsDao for LockPermissionsDao {
-    fn to_row(&self) -> Vec<whimsi_msi::Value> {
+    fn to_row(&self) -> Vec<msi::Value> {
         vec![
             self.lock_object.to_identifier().into(),
             self.lock_object.table().into(),

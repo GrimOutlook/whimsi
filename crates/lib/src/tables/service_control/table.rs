@@ -20,18 +20,18 @@ impl MsiBuilderTable for ServiceControlTable {
         "ServiceControl"
     }
 
-    fn columns(&self) -> Vec<whimsi_msi::Column> {
+    fn columns(&self) -> Vec<msi::Column> {
         vec![
-            whimsi_msi::Column::build("ServiceControl")
+            msi::Column::build("ServiceControl")
                 .primary_key()
                 .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-            whimsi_msi::Column::build("Name").text_string(255),
-            whimsi_msi::Column::build("Event").int16(),
-            whimsi_msi::Column::build("Arguments")
+            msi::Column::build("Name").text_string(255),
+            msi::Column::build("Event").int16(),
+            msi::Column::build("Arguments")
                 .nullable()
                 .formatted_string(255),
-            whimsi_msi::Column::build("Wait").nullable().int16(),
-            whimsi_msi::Column::build("Component_")
+            msi::Column::build("Wait").nullable().int16(),
+            msi::Column::build("Component_")
                 .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
         ]
     }

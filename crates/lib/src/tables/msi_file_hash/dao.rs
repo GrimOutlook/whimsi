@@ -36,7 +36,7 @@ impl ToUniqueMsiIdentifier for MsiFileHashDao {
 }
 
 impl IsDao for MsiFileHashDao {
-    fn to_row(&self) -> Vec<whimsi_msi::Value> {
+    fn to_row(&self) -> Vec<msi::Value> {
         vec![
             self.file.clone().into(),
             self.options.into(),

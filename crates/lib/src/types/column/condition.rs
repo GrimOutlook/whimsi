@@ -7,7 +7,7 @@ impl ToString for Condition {
     }
 }
 
-impl From<Condition> for whimsi_msi::Value {
+impl From<Condition> for msi::Value {
     fn from(value: Condition) -> Self {
         value.to_string().into()
     }

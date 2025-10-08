@@ -23,10 +23,10 @@ define_identifier_generator!(Icon);
 define_generator_table!(
     Icon,
     vec![
-        whimsi_msi::Column::build("Name")
+        msi::Column::build("Name")
             .primary_key()
             .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-        whimsi_msi::Column::build("Data").binary()
+        msi::Column::build("Data").binary()
     ]
 );
 

@@ -23,28 +23,28 @@ define_identifier_generator!(ServiceInstall);
 define_generator_table!(
     ServiceInstall,
     vec![
-        whimsi_msi::Column::build("ServiceInstall")
+        msi::Column::build("ServiceInstall")
             .primary_key()
             .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-        whimsi_msi::Column::build("Name").formatted_string(255),
-        whimsi_msi::Column::build("DisplayName")
+        msi::Column::build("Name").formatted_string(255),
+        msi::Column::build("DisplayName")
             .nullable()
             .formatted_string(255),
-        whimsi_msi::Column::build("ServiceType").int32(),
-        whimsi_msi::Column::build("StartType").int32(),
-        whimsi_msi::Column::build("ErrorControl").int32(),
-        whimsi_msi::Column::build("LoadOrderGroup")
+        msi::Column::build("ServiceType").int32(),
+        msi::Column::build("StartType").int32(),
+        msi::Column::build("ErrorControl").int32(),
+        msi::Column::build("LoadOrderGroup")
             .nullable()
             .formatted_string(255),
-        whimsi_msi::Column::build("Dependencies")
+        msi::Column::build("Dependencies")
             .nullable()
             .formatted_string(255),
-        whimsi_msi::Column::build("StartName").nullable().formatted_string(255),
-        whimsi_msi::Column::build("Password").nullable().formatted_string(255),
-        whimsi_msi::Column::build("Arguments").nullable().formatted_string(255),
-        whimsi_msi::Column::build("Component_")
+        msi::Column::build("StartName").nullable().formatted_string(255),
+        msi::Column::build("Password").nullable().formatted_string(255),
+        msi::Column::build("Arguments").nullable().formatted_string(255),
+        msi::Column::build("Component_")
             .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-        whimsi_msi::Column::build("Description")
+        msi::Column::build("Description")
             .nullable()
             .formatted_string(255),
     ]

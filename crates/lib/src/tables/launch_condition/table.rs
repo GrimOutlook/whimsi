@@ -22,14 +22,14 @@ impl MsiBuilderTable for LaunchConditionTable {
         "LaunchCondition"
     }
 
-    fn columns(&self) -> Vec<whimsi_msi::Column> {
+    fn columns(&self) -> Vec<msi::Column> {
         vec![
-            whimsi_msi::Column::build("Condition")
+            msi::Column::build("Condition")
                 .primary_key()
-                .category(whimsi_msi::Category::Condition)
+                .category(msi::Category::Condition)
                 .string(CONDITION_MAX_LEN),
             // TODO: Make this a proper constant.
-            whimsi_msi::Column::build("Description")
+            msi::Column::build("Description")
                 .localizable()
                 .formatted_string(255),
         ]

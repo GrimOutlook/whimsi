@@ -35,24 +35,24 @@ impl MsiBuilderTable for MediaTable {
         "Media"
     }
 
-    fn columns(&self) -> Vec<whimsi_msi::Column> {
+    fn columns(&self) -> Vec<msi::Column> {
         vec![
-            whimsi_msi::Column::build("DiskId").primary_key().int16(),
-            whimsi_msi::Column::build("LastSequence").int32(),
-            whimsi_msi::Column::build("DiskPrompt")
+            msi::Column::build("DiskId").primary_key().int16(),
+            msi::Column::build("LastSequence").int32(),
+            msi::Column::build("DiskPrompt")
                 .nullable()
                 .localizable()
                 .text_string(DISK_PROMPT_MAX_LEN),
-            whimsi_msi::Column::build("Cabinet")
+            msi::Column::build("Cabinet")
                 .nullable()
-                .category(whimsi_msi::Category::Cabinet)
+                .category(msi::Category::Cabinet)
                 .string(CABINET_MAX_LEN),
-            whimsi_msi::Column::build("VolumeLabel")
+            msi::Column::build("VolumeLabel")
                 .nullable()
                 .text_string(VOLUME_LABEL_MAX_LEN),
-            whimsi_msi::Column::build("Source")
+            msi::Column::build("Source")
                 .nullable()
-                .category(whimsi_msi::Category::Property)
+                .category(msi::Category::Property)
                 .string(SOURCE_MAX_LEN),
         ]
     }

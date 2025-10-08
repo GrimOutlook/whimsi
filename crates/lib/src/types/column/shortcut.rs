@@ -13,7 +13,7 @@ pub enum Shortcut {
     Identifier(FeatureIdentifier),
 }
 
-impl From<Shortcut> for whimsi_msi::Value {
+impl From<Shortcut> for msi::Value {
     fn from(value: Shortcut) -> Self {
         match value {
             Shortcut::Formatted(f) => f.into(),

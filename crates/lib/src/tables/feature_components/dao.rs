@@ -15,7 +15,7 @@ pub struct FeatureComponentsDao {
 }
 
 impl IsDao for FeatureComponentsDao {
-    fn to_row(&self) -> Vec<whimsi_msi::Value> {
+    fn to_row(&self) -> Vec<msi::Value> {
         vec![self.feature.clone().into(), self.component.clone().into()]
     }
 }

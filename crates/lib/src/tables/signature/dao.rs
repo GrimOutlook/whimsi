@@ -24,7 +24,7 @@ pub struct SignatureDao {
 }
 
 impl IsDao for SignatureDao {
-    fn to_row(&self) -> Vec<whimsi_msi::Value> {
+    fn to_row(&self) -> Vec<msi::Value> {
         vec![
             self.signature.clone().into(),
             self.filename.clone().into(),

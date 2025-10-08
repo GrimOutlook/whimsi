@@ -26,16 +26,13 @@ use builder::MsiBuilder;
 use clap::Parser;
 use command_line::{CommandLineParser, Commands, Listable};
 use tracing::info;
-use tracing_subscriber::{util::SubscriberInitExt, FmtSubscriber};
+use tracing_subscriber::{FmtSubscriber, util::SubscriberInitExt};
 
 fn main() -> Result<()> {
     // Read the passed in arguments
     let args = CommandLineParser::parse();
     // Setup the logger
-    FmtSubscriber::builder()
-        .with_max_level(args.log_level)
-        .finish()
-        .init();
+    FmtSubscriber::builder().with_max_level(args.log_level).finish().init();
 
     info!("Running WHIMSI...");
     match args.command {
@@ -47,10 +44,7 @@ fn main() -> Result<()> {
             // let builder = MsiBuilder::new()?;
             todo!()
         }
-        Commands::Inspect {
-            input_file,
-            list_args,
-        } => {
+        Commands::Inspect { input_file, list_args } => {
             let output = inspector::inspect(&input_file, list_args)?;
             println!("{output}");
         }

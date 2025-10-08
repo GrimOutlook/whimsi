@@ -36,7 +36,7 @@ impl FeatureDao {
 }
 
 impl IsDao for FeatureDao {
-    fn to_row(&self) -> Vec<whimsi_msi::Value> {
+    fn to_row(&self) -> Vec<msi::Value> {
         vec![
             self.feature.clone().into(),
             self.feature_parent.to_optional_value(),

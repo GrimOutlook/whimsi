@@ -62,7 +62,7 @@ impl ServiceInstallDao {
 }
 
 impl IsDao for ServiceInstallDao {
-    fn to_row(&self) -> Vec<whimsi_msi::Value> {
+    fn to_row(&self) -> Vec<msi::Value> {
         vec![
             self.identifier.to_identifier().into(),
             self.name.clone().into(),

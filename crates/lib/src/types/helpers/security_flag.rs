@@ -1,4 +1,4 @@
-use whimsi_msi::PackageType;
+use msi::PackageType;
 
 // Main documentation found
 // [here](https://learn.microsoft.com/en-us/windows/win32/msi/security-summary) but additional

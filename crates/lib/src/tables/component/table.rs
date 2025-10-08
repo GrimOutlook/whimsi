@@ -23,20 +23,20 @@ define_identifier_generator!(Component);
 define_generator_table!(
     Component,
     vec![
-        whimsi_msi::Column::build("Component")
+        msi::Column::build("Component")
             .primary_key()
             .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-        whimsi_msi::Column::build("ComponentId")
+        msi::Column::build("ComponentId")
             .nullable()
-            .category(whimsi_msi::Category::Guid)
+            .category(msi::Category::Guid)
             .string(GUID_MAX_LEN),
-        whimsi_msi::Column::build("Directory_").id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-        whimsi_msi::Column::build("Attributes").int16(),
-        whimsi_msi::Column::build("Condition")
+        msi::Column::build("Directory_").id_string(DEFAULT_IDENTIFIER_MAX_LEN),
+        msi::Column::build("Attributes").int16(),
+        msi::Column::build("Condition")
             .nullable()
-            .category(whimsi_msi::Category::Condition)
+            .category(msi::Category::Condition)
             .string(CONDITION_MAX_LEN),
-        whimsi_msi::Column::build("KeyPath")
+        msi::Column::build("KeyPath")
             .nullable()
             .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
     ]

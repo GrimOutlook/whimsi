@@ -20,8 +20,8 @@ use rand::distr::SampleString;
 use tracing::debug;
 use tracing::info;
 use uuid::Uuid;
-use whimsi_msi::Insert;
-use whimsi_msi::Value;
+use msi::Insert;
+use msi::Value;
 
 use crate::constants::*;
 use crate::tables::admin_execute_sequence::table::AdminExecuteSequenceTable;
@@ -400,7 +400,7 @@ impl MsiBuilder {
     pub fn build<F: std::io::Read + std::io::Write + std::io::Seek>(
         self,
         mut container: F,
-    ) -> anyhow::Result<whimsi_msi::Package<F>> {
+    ) -> anyhow::Result<msi::Package<F>> {
         let Some(ref meta) = self.meta else {
             bail!("Meta information cannot be blank");
         };
@@ -410,7 +410,7 @@ impl MsiBuilder {
         let mut reference_msi =
             std::io::Cursor::new(include_bytes!("../resources/Schema.msi"));
         std::io::copy(&mut reference_msi, &mut container);
-        let mut package = whimsi_msi::Package::open(container)?;
+        let mut package = msi::Package::open(container)?;
 
         // TODO: Remove after getting everything working
         let extra_tables = [
@@ -479,8 +479,8 @@ impl MsiBuilder {
             package.drop_table(table);
         }
 
-        // let mut package = whimsi_msi::Package::create(
-        //     whimsi_msi::PackageType::Installer,
+        // let mut package = msi::Package::create(
+        //     msi::PackageType::Installer,
         //     container,
         // )?;
         self.write_meta_info_to_package(&mut package, meta)?;
@@ -495,13 +495,13 @@ impl MsiBuilder {
         F: std::io::Read + std::io::Write + std::io::Seek,
     >(
         &self,
-        package: &mut whimsi_msi::Package<F>,
+        package: &mut msi::Package<F>,
         meta: &MetaInformation,
     ) -> anyhow::Result<()> {
         let package_type = package.package_type();
-        package.set_database_codepage(whimsi_msi::CodePage::Windows1252);
+        package.set_database_codepage(msi::CodePage::Windows1252);
         let summary_info = package.summary_info_mut();
-        summary_info.set_codepage(whimsi_msi::CodePage::Windows1252);
+        summary_info.set_codepage(msi::CodePage::Windows1252);
         summary_info.set_subject(meta.subject());
 
         if let Some(author) = meta.author() {
@@ -540,7 +540,7 @@ impl MsiBuilder {
         F: std::io::Read + std::io::Write + std::io::Seek,
     >(
         &self,
-        package: &mut whimsi_msi::Package<F>,
+        package: &mut msi::Package<F>,
     ) -> anyhow::Result<()> {
         info!("Writing tables to package");
         self.directory.write_to_package(package)?;
@@ -582,7 +582,7 @@ impl MsiBuilder {
         F: std::io::Read + std::io::Write + std::io::Seek,
     >(
         &self,
-        package: &mut whimsi_msi::Package<F>,
+        package: &mut msi::Package<F>,
     ) -> anyhow::Result<()> {
         let previous_last_sequence = 1;
         for media in MsiBuilderTable::entries(&self.media)
@@ -670,7 +670,7 @@ impl MsiBuilder {
         &self,
         cabinet_info: &CabinetInfo,
         cabinet: &mut std::fs::File,
-        package: &mut whimsi_msi::Package<F>,
+        package: &mut msi::Package<F>,
     ) -> anyhow::Result<()> {
         let cabinet_id = cabinet_info.id();
         debug!(

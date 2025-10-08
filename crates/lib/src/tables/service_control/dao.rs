@@ -30,7 +30,7 @@ pub struct ServiceControlDao {
 }
 
 impl IsDao for ServiceControlDao {
-    fn to_row(&self) -> Vec<whimsi_msi::Value> {
+    fn to_row(&self) -> Vec<msi::Value> {
         vec![
             self.service_control.to_identifier().into(),
             self.name.clone().into(),

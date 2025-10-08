@@ -25,15 +25,15 @@ define_identifier_generator!(Directory);
 define_generator_table!(
     Directory,
     vec![
-        whimsi_msi::Column::build("Directory")
+        msi::Column::build("Directory")
             .primary_key()
             .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-        whimsi_msi::Column::build("Directory_Parent")
+        msi::Column::build("Directory_Parent")
             .nullable()
             .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-        whimsi_msi::Column::build("DefaultDir")
+        msi::Column::build("DefaultDir")
             .localizable()
-            .category(whimsi_msi::Category::DefaultDir)
+            .category(msi::Category::DefaultDir)
             .string(DEFAULT_DIR_MAX_LEN),
     ]
 );
@@ -107,8 +107,8 @@ mod test {
     use std::rc::Rc;
     use std::str::FromStr;
 
-    use whimsi_msi::PackageType;
-    use whimsi_msi::Select;
+    use msi::PackageType;
+    use msi::Select;
 
     use super::DirectoryTable;
     use crate::tables::builder_list::MsiBuilderList;
@@ -121,7 +121,7 @@ mod test {
 
     #[test]
     fn write_to_package() {
-        let mut package = whimsi_msi::Package::create(
+        let mut package = msi::Package::create(
             PackageType::Installer,
             Cursor::new(Vec::new()),
         )

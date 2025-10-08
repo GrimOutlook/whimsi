@@ -25,20 +25,20 @@ impl MsiBuilderTable for LockPermissionsTable {
         "LockPermissions"
     }
 
-    fn columns(&self) -> Vec<whimsi_msi::Column> {
+    fn columns(&self) -> Vec<msi::Column> {
         vec![
-            whimsi_msi::Column::build("MsiLockPermissionsEx")
+            msi::Column::build("MsiLockPermissionsEx")
                 .primary_key()
                 .text_string(255),
-            whimsi_msi::Column::build("LockObject")
+            msi::Column::build("LockObject")
                 .id_string(PROPERTY_VALUE_MAX_LEN),
-            whimsi_msi::Column::build("Table").text_string(255),
-            whimsi_msi::Column::build("SDDLText")
-                .category(whimsi_msi::Category::FormattedSddlText)
+            msi::Column::build("Table").text_string(255),
+            msi::Column::build("SDDLText")
+                .category(msi::Category::FormattedSddlText)
                 .string(255),
-            whimsi_msi::Column::build("Condition")
+            msi::Column::build("Condition")
                 .nullable()
-                .category(whimsi_msi::Category::Condition)
+                .category(msi::Category::Condition)
                 .string(255),
         ]
     }

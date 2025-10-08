@@ -37,7 +37,7 @@ impl DirectoryDao {
 }
 
 impl IsDao for DirectoryDao {
-    fn to_row(&self) -> Vec<whimsi_msi::Value> {
+    fn to_row(&self) -> Vec<msi::Value> {
         vec![
             self.directory.clone().into(),
             self.parent.to_optional_value(),
@@ -107,17 +107,17 @@ mod test {
         assert_eq!(row.len(), 3, "Directory DAO row number mismatch");
         assert_eq!(
             *row.get(0).unwrap(),
-            whimsi_msi::Value::from("ProgramFilesFolder"),
+            msi::Value::from("ProgramFilesFolder"),
             "Directory DAO directory name mismatch"
         );
         assert_eq!(
             *row.get(1).unwrap(),
-            whimsi_msi::Value::from("TARGETDIR"),
+            msi::Value::from("TARGETDIR"),
             "Directory DAO parent name mismatch"
         );
         assert_eq!(
             *row.get(2).unwrap(),
-            whimsi_msi::Value::from("."),
+            msi::Value::from("."),
             "Directory DAO default dir name mismatch"
         );
     }

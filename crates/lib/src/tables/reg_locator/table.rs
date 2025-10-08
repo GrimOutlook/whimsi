@@ -23,17 +23,17 @@ impl MsiBuilderTable for RegLocatorTable {
         "RegLocator"
     }
 
-    fn columns(&self) -> Vec<whimsi_msi::Column> {
+    fn columns(&self) -> Vec<msi::Column> {
         vec![
-            whimsi_msi::Column::build("Signature_")
+            msi::Column::build("Signature_")
                 .primary_key()
                 .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-            whimsi_msi::Column::build("Root").int16(),
-            whimsi_msi::Column::build("Key")
-                .category(whimsi_msi::Category::RegPath)
+            msi::Column::build("Root").int16(),
+            msi::Column::build("Key")
+                .category(msi::Category::RegPath)
                 .string(REGPATH_MAX_LEN),
-            whimsi_msi::Column::build("Name").nullable().formatted_string(255),
-            whimsi_msi::Column::build("Type").nullable().int16(),
+            msi::Column::build("Name").nullable().formatted_string(255),
+            msi::Column::build("Type").nullable().int16(),
         ]
     }
 }

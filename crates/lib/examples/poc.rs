@@ -78,9 +78,9 @@ use std::time::UNIX_EPOCH;
 
 use anyhow::Context;
 use anyhow::Result;
-use whimsi_msi::Column;
-use whimsi_msi::Insert;
-use whimsi_msi::Value;
+use msi::Column;
+use msi::Insert;
+use msi::Value;
 
 macro_rules! to_values {
     ($($x:expr),*) => {
@@ -88,13 +88,13 @@ macro_rules! to_values {
     };
 }
 
-use whimsi_msi::Language;
+use msi::Language;
 
-type MsiPackage = whimsi_msi::Package<Cursor<Vec<u8>>>;
+type MsiPackage = msi::Package<Cursor<Vec<u8>>>;
 
 fn main() {
-    let mut msi = whimsi_msi::Package::create(
-        whimsi_msi::PackageType::Installer,
+    let mut msi = msi::Package::create(
+        msi::PackageType::Installer,
         Cursor::new(Vec::new()),
     )
     .unwrap();

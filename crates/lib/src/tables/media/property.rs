@@ -6,7 +6,7 @@ pub enum Property {
     EnvironmentVariable(Identifier),
 }
 
-impl From<Property> for whimsi_msi::Value {
+impl From<Property> for msi::Value {
     fn from(value: Property) -> Self {
         value.to_string().into()
     }

@@ -27,7 +27,7 @@ macro_rules! try_from_integer {
 
 try_from_integer!(u8, i8, i16, u16, i32, u32, i64, u64, isize, usize);
 
-impl From<LastSequence> for whimsi_msi::Value {
+impl From<LastSequence> for msi::Value {
     fn from(value: LastSequence) -> Self {
         Into::<i32>::into(value).into()
     }

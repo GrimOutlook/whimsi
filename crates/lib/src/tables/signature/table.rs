@@ -18,18 +18,18 @@ define_identifier_generator!(Signature);
 define_generator_table!(
     Signature,
     vec![
-        whimsi_msi::Column::build("Signature")
+        msi::Column::build("Signature")
             .primary_key()
             .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
-        whimsi_msi::Column::build("FileName").text_string(FILENAME_MAX_LEN),
+        msi::Column::build("FileName").text_string(FILENAME_MAX_LEN),
         // TODO: Make these constant when I'm not trying to get things working.
-        whimsi_msi::Column::build("MinVersion").nullable().text_string(20),
-        whimsi_msi::Column::build("MaxVersion").nullable().text_string(20),
-        whimsi_msi::Column::build("MinSize").nullable().int32(),
-        whimsi_msi::Column::build("MaxSize").nullable().int32(),
-        whimsi_msi::Column::build("MinDate").nullable().int32(),
-        whimsi_msi::Column::build("MaxDate").nullable().int32(),
-        whimsi_msi::Column::build("Languages").nullable().text_string(255),
+        msi::Column::build("MinVersion").nullable().text_string(20),
+        msi::Column::build("MaxVersion").nullable().text_string(20),
+        msi::Column::build("MinSize").nullable().int32(),
+        msi::Column::build("MaxSize").nullable().int32(),
+        msi::Column::build("MinDate").nullable().int32(),
+        msi::Column::build("MaxDate").nullable().int32(),
+        msi::Column::build("Languages").nullable().text_string(255),
     ]
 );
 

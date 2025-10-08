@@ -30,7 +30,7 @@ impl ToUniqueMsiIdentifier for RegLocatorDao {
 }
 
 impl IsDao for RegLocatorDao {
-    fn to_row(&self) -> Vec<whimsi_msi::Value> {
+    fn to_row(&self) -> Vec<msi::Value> {
         vec![
             self.signature.clone().into(),
             self.root.into(),

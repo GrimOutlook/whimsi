@@ -19,12 +19,12 @@ impl MsiBuilderTable for FeatureComponentsTable {
         "FeatureComponents"
     }
 
-    fn columns(&self) -> Vec<whimsi_msi::Column> {
+    fn columns(&self) -> Vec<msi::Column> {
         vec![
-            whimsi_msi::Column::build("Feature_")
+            msi::Column::build("Feature_")
                 .primary_key()
                 .id_string(FEATURE_IDENTIFIER_MAX_LEN),
-            whimsi_msi::Column::build("Component_")
+            msi::Column::build("Component_")
                 .primary_key()
                 .id_string(DEFAULT_IDENTIFIER_MAX_LEN),
         ]

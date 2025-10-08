@@ -29,7 +29,7 @@ impl ToUniqueMsiIdentifier for LaunchConditionDao {
 }
 
 impl IsDao for LaunchConditionDao {
-    fn to_row(&self) -> Vec<whimsi_msi::Value> {
+    fn to_row(&self) -> Vec<msi::Value> {
         vec![self.condition.clone().into(), self.description.clone().into()]
     }
 }

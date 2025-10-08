@@ -22,7 +22,7 @@ macro_rules! try_from_integer {
 }
 
 try_from_integer!(i8, u8, i16, u16, i32, u32, i64, u64, isize, usize);
-impl From<DiskId> for whimsi_msi::Value {
+impl From<DiskId> for msi::Value {
     fn from(value: DiskId) -> Self {
         value.0.into()
     }

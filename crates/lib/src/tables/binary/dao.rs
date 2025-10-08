@@ -28,7 +28,7 @@ impl MsiBuilderListEntry for BinaryDao {
 }
 
 impl IsDao for BinaryDao {
-    fn to_row(&self) -> Vec<whimsi_msi::Value> {
+    fn to_row(&self) -> Vec<msi::Value> {
         vec![
             self.name.clone().into(),
             // TODO: It appears there is literally no way to write binary data to a table in the

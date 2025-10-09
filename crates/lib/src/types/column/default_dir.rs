@@ -13,3 +13,9 @@ pub enum DefaultDir {
     Identifier(Identifier),
     Filename(Filename),
 }
+
+impl msi::ToValue for DefaultDir {
+    fn to_value(&self) -> msi::Value {
+        msi::Value::Str(self.to_string())
+    }
+}

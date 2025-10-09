@@ -7,8 +7,8 @@ impl ToString for Condition {
     }
 }
 
-impl From<Condition> for msi::Value {
-    fn from(value: Condition) -> Self {
-        value.to_string().into()
+impl msi::ToValue for Condition {
+    fn to_value(&self) -> msi::Value {
+        self.to_string().into()
     }
 }

@@ -2,8 +2,8 @@
 #[derive(Debug, Clone, PartialEq)]
 pub struct Binary {}
 
-impl From<Binary> for msi::Value {
-    fn from(value: Binary) -> Self {
+impl msi::ToValue for Binary {
+    fn to_value(&self) -> msi::Value {
         todo!()
     }
 }

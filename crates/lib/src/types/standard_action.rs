@@ -231,3 +231,15 @@ pub enum StandardAction {
     /// Sets up registry information.
     WriteRegistryValues = 5000,
 }
+
+impl msi::ToValue for AdvtAction {
+    fn to_value(&self) -> msi::Value {
+        self.to_string().into()
+    }
+}
+
+impl msi::ToValue for StandardAction {
+    fn to_value(&self) -> msi::Value {
+        self.to_string().into()
+    }
+}

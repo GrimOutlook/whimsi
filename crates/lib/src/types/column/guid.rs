@@ -8,8 +8,8 @@ impl From<Uuid> for Guid {
     }
 }
 
-impl From<Guid> for msi::Value {
-    fn from(value: Guid) -> Self {
-        value.0.into()
+impl msi::ToValue for Guid {
+    fn to_value(&self) -> msi::Value {
+        self.0.into()
     }
 }

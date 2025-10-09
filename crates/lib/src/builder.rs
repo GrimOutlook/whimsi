@@ -13,6 +13,8 @@ use getset::Getters;
 use getset::Setters;
 use getset::WithSetters;
 use itertools::Itertools;
+use msi::Insert;
+use msi::Value;
 use once_cell::sync::OnceCell;
 use once_cell::unsync::Lazy;
 use rand::distr::Alphanumeric;
@@ -20,55 +22,50 @@ use rand::distr::SampleString;
 use tracing::debug;
 use tracing::info;
 use uuid::Uuid;
-use msi::Insert;
-use msi::Value;
 
 use crate::constants::*;
-use crate::tables::admin_execute_sequence::table::AdminExecuteSequenceTable;
-use crate::tables::admin_ui_sequence::table::AdminUiSequenceTable;
-use crate::tables::advt_execute_sequence::table::AdvtExecuteSequenceTable;
-use crate::tables::app_search::table::AppSearchTable;
-use crate::tables::binary::table::BinaryTable;
-use crate::tables::builder_list::MsiBuilderList;
-use crate::tables::builder_table::MsiBuilderTable;
-use crate::tables::component::dao::ComponentDao;
-use crate::tables::component::table::ComponentIdentifier;
-use crate::tables::component::table::ComponentTable;
-use crate::tables::custom_action::table::CustomActionTable;
-use crate::tables::dao::Dao;
-use crate::tables::directory::dao::DirectoryDao;
-use crate::tables::directory::directory_identifier::DirectoryIdentifier;
-use crate::tables::directory::table::DirectoryTable;
-use crate::tables::feature::identifier::FeatureIdentifier;
-use crate::tables::feature::table::FeatureTable;
-use crate::tables::feature_components::dao::FeatureComponentsDao;
-use crate::tables::feature_components::table::FeatureComponentsTable;
-use crate::tables::file::dao::FileDao;
-use crate::tables::file::table::FileIdentifier;
-use crate::tables::file::table::FileTable;
-use crate::tables::generic_sequence::action_identifier::ActionIdentifier;
-use crate::tables::generic_sequence::dao::GenericSequenceDao;
-use crate::tables::icon::table::IconTable;
-use crate::tables::id_generator_builder_list::IdGeneratorBuilderList;
-use crate::tables::install_execute_sequence::table::InstallExecuteSequenceTable;
-use crate::tables::install_ui_sequence::table::InstallUiSequenceTable;
-use crate::tables::launch_condition::table::LaunchConditionTable;
-use crate::tables::lock_permissions::table::LockPermissionsTable;
-use crate::tables::media::cabinet_identifier::CabinetHandle;
-use crate::tables::media::cabinet_identifier::CabinetIdentifier;
-use crate::tables::media::dao::MediaDao;
-use crate::tables::media::table::MediaTable;
+use crate::tables::AdminExecuteSequenceTable;
+use crate::tables::AdminUiSequenceTable;
+use crate::tables::AdvtExecuteSequenceTable;
+use crate::tables::AppSearchTable;
+use crate::tables::BinaryTable;
+use crate::tables::ComponentDao;
+use crate::tables::ComponentIdentifier;
+use crate::tables::ComponentTable;
+use crate::tables::CustomActionTable;
+use crate::tables::DirectoryDao;
+use crate::tables::DirectoryIdentifier;
+use crate::tables::DirectoryTable;
+use crate::tables::FeatureComponentsDao;
+use crate::tables::FeatureComponentsTable;
+use crate::tables::FeatureIdentifier;
+use crate::tables::FeatureTable;
+use crate::tables::FileDao;
+use crate::tables::FileIdentifier;
+use crate::tables::FileTable;
+use crate::tables::IconTable;
+use crate::tables::InstallExecuteSequenceTable;
+use crate::tables::InstallUiSequenceTable;
+use crate::tables::LaunchConditionTable;
+use crate::tables::LockPermissionsTable;
+use crate::tables::MediaDao;
+use crate::tables::MediaTable;
+use crate::tables::MsiFileHashDao;
+use crate::tables::MsiFileHashTable;
+use crate::tables::MsiTable;
+use crate::tables::MsiTableDao;
+use crate::tables::PropertyDao;
+use crate::tables::PropertyTable;
+use crate::tables::RegLocatorTable;
+use crate::tables::RegistryTable;
+use crate::tables::ServiceControlTable;
+use crate::tables::ServiceInstallTable;
+use crate::tables::ShortcutTable;
+use crate::tables::SignatureTable;
+use crate::tables::builder_table::MsiTableKind;
+use crate::tables::dao::MsiDao;
+use crate::tables::identifier_generator_table::IdentifierGeneratorTable;
 use crate::tables::meta::MetaInformation;
-use crate::tables::msi_file_hash::dao::MsiFileHashDao;
-use crate::tables::msi_file_hash::table::MsiFileHashTable;
-use crate::tables::property::dao::PropertyDao;
-use crate::tables::property::table::PropertyTable;
-use crate::tables::reg_locator::table::RegLocatorTable;
-use crate::tables::registry::table::RegistryTable;
-use crate::tables::service_control::table::ServiceControlTable;
-use crate::tables::service_install::table::ServiceInstallTable;
-use crate::tables::shortcut::table::ShortcutTable;
-use crate::tables::signature::table::SignatureTable;
 use crate::types::column::default_dir::DefaultDir;
 use crate::types::column::filename::Filename;
 use crate::types::column::identifier::Identifier;
@@ -76,15 +73,16 @@ use crate::types::column::identifier::ToIdentifier;
 use crate::types::column::sequence::Sequence;
 use crate::types::helpers::architecture::MsiArchitecture;
 use crate::types::helpers::cabinet_info::CabinetInfo;
+use crate::types::helpers::cabinets::CabinetHandle;
 use crate::types::helpers::cabinets::Cabinets;
-use crate::types::helpers::id_generator::IdGenerator;
+use crate::types::helpers::id_generator::IdentifierGenerator;
 use crate::types::helpers::page_count::PageCount;
 use crate::types::helpers::security_flag::DocSecurity;
 use crate::types::properties::system_folder::SystemFolder;
 use crate::types::standard_action::StandardAction;
 
 /// An in-memory representation of the final MSI to be created.
-#[derive(Debug, Getters, Setters)]
+#[derive(Getters, Setters)]
 #[getset(get = "pub")]
 pub struct MsiBuilder {
     /// Information about the whole package. Tracks both information for
@@ -99,40 +97,11 @@ pub struct MsiBuilder {
     /// Identifiers are created.
     identifiers: Rc<RefCell<Vec<Identifier>>>,
 
+    /// Keeps track of cabinets contained in this MSI.
     cabinets: Cabinets,
-    component: ComponentTable,
-    directory: DirectoryTable,
-    file: FileTable,
-    media: MediaTable,
-    feature: FeatureTable,
-    feature_components: FeatureComponentsTable,
-    // TODO: Ensure that the following properties are defined:
-    // - ProductCode
-    // - ProductName
-    // - ProductVersion
-    // - ProductLanguage
-    // - Manufacturer
-    // - UpgradeCode
-    // - ALLUSERS
-    property: PropertyTable,
-    registry: RegistryTable,
-    msi_file_hash: MsiFileHashTable,
-    admin_execute_sequence: AdminExecuteSequenceTable,
-    admin_ui_sequence: AdminUiSequenceTable,
-    advt_execute_sequence: AdvtExecuteSequenceTable,
-    install_execute_sequence: InstallExecuteSequenceTable,
-    install_ui_sequence: InstallUiSequenceTable,
-    signature: SignatureTable,
-    launch_condition: LaunchConditionTable,
-    binary: BinaryTable,
-    reg_locator: RegLocatorTable,
-    app_search: AppSearchTable,
-    custom_action: CustomActionTable,
-    service_control: ServiceControlTable,
-    service_install: ServiceInstallTable,
-    shortcut: ShortcutTable,
-    icon: IconTable,
-    msi_lock_permissions_ex: LockPermissionsTable,
+
+    /// List of all the tables managed by this builder
+    tables: Vec<MsiTable>,
 }
 
 impl MsiBuilder {
@@ -279,9 +248,9 @@ impl MsiBuilder {
         let filename = Filename::from_str(&name.to_string())?;
         let id = self.directory.generate_id();
         self.add_directory_dao(DirectoryDao::new(
-            filename,
             id.clone(),
-            parent,
+            Some(parent.into()),
+            filename,
         ))?;
 
         Ok(id)
@@ -291,7 +260,7 @@ impl MsiBuilder {
         &mut self,
         dao: DirectoryDao,
     ) -> anyhow::Result<()> {
-        if let Some(parent) = dao.parent()
+        if let Some(parent) = dao.parent_directory()
             && let Ok(system_folder) =
                 SystemFolder::try_from(parent.to_identifier())
         {
@@ -299,7 +268,7 @@ impl MsiBuilder {
             // in the table.
             let _ = self.add_directory_dao(system_folder.into());
         }
-        IdGeneratorBuilderList::add(&mut self.directory, dao)
+        IdentifierGeneratorTable::add(&mut self.directory, dao)
     }
 
     pub fn with_file_path(
@@ -585,7 +554,7 @@ impl MsiBuilder {
         package: &mut msi::Package<F>,
     ) -> anyhow::Result<()> {
         let previous_last_sequence = 1;
-        for media in MsiBuilderTable::entries(&self.media)
+        for media in MsiTable::entries(&self.media)
             .iter()
             .sorted_by_key(|dao| Into::<i32>::into(*dao.last_sequence()))
         {
@@ -711,28 +680,42 @@ impl MsiBuilder {
     }
 
     /// Insert the given DAO into it's respective table.
-    pub fn add_to_tables(&mut self, dao: impl Into<Dao>) -> anyhow::Result<()> {
-        let dao = Into::<Dao>::into(dao);
+    pub fn add_to_tables(
+        &mut self,
+        dao: impl Into<MsiTableDao>,
+    ) -> anyhow::Result<()> {
+        let dao = Into::<MsiTableDao>::into(dao);
         match dao {
-            Dao::Component(component_dao) => {
-                IdGeneratorBuilderList::add(&mut self.component, component_dao)
+            MsiTableDao::Component(component_dao) => {
+                IdentifierGeneratorTable::add(
+                    &mut self.component,
+                    component_dao,
+                )
             }
-            Dao::Directory(directory_dao) => {
-                IdGeneratorBuilderList::add(&mut self.directory, directory_dao)
+            MsiTableDao::Directory(directory_dao) => {
+                IdentifierGeneratorTable::add(
+                    &mut self.directory,
+                    directory_dao,
+                )
             }
-            Dao::File(file_dao) => {
-                IdGeneratorBuilderList::add(&mut self.file, file_dao)
+            MsiTableDao::File(file_dao) => {
+                IdentifierGeneratorTable::add(&mut self.file, file_dao)
             }
-            Dao::Registry(registry_dao) => {
-                IdGeneratorBuilderList::add(&mut self.registry, registry_dao)
+            MsiTableDao::Registry(registry_dao) => {
+                IdentifierGeneratorTable::add(&mut self.registry, registry_dao)
             }
-            Dao::Feature(feature_dao) => {
-                IdGeneratorBuilderList::add(&mut self.feature, feature_dao)
+            MsiTableDao::Feature(feature_dao) => {
+                IdentifierGeneratorTable::add(&mut self.feature, feature_dao)
             }
-            Dao::Property(dao) => self.property.add(dao),
-            Dao::Media(dao) => self.media.add(dao),
-            Dao::MsiFileHash(dao) => self.msi_file_hash.add(dao),
-            Dao::FeatureComponents(dao) => self.feature_components.add(dao),
+            MsiTableDao::Property(dao) => self.property.add(dao),
+            MsiTableDao::Media(dao) => self.media.add(dao),
+            MsiTableDao::MsiFileHash(dao) => self.msi_file_hash.add(dao),
+            MsiTableDao::FeatureComponents(dao) => {
+                self.feature_components.add(dao)
+            }
+            _ => {
+                todo!("Daos for {:?} are not implemented yet!", dao.table())
+            }
         }
     }
 }
@@ -743,39 +726,10 @@ impl Default for MsiBuilder {
         Self {
             meta: None,
 
-            // Tables that don't have IDs for their entries.
-            property: Default::default(),
-            media: Default::default(),
-            feature_components: Default::default(),
-            msi_file_hash: Default::default(),
-            admin_execute_sequence: Default::default(),
-            admin_ui_sequence: Default::default(),
-            advt_execute_sequence: Default::default(),
-            install_execute_sequence: Default::default(),
-            install_ui_sequence: Default::default(),
-            signature: Default::default(),
-            launch_condition: Default::default(),
-            binary: Default::default(),
-            reg_locator: Default::default(),
-            app_search: Default::default(),
-            custom_action: Default::default(),
-            msi_lock_permissions_ex: Default::default(),
-            service_control: Default::default(),
-
             // Non-tables that need access to all or generate entity IDs.
             identifiers: empty_entries.clone(),
             cabinets: Cabinets::new(empty_entries.clone()),
-
-            // Tables that can generate IDs for their entries and the IDs must be uniqe across the
-            // MSI.
-            component: ComponentTable::new(empty_entries.clone()),
-            directory: DirectoryTable::new(empty_entries.clone()),
-            feature: FeatureTable::new(empty_entries.clone()),
-            file: FileTable::new(empty_entries.clone()),
-            registry: RegistryTable::new(empty_entries.clone()),
-            service_install: ServiceInstallTable::new(empty_entries.clone()),
-            shortcut: ShortcutTable::new(empty_entries.clone()),
-            icon: IconTable::new(empty_entries.clone()),
+            tables: Vec::new(),
         }
     }
 }

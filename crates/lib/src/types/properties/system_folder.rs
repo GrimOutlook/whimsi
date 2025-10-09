@@ -14,7 +14,7 @@ use thiserror::Error;
 
 use crate::types::column::identifier::Identifier;
 use crate::types::column::identifier::ToIdentifier;
-use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
+use crate::types::helpers::primary_identifier::PrimaryIdentifier;
 
 #[derive(
     Clone,
@@ -62,8 +62,8 @@ impl ToIdentifier for SystemFolder {
     }
 }
 
-impl ToUniqueMsiIdentifier for SystemFolder {
-    fn to_unique_msi_identifier(&self) -> Option<Identifier> {
+impl PrimaryIdentifier for SystemFolder {
+    fn primary_identifier(&self) -> Option<Identifier> {
         Some(self.to_identifier())
     }
 }

@@ -23,6 +23,7 @@ pub const PROPERTY_VALUE_MAX_LEN: usize = 0;
 pub const REGISTRY_VALUE_MAX_LEN: usize = 0;
 pub const REGISTRY_NAME_MAX_LEN: usize = 255;
 pub const REGPATH_MAX_LEN: usize = 255;
+
 // This one is actually included in the docs for some reason:
 // https://learn.microsoft.com/en-us/windows/win32/msi/feature-table
 pub const FEATURE_IDENTIFIER_MAX_LEN: usize = 38;

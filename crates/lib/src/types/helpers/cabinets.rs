@@ -1,5 +1,7 @@
 use anyhow::ensure;
+use std::fmt::Display;
 
+use crate::types::column::filename::ShortFilename;
 use crate::types::column::identifier::{Identifier, ToIdentifier};
 use crate::types::helpers::cabinet_info::CabinetInfo;
 use crate::types::helpers::id_generator::IdentifierGenerator;
@@ -8,10 +10,11 @@ use crate::types::helpers::id_generator::IdentifierGenerator;
 // modular.
 //
 // -- Begin section that could be basically removed by an altered derive macro
-struct CabinetIdentifier(Identifier);
+#[derive(Clone, Debug, PartialEq, derive_more::Display)]
+pub struct CabinetIdentifier(Identifier);
 impl ToIdentifier for CabinetIdentifier {
     fn to_identifier(&self) -> Identifier {
-        self.0
+        self.0.clone()
     }
 }
 
@@ -94,5 +97,30 @@ impl Cabinets {
 
     pub fn entries(&self) -> &Vec<CabinetInfo> {
         &self.entries
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum CabinetHandle {
+    Internal(CabinetIdentifier),
+    External(ShortFilename),
+}
+
+impl Display for CabinetHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CabinetHandle::Internal(identifier) => {
+                write!(f, "#{identifier}")
+            }
+            CabinetHandle::External(short_filename) => {
+                write!(f, "{short_filename}")
+            }
+        }
+    }
+}
+
+impl From<CabinetHandle> for msi::Value {
+    fn from(value: CabinetHandle) -> msi::Value {
+        value.to_string().into()
     }
 }

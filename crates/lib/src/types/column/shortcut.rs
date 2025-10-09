@@ -1,5 +1,5 @@
 use crate::{
-    tables::feature::identifier::FeatureIdentifier,
+    tables::FeatureIdentifier,
     types::column::{formatted::Formatted, identifier::ToIdentifier},
 };
 

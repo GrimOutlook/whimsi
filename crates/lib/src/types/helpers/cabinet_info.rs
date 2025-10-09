@@ -2,11 +2,15 @@ use std::path::PathBuf;
 
 use getset::Getters;
 
-use crate::tables::builder_list_entry::MsiBuilderListEntry;
-use crate::tables::file::table::FileIdentifier;
-use crate::tables::media::cabinet_identifier::CabinetIdentifier;
-use crate::types::column::identifier::Identifier;
-use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
+use crate::{
+    tables::FileIdentifier,
+    types::{
+        column::identifier::{Identifier, ToIdentifier},
+        helpers::{
+            cabinets::CabinetIdentifier, primary_identifier::PrimaryIdentifier,
+        },
+    },
+};
 
 #[derive(Debug, Clone, Default, Getters, PartialEq)]
 #[getset(get = "pub")]
@@ -23,17 +27,15 @@ impl CabinetInfo {
     pub fn add_file(&mut self, id: FileIdentifier, path: PathBuf) {
         self.files.push(CabinetContainedFile { id, path });
     }
-}
 
-impl MsiBuilderListEntry for CabinetInfo {
     fn conflicts(&self, other: &Self) -> bool {
         self.id == other.id
     }
 }
 
-impl ToUniqueMsiIdentifier for CabinetInfo {
-    fn to_unique_msi_identifier(&self) -> Option<Identifier> {
-        self.id.to_unique_msi_identifier()
+impl PrimaryIdentifier for CabinetInfo {
+    fn primary_identifier(&self) -> Option<Identifier> {
+        Some(self.id.to_identifier())
     }
 }
 

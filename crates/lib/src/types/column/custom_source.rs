@@ -1,10 +1,10 @@
+use crate::types::column::identifier::ambassador_impl_ToIdentifier;
 use crate::{
     tables::{
-        binary::table::BinaryIdentifier,
-        directory::directory_identifier::DirectoryIdentifier,
-        file::table::FileIdentifier,
+        BinaryIdentifier, DirectoryIdentifier, FileIdentifier,
+        PropertyIdentifier,
     },
-    types::column::identifier::Identifier,
+    types::column::identifier::{Identifier, ToIdentifier},
 };
 
 // TODO: The documentation seems to imply you can do something other than an external key but never
@@ -17,10 +17,18 @@ use crate::{
     PartialEq,
     derive_more::Display,
     whimsi_macros::IntoStrMsiValue,
+    ambassador::Delegate,
 )]
+#[delegate(ToIdentifier)]
 pub enum CustomSource {
     Directory(DirectoryIdentifier),
     File(FileIdentifier),
     Binary(BinaryIdentifier),
-    Property(Identifier),
+    Property(PropertyIdentifier),
+}
+
+impl msi::ToValue for CustomSource {
+    fn to_value(&self) -> msi::Value {
+        self.to_identifier().into()
+    }
 }

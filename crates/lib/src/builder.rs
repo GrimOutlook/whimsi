@@ -54,6 +54,8 @@ use crate::tables::MsiFileHashDao;
 use crate::tables::MsiFileHashTable;
 use crate::tables::MsiTable;
 use crate::tables::MsiTableDao;
+use crate::tables::MsiTableVariant;
+use crate::tables::MsiTables;
 use crate::tables::PropertyDao;
 use crate::tables::PropertyTable;
 use crate::tables::RegLocatorTable;
@@ -101,7 +103,7 @@ pub struct MsiBuilder {
     cabinets: Cabinets,
 
     /// List of all the tables managed by this builder
-    tables: Vec<MsiTable>,
+    tables: MsiTables,
 }
 
 impl MsiBuilder {
@@ -229,7 +231,8 @@ impl MsiBuilder {
     ) -> anyhow::Result<DirectoryIdentifier> {
         let path = path.into();
 
-        let directory_id = self.directory.generate_id();
+        let directory_id =
+            self.table_mut(MsiTableVariant::Directory).generate_id();
         let name = path
             .file_name()
             .with_context(|| format!(
@@ -572,7 +575,7 @@ impl MsiBuilder {
                 "Cabinet of ID [{}] could not be found when trying to build it!",
             );
             let files = self
-                .file
+                .table_mut(MsiTableVariant::File)
                 .in_sequence_range(previous_last_sequence, last_sequence);
             if files.len() == 0 {
                 unreachable!(
@@ -673,7 +676,7 @@ impl MsiBuilder {
         feature_id: &FeatureIdentifier,
         component_id: &ComponentIdentifier,
     ) -> anyhow::Result<()> {
-        self.feature_components.add(FeatureComponentsDao::new(
+        self.tables.add(FeatureComponentsDao::new(
             feature_id.clone(),
             component_id.clone(),
         ))
@@ -717,6 +720,13 @@ impl MsiBuilder {
                 todo!("Daos for {:?} are not implemented yet!", dao.table())
             }
         }
+    }
+
+    pub fn table_mut(&mut self, table: MsiTableVariant) -> &mut MsiTable {
+        self.tables
+            .iter_mut()
+            .find(|t| MsiTableVariant::from(*t as &MsiTable) == table)
+            .unwrap()
     }
 }
 

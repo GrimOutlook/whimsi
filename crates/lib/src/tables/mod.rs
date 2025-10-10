@@ -46,6 +46,10 @@ use crate::types::helpers::show_cmd::ShowCmd;
 use crate::types::helpers::start_type::StartType;
 use crate::types::standard_action::{AdvtAction, StandardAction};
 
+pub struct MsiTables {
+    inner: Vec<MsiTable>,
+}
+
 // TODO: Look at Directory to see the form that I eventually want to have implemented.
 whimsi_table_macro::msi_table_list! {
     /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/database-tables)

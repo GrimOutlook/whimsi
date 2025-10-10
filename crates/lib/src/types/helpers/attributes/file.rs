@@ -3,7 +3,7 @@ use bitflags::bitflags;
 use crate::types::column::integer::Integer;
 bitflags! {
     #[derive(Clone, Copy, Debug, PartialEq)]
-    struct FileAttributes: Integer {
+    pub struct FileAttributes: Integer {
     }
 }
 

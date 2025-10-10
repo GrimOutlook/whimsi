@@ -6,15 +6,29 @@ use anyhow::Context;
 
 use crate::types::column::identifier::Identifier;
 use crate::types::column::identifier::ToIdentifier;
+use crate::types::helpers::id_generator::IdentifierGenerator;
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) struct IdentifierGenerator {
+    count: usize,
+    // A reference to a vec of all used Identifiers that should not be generated again.
+    // These are all identifiers that inhabit a primary_key column.
+    used: std::rc::Rc<std::cell::RefCell<Vec<Identifier>>>,
+}
 
-pub(crate) trait IdentifierGenerator {
-    type IdentifierType: ToIdentifier + FromStr<Err = anyhow::Error>;
-    fn id_prefix(&self) -> &str;
-    fn used(&self) -> &Rc<RefCell<Vec<Identifier>>>;
-    fn count(&self) -> usize;
-    fn count_mut(&mut self) -> &mut usize;
+impl IdentifierGenerator {
+    fn used(&self) -> &std::rc::Rc<std::cell::RefCell<Vec<Identifier>>> {
+        &self.used
+    }
 
-    fn generate_id(&mut self) -> Self::IdentifierType {
+    fn count(&self) -> usize {
+        self.count
+    }
+
+    fn count_mut(&mut self) -> &mut usize {
+        &mut self.count
+    }
+
+    fn generate_id(&mut self, prefix: &str) -> Self::IdentifierType {
         loop {
             let new_id = &format!("_{}{}", self.id_prefix(), self.count());
             let new_identifier = Self::IdentifierType::from_str(&new_id)
@@ -50,5 +64,14 @@ pub(crate) trait IdentifierGenerator {
 
         self.used().borrow_mut().push(identifier);
         Ok(())
+    }
+}
+
+impl From<std::rc::Rc<std::cell::RefCell<Vec<Identifier>>>>
+    for IdentifierGenerator
+{
+    fn from(value: std::rc::Rc<std::cell::RefCell<Vec<Identifier>>>) -> Self {
+        let count = value.borrow().len();
+        Self { used: value, count: 0 }
     }
 }

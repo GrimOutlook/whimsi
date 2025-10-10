@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, whimsi_macros::IntToValue)]
 #[repr(i32)]
 pub enum LockPermission {
     /// Read, write, and execute access
@@ -7,10 +7,4 @@ pub enum LockPermission {
     GENERIC_EXECUTE = 0x20000000,
     /// Write access
     GENERIC_WRITE = 0x40000000,
-}
-
-impl msi::ToValue for LockPermission {
-    fn to_value(&self) -> msi::Value {
-        msi::Value::Int(*self as i32)
-    }
 }

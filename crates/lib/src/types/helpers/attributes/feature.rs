@@ -2,13 +2,7 @@ use bitflags::bitflags;
 
 use crate::types::column::integer::Integer;
 bitflags! {
-    #[derive(Clone, Copy, Debug, PartialEq)]
+    #[derive(Clone, Copy, Debug, PartialEq, whimsi_macros::BitmaskToValue)]
     pub struct FeatureAttributes: Integer {
-    }
-}
-
-impl msi::ToValue for FeatureAttributes {
-    fn to_value(&self) -> msi::Value {
-        msi::Value::Int(self.bits().into())
     }
 }

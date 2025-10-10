@@ -2,6 +2,7 @@ use std::io::Read;
 use std::io::Seek;
 use std::io::Write;
 
+use anyhow::anyhow;
 use anyhow::ensure;
 use itertools::Itertools;
 use msi::Package;
@@ -20,7 +21,6 @@ pub trait MsiTableKind {
     fn entries(&self) -> &Vec<Self::TableValue>;
     fn entries_mut(&mut self) -> &mut Vec<Self::TableValue>;
     fn primary_key_indices(&self) -> Vec<usize>;
-    fn primary_keys(&self) -> Vec<msi::ColumnType>;
 
     fn add(&mut self, entry: Self::TableValue) -> anyhow::Result<()> {
         ensure!(
@@ -59,8 +59,9 @@ pub trait MsiTableKind {
             .into_iter()
             .map(MsiDao::to_row)
             .sorted_by_key(|row| {
-                // TODO: Determine if this needs to be sorted by the first column or by the primary
-                // key. My guess is the primary key but this is easier to do for now.
+                // TODO: Determine if this needs to be sorted by the first
+                // column or by the primary key. My guess is the
+                // primary key but this is easier to do for now.
                 row.first().unwrap().clone()
             })
             .collect_vec()

@@ -25,5 +25,6 @@ use types::column::identifier::Identifier;
 
 pub mod builder;
 pub mod constants;
+pub mod macros;
 pub mod tables;
 pub mod types;

@@ -1,12 +1,11 @@
 pub(crate) mod builder_table;
 pub(crate) mod dao;
-pub(crate) mod identifier_generator_table;
 pub mod meta;
 
 use crate as whimsi_lib;
 use crate::tables::builder_table::MsiTableKind;
+use crate::tables::builder_table::ambassador_impl_MsiTableKind;
 use crate::tables::dao::MsiDao;
-use crate::tables::identifier_generator_table::IdentifierGeneratorTable;
 use crate::types::column::binary::Binary;
 use crate::types::column::condition::Condition;
 use crate::types::column::custom_source::CustomSource;
@@ -44,16 +43,14 @@ use crate::types::helpers::service_control_event::ServiceControlEvent;
 use crate::types::helpers::service_type::ServiceType;
 use crate::types::helpers::show_cmd::ShowCmd;
 use crate::types::helpers::start_type::StartType;
-use crate::types::standard_action::{AdvtAction, StandardAction};
+use crate::types::standard_action::AdvtAction;
+use crate::types::standard_action::StandardAction;
 
-pub struct MsiTables {
-    inner: Vec<MsiTable>,
-}
-
-// TODO: Look at Directory to see the form that I eventually want to have implemented.
+// TODO: Look at Directory to see the form that I eventually want to have
+// implemented.
 whimsi_table_macro::msi_table_list! {
     /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/database-tables)
-    enum MsiTable {
+    enum MsiTableContainer {
         // TODO: ActionTable,
 
         /// Lists ADMIN actions in sequence.

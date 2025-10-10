@@ -27,12 +27,12 @@ static INVALID_CHARACTER: Lazy<Regex> =
 #[derive(
     Clone,
     Debug,
-    derive_more::Display,
     Default,
     PartialEq,
     Eq,
     Hash,
-    whimsi_macros::IntoStrMsiValue,
+    derive_more::Display,
+    whimsi_macros::StrToValue,
 )]
 pub struct Identifier(String);
 

@@ -1,13 +1,13 @@
 use crate::types::column::identifier::Identifier;
 
-#[derive(Debug, Clone, PartialEq, derive_more::Display)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    derive_more::Display,
+    whimsi_macros::IdentifierToValue,
+)]
 pub enum Property {
     Identifier(Identifier),
     EnvironmentVariable(Identifier),
-}
-
-impl msi::ToValue for Property {
-    fn to_value(&self) -> msi::Value {
-        self.to_string().into()
-    }
 }

@@ -38,7 +38,7 @@ pub const LAST_SEQUENCE_MIN: usize = 0;
 pub const LAST_SEQUENCE_MAX: usize = 32767;
 
 // Found here: https://learn.microsoft.com/en-us/windows/win32/msi/media-table
-pub const DISK_ID_MIN: usize = 1;
+pub const DISK_ID_MIN: i16 = 1;
 
 // -- Default Table Contents --------------------------------------------------
 // Default identifiers

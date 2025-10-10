@@ -7,15 +7,9 @@ use crate::types::column::filename::Filename;
     derive_more::Display,
     derive_more::From,
     PartialEq,
-    whimsi_macros::IntoStrMsiValue,
+    whimsi_macros::StrToValue,
 )]
 pub enum DefaultDir {
     Identifier(Identifier),
     Filename(Filename),
-}
-
-impl msi::ToValue for DefaultDir {
-    fn to_value(&self) -> msi::Value {
-        msi::Value::Str(self.to_string())
-    }
 }

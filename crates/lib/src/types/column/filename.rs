@@ -17,7 +17,7 @@ use crate::types::helpers::invalid_char::InvalidChar;
     Default,
     Getters,
     PartialEq,
-    whimsi_macros::IntoStrMsiValue,
+    whimsi_macros::StrToValue,
 )]
 #[display("{}", long)]
 #[get = "pub"]

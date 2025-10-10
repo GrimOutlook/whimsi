@@ -7,17 +7,10 @@ use crate::{
 /// contains square brackets ([ ]), the shortcut target is evaluated as a Formatted string.
 /// Otherwise, the shortcut is evaluated as an Identifier and must be a valid foreign key into the
 /// Feature table.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(
+    Clone, Debug, PartialEq, strum::Display, whimsi_macros::StrToValue,
+)]
 pub enum Shortcut {
     Formatted(Formatted),
     Identifier(FeatureIdentifier),
-}
-
-impl From<Shortcut> for msi::Value {
-    fn from(value: Shortcut) -> Self {
-        match value {
-            Shortcut::Formatted(f) => f.into(),
-            Shortcut::Identifier(id) => id.to_identifier().into(),
-        }
-    }
 }

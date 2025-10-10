@@ -1,7 +1,13 @@
 use super::identifier::Identifier;
 
 #[derive(
-    Clone, Debug, Default, PartialEq, strum::EnumTryAs, derive_more::Display,
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    strum::EnumTryAs,
+    derive_more::Display,
+    whimsi_macros::IntToValue,
 )]
 #[display("{}", Into::<i32>::into(self.clone()))]
 pub enum Sequence {
@@ -21,21 +27,16 @@ pub enum Sequence {
     NotIncluded,
 }
 
-#[derive(Clone, Debug, PartialEq, derive_more::Constructor)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    derive_more::From,
+    derive_more::Into,
+    derive_more::Constructor,
+)]
 pub struct IncludedSequence {
     inner: i32,
-}
-
-impl IncludedSequence {
-    pub fn to_i16(&self) -> i32 {
-        self.inner
-    }
-}
-
-impl Into<i32> for IncludedSequence {
-    fn into(self) -> i32 {
-        self.inner
-    }
 }
 
 impl Into<i32> for Sequence {
@@ -44,11 +45,5 @@ impl Into<i32> for Sequence {
             Sequence::Included(included_sequence) => included_sequence.into(),
             Sequence::NotIncluded => 0,
         }
-    }
-}
-
-impl From<Sequence> for msi::Value {
-    fn from(value: Sequence) -> Self {
-        Into::<i32>::into(value).into()
     }
 }

@@ -4,11 +4,7 @@ use anyhow::Context;
 use anyhow::ensure;
 
 #[derive(
-    Clone,
-    Debug,
-    PartialEq,
-    derive_more::Display,
-    whimsi_macros::IntoStrMsiValue,
+    Clone, Debug, PartialEq, derive_more::Display, whimsi_macros::StrToValue,
 )]
 pub struct Version(String);
 impl FromStr for Version {

@@ -5,12 +5,6 @@
     Default,
     derive_more::From,
     derive_more::Display,
-    whimsi_macros::IntoStrMsiValue,
+    whimsi_macros::StrToValue,
 )]
 pub struct Formatted(String);
-
-impl msi::ToValue for Formatted {
-    fn to_value(&self) -> msi::Value {
-        self.0.into()
-    }
-}

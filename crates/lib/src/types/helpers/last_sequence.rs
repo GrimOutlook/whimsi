@@ -3,7 +3,9 @@ use crate::types::column::sequence::IncludedSequence;
 use crate::types::column::sequence::Sequence;
 use crate::types::helpers::cabinet_info::CabinetInfo;
 
-#[derive(Debug, Clone, Copy, derive_more::Into, PartialEq)]
+#[derive(
+    Debug, Clone, Copy, derive_more::Into, PartialEq, whimsi_macros::IntToValue,
+)]
 pub struct LastSequence(i32);
 
 macro_rules! try_from_integer {
@@ -26,9 +28,3 @@ macro_rules! try_from_integer {
 }
 
 try_from_integer!(u8, i8, i16, u16, i32, u32, i64, u64, isize, usize);
-
-impl msi::ToValue for LastSequence {
-    fn to_value(&self) -> msi::Value {
-        Into::<i32>::into(*self).into()
-    }
-}

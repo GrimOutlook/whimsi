@@ -16,7 +16,7 @@ use crate::{
     Clone,
     PartialEq,
     derive_more::Display,
-    whimsi_macros::IntoStrMsiValue,
+    whimsi_macros::IdentifierToValue,
     ambassador::Delegate,
 )]
 #[delegate(ToIdentifier)]
@@ -25,10 +25,4 @@ pub enum CustomSource {
     File(FileIdentifier),
     Binary(BinaryIdentifier),
     Property(PropertyIdentifier),
-}
-
-impl msi::ToValue for CustomSource {
-    fn to_value(&self) -> msi::Value {
-        self.to_identifier().into()
-    }
 }

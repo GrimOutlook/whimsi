@@ -35,6 +35,8 @@ uuid = { version = "1.17.0", features = ["v4"] }
 whimsi-macros = { path = "../macros/" }
 whimsi-table-macro = { path = "../../../whimsi-table-macro/" }
 msi = { path = "../../../rust-msi/" }
+nutype_macros = { version = "0.6.2", features = ["derive_unsafe", "regex", "std"] }
+delegate = "0.13.4"
 
 [dev-dependencies]
 assert_fs = "1.1.3"

@@ -1,4 +1,5 @@
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, whimsi_macros::IntToValue)]
+#[repr(i32)]
 pub enum StartType {
     /// A service start during startup of the system.
     AutoStart = 0x00000002,

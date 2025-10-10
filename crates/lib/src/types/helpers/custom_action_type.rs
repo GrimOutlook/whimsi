@@ -9,6 +9,7 @@ use crate::types::column::integer::Integer;
 /// - [Custom Action Hidden Target Option](https://learn.microsoft.com/en-us/windows/win32/msi/custom-action-hidden-target-option)
 /// - [Custom Action Return Values](https://learn.microsoft.com/en-us/windows/win32/msi/custom-action-return-values)
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[repr(i32)]
 pub enum CustomActionType {
     Basic(BasicCustomActionType),
     // TODO: Much bigger task than implementing the basic tasks unless I want to just let them

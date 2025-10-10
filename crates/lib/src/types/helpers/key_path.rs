@@ -4,16 +4,16 @@ use crate::types::column::identifier::{
 };
 
 /// Valid values found [here](https://learn.microsoft.com/en-us/windows/win32/msi/component-table#KeyPath)
-#[derive(Clone, Debug, PartialEq, ambassador::Delegate)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    ambassador::Delegate,
+    whimsi_macros::IdentifierToValue,
+)]
 #[delegate(ToIdentifier)]
 pub enum KeyPath {
     File(FileIdentifier),
     Registry(RegistryIdentifier),
     // ODBCDataSource(ODBCDataSourceIdentifier)
-}
-
-impl msi::ToValue for KeyPath {
-    fn to_value(&self) -> msi::Value {
-        self.to_identifier().into()
-    }
 }

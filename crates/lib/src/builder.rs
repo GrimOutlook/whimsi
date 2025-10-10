@@ -53,9 +53,8 @@ use crate::tables::MediaTable;
 use crate::tables::MsiFileHashDao;
 use crate::tables::MsiFileHashTable;
 use crate::tables::MsiTable;
-use crate::tables::MsiTableDao;
-use crate::tables::MsiTableVariant;
-use crate::tables::MsiTables;
+use crate::tables::MsiTableContainer;
+use crate::tables::MsiTableContainerDao;
 use crate::tables::PropertyDao;
 use crate::tables::PropertyTable;
 use crate::tables::RegLocatorTable;
@@ -66,7 +65,6 @@ use crate::tables::ShortcutTable;
 use crate::tables::SignatureTable;
 use crate::tables::builder_table::MsiTableKind;
 use crate::tables::dao::MsiDao;
-use crate::tables::identifier_generator_table::IdentifierGeneratorTable;
 use crate::tables::meta::MetaInformation;
 use crate::types::column::default_dir::DefaultDir;
 use crate::types::column::filename::Filename;
@@ -77,7 +75,6 @@ use crate::types::helpers::architecture::MsiArchitecture;
 use crate::types::helpers::cabinet_info::CabinetInfo;
 use crate::types::helpers::cabinets::CabinetHandle;
 use crate::types::helpers::cabinets::Cabinets;
-use crate::types::helpers::id_generator::IdentifierGenerator;
 use crate::types::helpers::page_count::PageCount;
 use crate::types::helpers::security_flag::DocSecurity;
 use crate::types::properties::system_folder::SystemFolder;
@@ -91,7 +88,8 @@ pub struct MsiBuilder {
     /// creating the MSI and information that is tracked in the
     /// _SummaryInformation table.
     ///
-    /// WARN: The MSI cannot be built without this information being filled out.
+    /// WARN: The MSI cannot be built without this information being filled
+    /// out.
     #[getset(set = "pub")]
     meta: Option<MetaInformation>,
 
@@ -103,7 +101,7 @@ pub struct MsiBuilder {
     cabinets: Cabinets,
 
     /// List of all the tables managed by this builder
-    tables: MsiTables,
+    tables: Vec<MsiTableContainer>,
 }
 
 impl MsiBuilder {
@@ -231,8 +229,7 @@ impl MsiBuilder {
     ) -> anyhow::Result<DirectoryIdentifier> {
         let path = path.into();
 
-        let directory_id =
-            self.table_mut(MsiTableVariant::Directory).generate_id();
+        let directory_id = self.table_directory().generate_id();
         let name = path
             .file_name()
             .with_context(|| format!(
@@ -249,7 +246,7 @@ impl MsiBuilder {
         parent: impl Into<DirectoryIdentifier>,
     ) -> anyhow::Result<DirectoryIdentifier> {
         let filename = Filename::from_str(&name.to_string())?;
-        let id = self.directory.generate_id();
+        let id = self.table_directory().generate_id();
         self.add_directory_dao(DirectoryDao::new(
             id.clone(),
             Some(parent.into()),
@@ -267,11 +264,11 @@ impl MsiBuilder {
             && let Ok(system_folder) =
                 SystemFolder::try_from(parent.to_identifier())
         {
-            // Just ignore any errors when adding this directory since this will likely already be
-            // in the table.
+            // Just ignore any errors when adding this directory since this will
+            // likely already be in the table.
             let _ = self.add_directory_dao(system_folder.into());
         }
-        IdentifierGeneratorTable::add(&mut self.directory, dao)
+        self.add_to_tables(dao)
     }
 
     pub fn with_file_path(
@@ -282,8 +279,8 @@ impl MsiBuilder {
         let path = path.into();
         debug!("Creating DAOs for {path:?}");
 
-        let file_id = self.file.generate_id();
-        let component_id = self.component.generate_id();
+        let file_id = self.table_file().generate_id();
+        let component_id = self.table_component().generate_id();
         let file_hash_dao = MsiFileHashDao::from_path(file_id.clone(), &path)?;
         self.add_to_tables(file_hash_dao)?;
         self.add_to_default_feature(&component_id)?;
@@ -312,7 +309,7 @@ impl MsiBuilder {
     ) -> Sequence {
         debug!("Adding file [{file_id}] with path [{file_path:?}] to media");
         // Verify there is a Media entry to add on to.
-        if self.media.is_empty() {
+        if self.table_media().is_empty() {
             // Create a new cabinet file.
             let cabinet_id = self.new_cabinet();
             // Create a new media DAO.
@@ -322,7 +319,7 @@ impl MsiBuilder {
         }
 
         let media_dao = self
-            .media
+            .table_media()
             .get_last_internal_media_mut()
             .expect("Media table contains no internal CAB files");
 
@@ -486,7 +483,8 @@ impl MsiBuilder {
         if let Some(comments) = meta.comments() {
             summary_info.set_comments(comments);
         }
-        // TODO: Change this after testing. Just trying to make everything exactly the same.
+        // TODO: Change this after testing. Just trying to make everything
+        // exactly the same.
         summary_info.set_creating_application("msitools 0.106");
         summary_info.set_creation_time_to_now();
         summary_info.set_last_save_time_to_now();
@@ -515,26 +513,27 @@ impl MsiBuilder {
         package: &mut msi::Package<F>,
     ) -> anyhow::Result<()> {
         info!("Writing tables to package");
-        self.directory.write_to_package(package)?;
+        self.table_directory().write_to_package(package)?;
         // NOTE: The order in which the tables are written to matters. WTF.
-        self.component.write_to_package(package)?;
-        self.file.write_to_package(package)?;
-        self.media.write_to_package(package)?;
-        self.feature.write_to_package(package)?;
-        self.feature_components.write_to_package(package)?;
-        self.property.write_to_package(package)?;
-        self.registry.write_to_package(package)?;
-        self.msi_file_hash.write_to_package(package)?;
-        // If this isn't the first sequence table to be filled, it is corrupted for some reason?
-        self.admin_execute_sequence.write_to_package(package)?;
-        self.admin_ui_sequence.write_to_package(package)?;
-        self.advt_execute_sequence.write_to_package(package)?;
-        self.install_execute_sequence.write_to_package(package)?;
-        self.install_ui_sequence.write_to_package(package)?;
-        self.service_control.write_to_package(package)?;
-        self.service_install.write_to_package(package)?;
-        self.msi_lock_permissions_ex.write_to_package(package)?;
-        self.shortcut.write_to_package(package)?;
+        self.table_component().write_to_package(package)?;
+        self.table_file().write_to_package(package)?;
+        self.table_media().write_to_package(package)?;
+        self.table_feature().write_to_package(package)?;
+        self.table_feature_components().write_to_package(package)?;
+        self.table_property().write_to_package(package)?;
+        self.table_registry().write_to_package(package)?;
+        self.table_msi_file_hash().write_to_package(package)?;
+        // If this isn't the first sequence table to be filled, it is corrupted
+        // for some reason?
+        self.table_admin_execute_sequence().write_to_package(package)?;
+        self.table_admin_ui_sequence().write_to_package(package)?;
+        self.table_advt_execute_sequence().write_to_package(package)?;
+        self.table_install_execute_sequence().write_to_package(package)?;
+        self.table_install_ui_sequence().write_to_package(package)?;
+        self.table_service_control().write_to_package(package)?;
+        self.table_service_install().write_to_package(package)?;
+        self.table_msi_lock_permissions_ex().write_to_package(package)?;
+        self.table_shortcut().write_to_package(package)?;
 
         // NOTE: Empty tables that seem to be required?
         self.signature.write_to_package(package)?;
@@ -557,7 +556,9 @@ impl MsiBuilder {
         package: &mut msi::Package<F>,
     ) -> anyhow::Result<()> {
         let previous_last_sequence = 1;
-        for media in MsiTable::entries(&self.media)
+        for media in self
+            .table_media()
+            .entries()
             .iter()
             .sorted_by_key(|dao| Into::<i32>::into(*dao.last_sequence()))
         {
@@ -575,7 +576,8 @@ impl MsiBuilder {
                 "Cabinet of ID [{}] could not be found when trying to build it!",
             );
             let files = self
-                .table_mut(MsiTableVariant::File)
+                .table_mut(MsiTable::File)
+                .into()
                 .in_sequence_range(previous_last_sequence, last_sequence);
             if files.len() == 0 {
                 unreachable!(
@@ -664,7 +666,7 @@ impl MsiBuilder {
         component_id: &ComponentIdentifier,
     ) -> anyhow::Result<()> {
         // Get the default feature DAO.
-        let Some(default) = self.feature.get_default_feature() else {
+        let Some(default) = self.table_feature().get_default_feature() else {
             bail!("No default feature could be found");
         };
         // Add the component to the default feature.
@@ -676,7 +678,7 @@ impl MsiBuilder {
         feature_id: &FeatureIdentifier,
         component_id: &ComponentIdentifier,
     ) -> anyhow::Result<()> {
-        self.tables.add(FeatureComponentsDao::new(
+        self.table_feature().add(FeatureComponentsDao::new(
             feature_id.clone(),
             component_id.clone(),
         ))
@@ -685,47 +687,22 @@ impl MsiBuilder {
     /// Insert the given DAO into it's respective table.
     pub fn add_to_tables(
         &mut self,
-        dao: impl Into<MsiTableDao>,
+        dao: impl Into<MsiTableContainerDao>,
     ) -> anyhow::Result<()> {
-        let dao = Into::<MsiTableDao>::into(dao);
-        match dao {
-            MsiTableDao::Component(component_dao) => {
-                IdentifierGeneratorTable::add(
-                    &mut self.component,
-                    component_dao,
-                )
-            }
-            MsiTableDao::Directory(directory_dao) => {
-                IdentifierGeneratorTable::add(
-                    &mut self.directory,
-                    directory_dao,
-                )
-            }
-            MsiTableDao::File(file_dao) => {
-                IdentifierGeneratorTable::add(&mut self.file, file_dao)
-            }
-            MsiTableDao::Registry(registry_dao) => {
-                IdentifierGeneratorTable::add(&mut self.registry, registry_dao)
-            }
-            MsiTableDao::Feature(feature_dao) => {
-                IdentifierGeneratorTable::add(&mut self.feature, feature_dao)
-            }
-            MsiTableDao::Property(dao) => self.property.add(dao),
-            MsiTableDao::Media(dao) => self.media.add(dao),
-            MsiTableDao::MsiFileHash(dao) => self.msi_file_hash.add(dao),
-            MsiTableDao::FeatureComponents(dao) => {
-                self.feature_components.add(dao)
-            }
-            _ => {
-                todo!("Daos for {:?} are not implemented yet!", dao.table())
-            }
-        }
+        todo!()
     }
 
-    pub fn table_mut(&mut self, table: MsiTableVariant) -> &mut MsiTable {
+    pub fn table_mut(&mut self, table: MsiTable) -> &mut MsiTableContainer {
         self.tables
             .iter_mut()
-            .find(|t| MsiTableVariant::from(*t as &MsiTable) == table)
+            .find(|t| MsiTable::from(*t as &MsiTableContainer) == table)
+            .unwrap()
+    }
+
+    pub fn table(&self, table: MsiTable) -> &MsiTableContainer {
+        self.tables
+            .iter()
+            .find(|t| MsiTable::from(*t as &MsiTableContainer) == table)
             .unwrap()
     }
 }
@@ -742,6 +719,13 @@ impl Default for MsiBuilder {
             tables: Vec::new(),
         }
     }
+}
+
+impl_msi_table_accessors! {
+    Directory,
+    Feature,
+    Component,
+    Media,
 }
 
 #[derive(Debug, thiserror::Error, PartialEq)]

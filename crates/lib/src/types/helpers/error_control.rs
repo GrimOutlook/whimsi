@@ -1,7 +1,8 @@
 /// This column specifies the action taken by the startup program if the service fails to start
 /// during startup. These values affect the ServiceControl StartService events for installed
 /// services. One of the following error control flags must be specified in this column.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, whimsi_macros::IntToValue)]
+#[repr(i32)]
 pub enum ErrorControl {
     /// Logs the error and continues with the startup operation.
     Ignore = 0x00000000,

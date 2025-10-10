@@ -6,11 +6,7 @@ use crate::types::column::formatted::Formatted;
 
 /// Formatted string that cannot start or end with backslashes.
 #[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    derive_more::Display,
-    whimsi_macros::IntoStrMsiValue,
+    Debug, Clone, PartialEq, derive_more::Display, whimsi_macros::StrToValue,
 )]
 pub struct RegPath(Formatted);
 

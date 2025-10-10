@@ -1,16 +1,23 @@
-use anyhow::ensure;
 use std::fmt::Display;
 
-use crate::types::column::filename::ShortFilename;
-use crate::types::column::identifier::{Identifier, ToIdentifier};
-use crate::types::helpers::cabinet_info::CabinetInfo;
-use crate::types::helpers::id_generator::IdentifierGenerator;
+use anyhow::ensure;
 
-// TODO: This area could be almost completely removed by making the MsiTables derive macro more
-// modular.
+use crate::types::column::filename::ShortFilename;
+use crate::types::column::identifier::Identifier;
+use crate::types::column::identifier::ToIdentifier;
+use crate::types::helpers::cabinet_info::CabinetInfo;
+
+// TODO: This area could be almost completely removed by making the MsiTables
+// derive macro more modular.
 //
 // -- Begin section that could be basically removed by an altered derive macro
-#[derive(Clone, Debug, PartialEq, derive_more::Display)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    derive_more::Display,
+    whimsi_macros::IdentifierToValue,
+)]
 pub struct CabinetIdentifier(Identifier);
 impl ToIdentifier for CabinetIdentifier {
     fn to_identifier(&self) -> Identifier {
@@ -21,29 +28,10 @@ impl ToIdentifier for CabinetIdentifier {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub(crate) struct CabinetIdentifierGenerator {
     count: usize,
-    // A reference to a vec of all used Identifiers that should not be generated again.
-    // These are all identifiers that inhabit a primary_key column.
+    // A reference to a vec of all used Identifiers that should not be
+    // generated again. These are all identifiers that inhabit a
+    // primary_key column.
     used: std::rc::Rc<std::cell::RefCell<Vec<Identifier>>>,
-}
-
-impl IdentifierGenerator for CabinetIdentifierGenerator {
-    type IdentifierType = CabinetIdentifier;
-
-    fn id_prefix(&self) -> &str {
-        "CABINET"
-    }
-
-    fn used(&self) -> &std::rc::Rc<std::cell::RefCell<Vec<Identifier>>> {
-        &self.used
-    }
-
-    fn count(&self) -> usize {
-        self.count
-    }
-
-    fn count_mut(&mut self) -> &mut usize {
-        &mut self.count
-    }
 }
 
 impl From<std::rc::Rc<std::cell::RefCell<Vec<Identifier>>>>

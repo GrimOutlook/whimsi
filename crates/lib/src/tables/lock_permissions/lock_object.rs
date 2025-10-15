@@ -6,7 +6,12 @@ use crate::types::column::identifier::ToIdentifier;
 use crate::types::column::identifier::ambassador_impl_ToIdentifier;
 
 #[derive(
-    Debug, Clone, PartialEq, ambassador::Delegate, strum::IntoStaticStr,
+    Debug,
+    Clone,
+    PartialEq,
+    ambassador::Delegate,
+    strum::IntoStaticStr,
+    derive_more::From,
 )]
 #[delegate(ToIdentifier)]
 pub enum LockObject {

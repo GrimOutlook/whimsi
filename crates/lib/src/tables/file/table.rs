@@ -13,6 +13,7 @@ use crate::msi_list_boilerplate;
 use crate::msi_table_boilerplate;
 use crate::tables::builder_list::MsiBuilderList;
 use crate::tables::builder_table::MsiBuilderTable;
+use crate::types::column::filename::Filename;
 use crate::types::column::identifier::Identifier;
 use crate::types::column::sequence::Sequence;
 
@@ -58,6 +59,10 @@ impl FileTable {
                 false
             })
             .collect()
+    }
+
+    pub fn entry_with_name(&self, name: &Filename) -> Option<&FileDao> {
+        self.entries.iter().find(|d| d.name() == name)
     }
 }
 

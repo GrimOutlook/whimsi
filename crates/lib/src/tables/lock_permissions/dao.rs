@@ -11,13 +11,29 @@ use crate::types::column::identifier::ToIdentifier;
 use crate::types::helpers::to_msi_value::ToMsiOptionalValue;
 use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 
-#[derive(Clone, Debug, derive_more::Constructor)]
+#[derive(Clone, Debug)]
 pub struct LockPermissionsDao {
     lock_object: LockObject,
     table: String,
-    domain: Formatted,
+    domain: Option<Formatted>,
     user: Formatted,
-    permission: LockPermissions,
+    permission: Option<LockPermissions>,
+}
+
+impl LockPermissionsDao {
+    pub fn new(
+        lock_object: LockObject,
+        user: Formatted,
+        permission: LockPermissions,
+    ) -> LockPermissionsDao {
+        LockPermissionsDao {
+            lock_object: lock_object.clone(),
+            table: lock_object.table().to_string(),
+            domain: None,
+            user,
+            permission: Some(permission),
+        }
+    }
 }
 
 impl IsDao for LockPermissionsDao {
@@ -25,9 +41,9 @@ impl IsDao for LockPermissionsDao {
         vec![
             self.lock_object.to_identifier().into(),
             self.lock_object.table().into(),
-            self.domain.clone().into(),
+            self.domain.to_optional_value(),
             self.user.clone().into(),
-            self.permission.clone().into(),
+            self.permission.to_optional_value(),
         ]
     }
 }

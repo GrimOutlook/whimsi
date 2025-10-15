@@ -1,13 +1,14 @@
 use whimsi_msi::Value;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Deserialize)]
+#[repr(i32)]
 pub enum LockPermissions {
     /// Read, write, and execute access
-    GENERIC_ALL,
+    ALL     = 0x10000000,
     /// Execute access
-    GENERIC_EXECUTE,
+    EXECUTE = 0x20000000,
     /// Write access
-    GENERIC_WRITE,
+    WRITE   = 0x40000000,
 }
 
 impl From<LockPermissions> for Value {

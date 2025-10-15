@@ -1,4 +1,5 @@
-use crate::types::standard_action::{AdvtAction, StandardAction};
+use crate::types::standard_action::AdvtAction;
+use crate::types::standard_action::StandardAction;
 
 // Found by inspecting MSIs made by other tools. Couldn't find official
 // documentation on these values.
@@ -46,7 +47,8 @@ pub const PROPERTY_IDENTIFIER_PREFIX: &str = "PROPERTY_";
 pub const REGISTRY_IDENTIFIER_PREFIX: &str = "REGISTRY_";
 pub const SIGNATURE_IDENTIFIER_PREFIX: &str = "SIGNATURE_";
 pub const BINARY_IDENTIFIER_PREFIX: &str = "BINARY_";
-pub const SERVICEINSTALL_IDENTIFIER_PREFIX: &str = "SERVICE_";
+pub const SERVICEINSTALL_IDENTIFIER_PREFIX: &str = "SERVICEINST_";
+pub const SERVICECONTROL_IDENTIFIER_PREFIX: &str = "SERVICECTRL_";
 pub const SHORTCUT_IDENTIFIER_PREFIX: &str = "SHORTCUT_";
 pub const ICON_IDENTIFIER_PREFIX: &str = "ICON_";
 

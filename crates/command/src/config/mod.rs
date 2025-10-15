@@ -1,27 +1,72 @@
-pub(crate) mod files;
-pub(crate) mod meta;
-pub(crate) mod product;
-pub(crate) mod summary;
-pub(crate) mod system_folder;
-
+use std::collections::HashMap;
 use std::env;
 
 use anyhow::Context;
 use camino::Utf8PathBuf;
-use files::FilesConfig;
 use flexstr::LocalStr;
-use meta::MetaConfig;
-use product::ProductConfig;
 use serde::Deserialize;
 use serde_inline_default::serde_inline_default;
-use summary::SummaryConfig;
+use whimsi_lib::tables::lock_permissions::lock_permissions::LockPermissions;
+use whimsi_lib::tables::service_install::error_control::ErrorControl;
+use whimsi_lib::tables::service_install::service_type::ServiceType;
+use whimsi_lib::tables::service_install::start_type::StartType;
 
 #[derive(Deserialize)]
+#[serde(rename = "Summary")]
+pub(crate) struct SummaryConfigInfo {
+    pub(crate) subject: String,
+    pub(crate) author: String,
+    pub(crate) comments: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename = "Install")]
+pub(crate) struct ServiceInstallConfigInfo {
+    pub(crate) name: String,
+    pub(crate) description: String,
+    pub(crate) executable: String,
+    pub(crate) start_time: StartType,
+    #[serde(rename = "type")]
+    pub(crate) typ: ServiceType,
+    pub(crate) interactive: bool,
+    pub(crate) error_control: ErrorControl,
+    pub(crate) vital: bool,
+    pub(crate) control: Option<ServiceControlConfigInfo>,
+}
+
+#[derive(Deserialize)]
+pub(crate) enum ControlCondition {
+    Never,
+    Install,
+    Uninstall,
+    InstallAndUninstall,
+}
+
+#[derive(Deserialize)]
+#[serde(rename = "Control")]
+pub(crate) struct ServiceControlConfigInfo {
+    pub(crate) start: ControlCondition,
+    pub(crate) stop: ControlCondition,
+    pub(crate) remove: ControlCondition,
+    pub(crate) wait: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename = "Perm")]
+pub(crate) struct Permission {
+    pub(crate) user: String,
+    pub(crate) level: LockPermissions,
+}
+
+#[derive(Deserialize)]
+#[serde(rename = "Msi")]
 pub(crate) struct MsiConfig {
-    pub(crate) meta: MetaConfig,
-    pub(crate) product_info: ProductConfig,
-    pub(crate) summary_info: SummaryConfig,
-    pub(crate) files: FilesConfig,
+    pub(crate) summary: SummaryConfigInfo,
+    pub(crate) properties: HashMap<String, String>,
+    pub(crate) paths: HashMap<Utf8PathBuf, String>,
+    pub(crate) permissions: HashMap<String, Permission>,
+    pub(crate) shortcuts: HashMap<String, String>,
+    pub(crate) service_installs: Vec<ServiceInstallConfigInfo>,
 }
 
 #[cfg(test)]
@@ -30,37 +75,63 @@ mod tests {
     use similar_asserts::assert_eq;
 
     use super::*;
-
     const TEST_CONFIG: &str = r#"
-[product_info]
-product_name = "Test Application"
-product_version = "22.1.15"
-manufacturer = "Myself"
-product_language = 1033
+Msi (
+    summary: Summary (
+        subject: "Test Program",
+        author: "Self",
+        comments: Some("Unit test for WHIMSI"),
+    ),
 
-[summary_info]
-page_count = 200
-revision_number = "*"
-template = "x64;1033"
-author = "Test Name"
+    properties: {
+        "Manufacturer": "Manny",
+        "ProgramName": "Test Program",
+        "ProductVersion": "0.0.0",
+        "InstallDir": "[[ProgramFiles]]/[Manufacturer]/[ProgramName]/",
+    },
+
+    paths: {
+        "/tmp/temp_dir": "[InstallDir]"
+    },
+
+    permissions: {
+        "[InstallDir]/child_dir2/file2.pdf": Perm(user: "Everyone", level: ALL)
+    },
+
+    shortcuts: {
+        "[InstallDir]/file1.txt": "[[DesktopDir]]/files_shortcut"
+    },
+
+    service_installs: [
+        Install (
+            name: "MyService",
+            description: "Description for MyService",
+            executable: "[INSTALLDIR]/file1.txt",
+            start_time: AutoStart,
+            type: OwnProcess,
+            interactive: false,
+            error_control: Normal,
+            vital: true,
+            account_name: "LocalSystem",
+            control: Some(Control(
+                start: Install,
+                stop: Uninstall,
+                remove: Uninstall,
+                wait: true,
+            ))
+        )
+    ]
+)
 "#;
 
     #[test]
     fn config_deserializes() {
-        let c: MsiConfig = toml::from_str(TEST_CONFIG).unwrap();
+        let c: MsiConfig = ron::from_str(TEST_CONFIG).unwrap();
 
-        // Product Info Properties
-        assert_eq!(c.product_info.name, "Test Application");
-        assert_eq!(c.product_info.version, "22.1.15");
-        assert_eq!(c.product_info.manufacturer, "Myself");
-        assert_eq!(c.product_info.language, 1033);
-        assert_eq!(c.product_info.product_code, None);
-
-        // Summary Info Properties
-        assert_eq!(c.summary_info.page_count, 200);
-        assert_eq!(c.summary_info.revision_number, "*");
-        assert_eq!(c.summary_info.template, "x64;1033");
-        assert_some!(c.summary_info.author.clone());
-        assert_eq!(c.summary_info.author.unwrap(), "Test Name");
+        assert_eq!(c.summary.author, "Self");
+        assert_eq!(
+            c.summary.comments,
+            Some("Unit test for WHIMSI".to_string())
+        );
     }
 }

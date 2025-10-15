@@ -316,7 +316,7 @@ impl Column {
                         number > (i16::MIN as i32)
                             && number <= (i16::MAX as i32)
                     }
-                    ColumnType::Int32 => number > i32::MIN,
+                    ColumnType::Int32 => number > i32::MIN && number < i32::MAX,
                     ColumnType::Str(_) => false,
                 }
             }
@@ -328,11 +328,9 @@ impl Column {
                     {
                         return false;
                     }
-                    if !self.enum_values.is_empty() {
-                        if !self.enum_values.contains(string) {
+                    if !self.enum_values.is_empty() && !self.enum_values.contains(string) {
                             return false;
                         }
-                    }
                     max_len == 0 || string.chars().count() <= max_len
                 }
             },

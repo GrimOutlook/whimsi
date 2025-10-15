@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-pub(crate) mod dao;
+pub mod dao;
 pub mod directory_identifier;
 pub mod table;
 

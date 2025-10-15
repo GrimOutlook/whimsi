@@ -53,6 +53,11 @@ impl DirectoryTable {
         table
     }
 
+    pub fn root_directory(&self) -> &DirectoryDao {
+        self.entry_with_id(&SystemFolder::TARGETDIR.to_identifier())
+            .expect("Table doesn't contain a root directory")
+    }
+
     pub fn entry_with_id(
         &self,
         identifier: &Identifier,
@@ -60,6 +65,10 @@ impl DirectoryTable {
         self.entries
             .iter()
             .find(|d| d.directory().to_identifier() == *identifier)
+    }
+
+    pub fn entry_with_name(&self, name: &DefaultDir) -> Option<&DirectoryDao> {
+        self.entries.iter().find(|d| d.default_dir() == name)
     }
 
     pub fn entries_with_parent(
@@ -84,6 +93,27 @@ impl DirectoryTable {
 
     pub fn len(&self) -> usize {
         self.entries.len()
+    }
+
+    pub fn print_directory_structure(&self) {
+        self.print_structure_for_directory(
+            0,
+            SystemFolder::TARGETDIR.to_identifier(),
+        );
+    }
+
+    fn print_structure_for_directory(
+        &self,
+        depth: usize,
+        directory: Identifier,
+    ) {
+        println!("{directory}");
+        for item in self.entries_with_parent(&directory) {
+            self.print_structure_for_directory(
+                depth + 1,
+                item.directory().to_identifier(),
+            );
+        }
     }
 }
 

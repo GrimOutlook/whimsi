@@ -24,6 +24,7 @@ use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
     PartialOrd,
     strum::Display,
     strum::EnumIter,
+    strum::EnumString,
     Ord,
     Eq,
 )]
@@ -31,6 +32,7 @@ pub enum SystemFolder {
     TARGETDIR,
     ProgramFilesFolder,
     ProgramFiles64Folder,
+    DesktopFolder,
 }
 
 impl SystemFolder {

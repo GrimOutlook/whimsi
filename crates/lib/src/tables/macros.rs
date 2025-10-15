@@ -2,7 +2,8 @@
 macro_rules! define_generator_table {
     ($var:ident, $columns:expr) => {
         pastey::paste! {
-            #[derive(Debug, Clone, PartialEq)]
+            #[derive(Debug, Clone, PartialEq, getset::Getters)]
+            #[getset(get = "pub")]
             pub struct [<$var:camel Table>] {
                 entries: Vec<[<$var:camel Dao>]>,
                 generator: [<$var:camel IdGenerator>],

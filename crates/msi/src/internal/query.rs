@@ -1,12 +1,21 @@
+use std::collections::BTreeMap;
+use std::collections::HashSet;
+use std::fmt;
+use std::io::Read;
+use std::io::Seek;
+use std::io::Write;
+use std::io::{self};
+use std::rc::Rc;
+
+use cfb;
+
 use crate::internal::expr::Expr;
 use crate::internal::stringpool::StringPool;
-use crate::internal::table::{Row, Rows, Table};
-use crate::internal::value::{Value, ValueRef};
-use cfb;
-use std::collections::{BTreeMap, HashSet};
-use std::fmt;
-use std::io::{self, Read, Seek, Write};
-use std::rc::Rc;
+use crate::internal::table::Row;
+use crate::internal::table::Rows;
+use crate::internal::table::Table;
+use crate::internal::value::Value;
+use crate::internal::value::ValueRef;
 
 // ========================================================================= //
 
@@ -166,9 +175,10 @@ impl Insert {
             for (column, value) in table.columns().iter().zip(values.iter()) {
                 if !column.is_valid_value(value) {
                     invalid_input!(
-                        "{} is not a valid value for column {:?}",
+                        "{:?} is not a valid value for column {:?} of type {:?}",
                         value,
-                        column.name()
+                        column.name(),
+                        column.coltype(),
                     );
                 }
                 // TODO: Validate foreign keys.
@@ -757,7 +767,10 @@ impl fmt::Display for Update {
 
 #[cfg(test)]
 mod tests {
-    use super::{Delete, Insert, Select, Update};
+    use super::Delete;
+    use super::Insert;
+    use super::Select;
+    use super::Update;
     use crate::internal::expr::Expr;
     use crate::internal::value::Value;
 

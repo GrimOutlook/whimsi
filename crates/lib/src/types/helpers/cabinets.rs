@@ -11,7 +11,7 @@ use crate::tables::media::cabinet_identifier::CabinetIdentifier;
 use crate::types::column::identifier::Identifier;
 use crate::types::helpers::cabinet_info::CabinetInfo;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct Cabinets {
     entries: Vec<CabinetInfo>,
     generator: CabinetIdGenerator,

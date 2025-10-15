@@ -53,6 +53,9 @@ use crate::tables::id_generator_builder_list::IdGeneratorBuilderList;
 use crate::tables::install_execute_sequence::table::InstallExecuteSequenceTable;
 use crate::tables::install_ui_sequence::table::InstallUiSequenceTable;
 use crate::tables::launch_condition::table::LaunchConditionTable;
+use crate::tables::lock_permissions::dao::LockPermissionsDao;
+use crate::tables::lock_permissions::lock_object::LockObject;
+use crate::tables::lock_permissions::lock_permissions::LockPermissions;
 use crate::tables::lock_permissions::table::LockPermissionsTable;
 use crate::tables::media::cabinet_identifier::CabinetHandle;
 use crate::tables::media::cabinet_identifier::CabinetIdentifier;
@@ -65,15 +68,28 @@ use crate::tables::property::dao::PropertyDao;
 use crate::tables::property::table::PropertyTable;
 use crate::tables::reg_locator::table::RegLocatorTable;
 use crate::tables::registry::table::RegistryTable;
+use crate::tables::service_control::dao::ServiceControlDao;
+use crate::tables::service_control::dao::ServiceControlIdentifier;
+use crate::tables::service_control::event::Event;
 use crate::tables::service_control::table::ServiceControlTable;
+use crate::tables::service_install;
+use crate::tables::service_install::dao::ServiceInstallDao;
+use crate::tables::service_install::error_control::ErrorControl;
+use crate::tables::service_install::service_type::ServiceType;
+use crate::tables::service_install::start_type::StartType;
+use crate::tables::service_install::table::ServiceInstallIdentifier;
 use crate::tables::service_install::table::ServiceInstallTable;
+use crate::tables::shortcut::dao::ShortcutDao;
+use crate::tables::shortcut::table::ShortcutIdentifier;
 use crate::tables::shortcut::table::ShortcutTable;
 use crate::tables::signature::table::SignatureTable;
 use crate::types::column::default_dir::DefaultDir;
 use crate::types::column::filename::Filename;
+use crate::types::column::formatted::Formatted;
 use crate::types::column::identifier::Identifier;
 use crate::types::column::identifier::ToIdentifier;
 use crate::types::column::sequence::Sequence;
+use crate::types::column::shortcut::Shortcut;
 use crate::types::helpers::architecture::MsiArchitecture;
 use crate::types::helpers::cabinet_info::CabinetInfo;
 use crate::types::helpers::cabinets::Cabinets;
@@ -84,14 +100,15 @@ use crate::types::properties::system_folder::SystemFolder;
 use crate::types::standard_action::StandardAction;
 
 /// An in-memory representation of the final MSI to be created.
-#[derive(Debug, Getters, Setters)]
+#[derive(Clone, Debug, Getters, Setters)]
 #[getset(get = "pub")]
 pub struct MsiBuilder {
     /// Information about the whole package. Tracks both information for
     /// creating the MSI and information that is tracked in the
     /// _SummaryInformation table.
     ///
-    /// WARN: The MSI cannot be built without this information being filled out.
+    /// WARN: The MSI cannot be built without this information being filled
+    /// out.
     #[getset(set = "pub")]
     meta: Option<MetaInformation>,
 
@@ -132,7 +149,7 @@ pub struct MsiBuilder {
     service_install: ServiceInstallTable,
     shortcut: ShortcutTable,
     icon: IconTable,
-    msi_lock_permissions_ex: LockPermissionsTable,
+    lock_permissions: LockPermissionsTable,
 }
 
 impl MsiBuilder {
@@ -165,8 +182,6 @@ impl MsiBuilder {
     ///
     /// ```
     /// # use whimsi_lib::builder::MsiBuilder;
-    /// # use whimsi_lib::tables::directory::container::Container;
-    /// # use whimsi_lib::tables::directory::system_directory::SystemDirectory;
     /// # use whimsi_lib::types::properties::system_folder::SystemFolder;
     ///
     /// # use assert_fs::TempDir;
@@ -193,7 +208,8 @@ impl MsiBuilder {
     /// // With a file system that looks like the above and using ProgramFiles for the
     /// // install_path_identifier
     ///
-    /// let mut msi = MsiBuilder::default().with_path(temp_dir_path, SystemFolder::ProgramFilesFolder).unwrap();
+    /// let mut msi = MsiBuilder::default()
+    ///     .with_path_contents(temp_dir_path, SystemFolder::ProgramFilesFolder).unwrap();
     ///
     /// // You will end up with the following on the windows install.
     /// // C:/ProgramFiles/
@@ -202,31 +218,26 @@ impl MsiBuilder {
     /// // | child_dir2/
     /// //   | - file2.pdf
     ///
-    /// let sys_dirs = msi.system_directories();
-    /// sys_dirs.iter().for_each(SystemDirectory::print_structure);
-    /// // 1 entry for the system folder
-    /// assert_eq!(sys_dirs.len(), 1, "Number of system directories incorrect");
-    /// // 2 directories that were parsed from the path and placed in the system folder that was
-    /// // given
-    /// let system_directory = sys_dirs.get(0).unwrap();
-    /// assert_eq!(system_directory.system_folder(), &SystemFolder::ProgramFilesFolder, "System folder constructed incorrectly");
-    /// assert_eq!(system_directory.contents().len(), 3, "Number of system folder contents incorrect");
-    /// assert_eq!(system_directory.contained_directories().len(), 2, "Number of directories in system folder incorrect");
-    /// assert_eq!(system_directory.contained_files().len(), 1, "Number of files in system folder incorrect");
-    /// let child_dir1 = system_directory.contained_directory_by_name("child_dir1").unwrap();
-    /// assert_eq!(child_dir1.contents().len(), 0, "child_dir1 contents incorrect");
-    /// assert_eq!(child_dir1.contained_directories().len(), 0, "Number of directories in child_dir1 incorrect");
-    /// assert_eq!(child_dir1.contained_files().len(), 0, "Number of files in child_dir1 incorrect");
-    /// let child_dir2 = system_directory.contained_directory_by_name("child_dir2").unwrap();
-    /// assert_eq!(child_dir2.contents().len(), 1, "child_dir2 contents incorrect");
-    /// assert_eq!(child_dir2.contained_directories().len(), 0, "Number of directories in child_dir2 incorrect");
-    /// assert_eq!(child_dir2.contained_files().len(), 1, "Number of files in child_dir2 incorrect");
+    /// // Print the structure so we can see what was made.
+    /// msi.directory().print_directory_structure();
+    ///
+    /// assert_eq!(msi.directory().entries().len(), 4);
+    /// assert_eq!(msi.file().entries().len(), 2);
     /// ```
     pub fn with_path_contents(
         mut self,
         path: impl Into<PathBuf>,
         parent: impl Into<DirectoryIdentifier>,
     ) -> anyhow::Result<Self> {
+        self.add_path_contents(path, parent);
+        Ok(self)
+    }
+
+    pub fn add_path_contents(
+        &mut self,
+        path: impl Into<PathBuf>,
+        parent: impl Into<DirectoryIdentifier>,
+    ) -> anyhow::Result<()> {
         let path = path.into();
         let parent = parent.into();
         debug!("Adding path [{:?}] contents to directory [{}]", path, parent);
@@ -241,16 +252,16 @@ impl MsiBuilder {
             let path = item.path();
 
             if filetype.is_file() {
-                self = self.with_file_path(path, parent.clone())?;
+                self.add_file_path(path, parent.clone())?;
             } else if filetype.is_dir() {
                 let id = self.add_directory_from_path(&path, parent.clone())?;
-                self = self.with_path_contents(path, id)?;
+                self.add_path_contents(path, id)?;
             } else {
                 bail!("Create error for nonfile+nondir types")
             }
         }
 
-        Ok(self)
+        Ok(())
     }
 
     pub fn add_directory_from_path(
@@ -295,8 +306,8 @@ impl MsiBuilder {
             && let Ok(system_folder) =
                 SystemFolder::try_from(parent.to_identifier())
         {
-            // Just ignore any errors when adding this directory since this will likely already be
-            // in the table.
+            // Just ignore any errors when adding this directory since this will
+            // likely already be in the table.
             let _ = self.add_directory_dao(system_folder.into());
         }
         IdGeneratorBuilderList::add(&mut self.directory, dao)
@@ -307,6 +318,15 @@ impl MsiBuilder {
         path: impl Into<PathBuf>,
         parent_id: impl Into<DirectoryIdentifier>,
     ) -> anyhow::Result<Self> {
+        self.add_file_path(path, parent_id)?;
+        Ok(self)
+    }
+
+    pub fn add_file_path(
+        &mut self,
+        path: impl Into<PathBuf>,
+        parent_id: impl Into<DirectoryIdentifier>,
+    ) -> anyhow::Result<()> {
         let path = path.into();
         debug!("Creating DAOs for {path:?}");
 
@@ -326,7 +346,7 @@ impl MsiBuilder {
         let component_dao = ComponentDao::new(component_id, parent_id.into())
             .with_keypath(file_id.to_identifier());
         self.add_to_tables(component_dao)?;
-        Ok(self)
+        Ok(())
     }
 
     /// Adds the given file to media so it will be installed when the MSI is
@@ -396,6 +416,79 @@ impl MsiBuilder {
         Ok(self)
     }
 
+    pub fn add_shortcut(
+        &mut self,
+        directory_id: DirectoryIdentifier,
+        name: Filename,
+        target: Shortcut,
+    ) -> anyhow::Result<ShortcutIdentifier> {
+        let shortcut_id = self.shortcut.generate_id();
+        let component_id = self.component.generate_id();
+        self.add_to_default_feature(&component_id);
+        self.add_to_tables(ShortcutDao::new(
+            shortcut_id.clone(),
+            directory_id,
+            name,
+            component_id,
+            target,
+        ))?;
+        Ok(shortcut_id)
+    }
+
+    pub fn add_service_install(
+        &mut self,
+        name: Formatted,
+        service_type: ServiceType,
+        start_type: StartType,
+        error_control: ErrorControl,
+    ) -> anyhow::Result<ServiceInstallIdentifier> {
+        let service_install_id = self.service_install.generate_id();
+        let component_id = self.component.generate_id();
+        self.add_to_default_feature(&component_id);
+        self.add_to_tables(ServiceInstallDao::new(
+            service_install_id.clone(),
+            name,
+            service_type,
+            start_type,
+            error_control,
+            component_id,
+        ))?;
+        Ok(service_install_id)
+    }
+
+    pub fn add_service_control(
+        &mut self,
+        name: Formatted,
+        event: Event,
+        wait: bool,
+    ) -> anyhow::Result<ServiceControlIdentifier> {
+        let component_id = self.component.generate_id();
+        let service_control_id = self.service_control.generate_id();
+        self.add_to_default_feature(&component_id);
+        self.add_to_tables(ServiceControlDao::new(
+            service_control_id.clone(),
+            name,
+            event,
+            wait,
+            component_id,
+        ))?;
+        Ok(service_control_id)
+    }
+
+    pub fn add_lock_permissions(
+        &mut self,
+        lock_object: LockObject,
+        user: Formatted,
+        permission: LockPermissions,
+    ) -> anyhow::Result<()> {
+        self.add_to_tables(LockPermissionsDao::new(
+            lock_object,
+            user,
+            permission,
+        ))?;
+        Ok(())
+    }
+
     /// Build the MSI from all information given to MSIBuilder.
     pub fn build<F: std::io::Read + std::io::Write + std::io::Seek>(
         self,
@@ -420,6 +513,7 @@ impl MsiBuilder {
             // "File",
             // "Shortcut",
             // "CustomAction",
+            "ServiceControl",
             "AdvtUISequence",
             "AppId",
             "BBControl",
@@ -502,6 +596,8 @@ impl MsiBuilder {
         package.set_database_codepage(whimsi_msi::CodePage::Windows1252);
         let summary_info = package.summary_info_mut();
         summary_info.set_codepage(whimsi_msi::CodePage::Windows1252);
+        // TODO: Ensure that `subject` is the same as `ProductName` in the
+        // `Property` table as specified [here](https://learn.microsoft.com/en-us/windows/win32/msi/subject-summary)
         summary_info.set_subject(meta.subject());
 
         if let Some(author) = meta.author() {
@@ -514,7 +610,8 @@ impl MsiBuilder {
         if let Some(comments) = meta.comments() {
             summary_info.set_comments(comments);
         }
-        // TODO: Change this after testing. Just trying to make everything exactly the same.
+        // TODO: Change this after testing. Just trying to make everything
+        // exactly the same.
         summary_info.set_creating_application("msitools 0.106");
         summary_info.set_creation_time_to_now();
         summary_info.set_last_save_time_to_now();
@@ -553,7 +650,8 @@ impl MsiBuilder {
         self.property.write_to_package(package)?;
         self.registry.write_to_package(package)?;
         self.msi_file_hash.write_to_package(package)?;
-        // If this isn't the first sequence table to be filled, it is corrupted for some reason?
+        // If this isn't the first sequence table to be filled, it is corrupted
+        // for some reason?
         self.admin_execute_sequence.write_to_package(package)?;
         self.admin_ui_sequence.write_to_package(package)?;
         self.advt_execute_sequence.write_to_package(package)?;
@@ -561,7 +659,7 @@ impl MsiBuilder {
         self.install_ui_sequence.write_to_package(package)?;
         self.service_control.write_to_package(package)?;
         self.service_install.write_to_package(package)?;
-        self.msi_lock_permissions_ex.write_to_package(package)?;
+        self.lock_permissions.write_to_package(package)?;
         self.shortcut.write_to_package(package)?;
 
         // NOTE: Empty tables that seem to be required?
@@ -729,10 +827,20 @@ impl MsiBuilder {
             Dao::Feature(feature_dao) => {
                 IdGeneratorBuilderList::add(&mut self.feature, feature_dao)
             }
+            Dao::Shortcut(shortcut_dao) => {
+                IdGeneratorBuilderList::add(&mut self.shortcut, shortcut_dao)
+            }
+            Dao::ServiceInstall(dao) => {
+                IdGeneratorBuilderList::add(&mut self.service_install, dao)
+            }
+            Dao::ServiceControl(dao) => {
+                IdGeneratorBuilderList::add(&mut self.service_control, dao)
+            }
             Dao::Property(dao) => self.property.add(dao),
             Dao::Media(dao) => self.media.add(dao),
             Dao::MsiFileHash(dao) => self.msi_file_hash.add(dao),
             Dao::FeatureComponents(dao) => self.feature_components.add(dao),
+            Dao::LockPermissions(dao) => self.lock_permissions.add(dao),
         }
     }
 }
@@ -759,21 +867,21 @@ impl Default for MsiBuilder {
             reg_locator: Default::default(),
             app_search: Default::default(),
             custom_action: Default::default(),
-            msi_lock_permissions_ex: Default::default(),
-            service_control: Default::default(),
+            lock_permissions: Default::default(),
 
             // Non-tables that need access to all or generate entity IDs.
             identifiers: empty_entries.clone(),
             cabinets: Cabinets::new(empty_entries.clone()),
 
-            // Tables that can generate IDs for their entries and the IDs must be uniqe across the
-            // MSI.
+            // Tables that can generate IDs for their entries and the IDs must
+            // be uniqe across the MSI.
             component: ComponentTable::new(empty_entries.clone()),
             directory: DirectoryTable::new(empty_entries.clone()),
             feature: FeatureTable::new(empty_entries.clone()),
             file: FileTable::new(empty_entries.clone()),
             registry: RegistryTable::new(empty_entries.clone()),
             service_install: ServiceInstallTable::new(empty_entries.clone()),
+            service_control: ServiceControlTable::new(empty_entries.clone()),
             shortcut: ShortcutTable::new(empty_entries.clone()),
             icon: IconTable::new(empty_entries.clone()),
         }

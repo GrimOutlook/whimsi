@@ -1,17 +1,19 @@
-use anyhow::{bail, Context, Result};
-use itertools::Itertools;
-use std::{fs::DirEntry, os::unix::process::parent_id};
-use tracing::debug;
+use std::fs::DirEntry;
+use std::os::unix::process::parent_id;
 
+use anyhow::Context;
+use anyhow::Result;
+use anyhow::bail;
 use camino::Utf8PathBuf;
 use derive_new::new;
 use flexstr::LocalStr;
 use getset::Getters;
+use itertools::Itertools;
+use tracing::debug;
 use uuid::Uuid;
 
-use crate::{enums::system_folder::SystemFolder, traits::identifier::Identifier};
-
 use super::file::MsiFile;
+use crate::traits::identifier::Identifier;
 
 /// # [Directory](https://learn.microsoft.com/en-us/windows/win32/msi/directory-table)
 ///
@@ -69,13 +71,16 @@ impl MsiDirectory {
             .iter()
             .map(|d| MsiDirectory::new(parent, &d.to_path_buf()))
             .collect::<Result<Vec<_>>>()?;
-        let msi_files = files.iter().map(MsiFile::new).collect::<Result<Vec<_>>>()?;
+        let msi_files =
+            files.iter().map(MsiFile::new).collect::<Result<Vec<_>>>()?;
         Ok((msi_directories, msi_files))
     }
 
-    /// Scans only the given directory. Does not scan directories inside this directory.
+    /// Scans only the given directory. Does not scan directories inside this
+    /// directory.
     ///
-    /// Returns a tuple of vecs. The first holds directories and the second holds files.
+    /// Returns a tuple of vecs. The first holds directories and the second
+    /// holds files.
     pub(super) fn scan_path(
         parent: &str,
         path: &Utf8PathBuf,
@@ -87,28 +92,31 @@ impl MsiDirectory {
             .context(format!("Failed to read directory [{path}]"))?;
 
         // Get all of the entries that did not return an `Err` when scanned.
-        let (ok_entries, errs): (Vec<_>, Vec<_>) = directory_entries.partition_result();
-        // If any of them returned an error, short circuit and return that error.
-        // May change this behavior based on config if desired in the future.
+        let (ok_entries, errs): (Vec<_>, Vec<_>) =
+            directory_entries.partition_result();
+        // If any of them returned an error, short circuit and return that
+        // error. May change this behavior based on config if desired in
+        // the future.
         if !errs.is_empty() {
-            // TODO: Add an `--ignore-file-errors` option to continue on with files that did not
-            // produce errors.
+            // TODO: Add an `--ignore-file-errors` option to continue on with
+            // files that did not produce errors.
             bail!("Failed to read file inside {}", path);
         }
 
-        // Get all of the entries that have a valid file type. We need to check if
-        // these are directories so if we can't read that from somewhere we need to
-        // exit.
+        // Get all of the entries that have a valid file type. We need to check
+        // if these are directories so if we can't read that from
+        // somewhere we need to exit.
         //
         // Also I shamelessly stole the [implementation] for
         // [`partition_result`](https://docs.rs/itertools/0.14.0/src/itertools/lib.rs.html#3669-3679)
-        // in itertools to make this because I needed the entries back out, not the
-        // filetypes that have to be checked.
-        let (mut found_dir_paths, mut found_file_paths) = (Vec::new(), Vec::new());
+        // in itertools to make this because I needed the entries back out, not
+        // the filetypes that have to be checked.
+        let (mut found_dir_paths, mut found_file_paths) =
+            (Vec::new(), Vec::new());
         for entry in ok_entries {
             let filetype = entry.file_type()?;
-            // Only keep the entries that are either directories or files. We don't
-            // care about symlinks or other file types.
+            // Only keep the entries that are either directories or files. We
+            // don't care about symlinks or other file types.
             if filetype.is_dir() {
                 found_dir_paths.push(entry.into_path())
             } else if filetype.is_file() {
@@ -144,10 +152,12 @@ impl MsiDirectory {
 mod test {
     use std::error::Error;
 
+    use assert_fs::NamedTempFile;
+    use assert_fs::TempDir;
     use assert_fs::prelude::*;
-    use assert_fs::{NamedTempFile, TempDir};
     use assertables::*;
-    use camino::{Utf8Path, Utf8PathBuf};
+    use camino::Utf8Path;
+    use camino::Utf8PathBuf;
 
     use super::MsiDirectory;
 
@@ -167,13 +177,17 @@ mod test {
     #[test]
     fn new() {
         // Setup the temporary filesystem
-        let temp = setup_test_directory().expect("Failed to create test directory");
+        let temp =
+            setup_test_directory().expect("Failed to create test directory");
 
         const PARENT_ID: &str = "TARGETDIR";
 
         // Run the actual function under test
-        let msi_directory =
-            MsiDirectory::new(PARENT_ID, &Utf8Path::from_path(&temp).unwrap().into()).unwrap();
+        let msi_directory = MsiDirectory::new(
+            PARENT_ID,
+            &Utf8Path::from_path(&temp).unwrap().into(),
+        )
+        .unwrap();
 
         // Validate the results
         assert_eq!(msi_directory.parent_id().clone().unwrap(), PARENT_ID);

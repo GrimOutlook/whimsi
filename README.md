@@ -30,4 +30,5 @@ Information on how to parse the "_SummaryInformation" CFB stream into usable sum
 Information on how to parse the CFB stream data into MSI tables and streams.
 - [MSI Reference Material](https://learn.microsoft.com/en-us/windows/win32/msi/windows-installer-reference):
 Information on MSI table layouts, data types, and relations.
+- [Windows Installer Error Reference](https://learn.microsoft.com/en-us/windows/win32/msi/windows-installer-error-messages)
 

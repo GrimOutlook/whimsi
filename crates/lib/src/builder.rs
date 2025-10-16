@@ -715,7 +715,17 @@ impl MsiBuilder {
         self.install_ui_sequence.write_to_package(package)?;
         self.service_control.write_to_package(package)?;
         self.service_install.write_to_package(package)?;
-        self.lock_permissions.write_to_package(package)?;
+        // WARN: LockPermissions table is causing the MSI to be
+        // unreadable. `reference` example installs just fine with it commented
+        // out. Seems like the command `example.ron` for the commandline
+        // fails to install though even with it and everything from
+        // service_control down to icon commented out. Haven't tried
+        // commenting out any more but my guess is it's a data
+        // formatting issue since there are a different number of directories in
+        // the table between the `reference` example msi and the
+        // `example.ron` msi.
+        //
+        // write_to_package(package)?;
         self.shortcut.write_to_package(package)?;
         self.icon.write_to_package(package)?;
 

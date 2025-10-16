@@ -12,20 +12,20 @@ bitflags! {
         /// Starts the service during the StartServices action when installing.
         const INSTALL_START = 1 << 0;
         /// Stops the service during the StopServices action when installing.
-        const INSTALL_STOP = 1 << 2;
+        const INSTALL_STOP = 1 << 1;
         // /// <reserved>
-        // const INSTALL_RESERVED = 1 << 3;
+        // const INSTALL_RESERVED = 1 << 2;
         /// Deletes the service during the DeleteServices action when installing.
-        const INSTALL_DELETE = 1 << 4;
+        const INSTALL_DELETE = 1 << 3;
 
 
         /// Starts the service during the StartServices action when uninstalling.
-        const UNINSTALL_START = 1 << 5;
+        const UNINSTALL_START = 1 << 4;
         /// Stops the service during the StopServices action when unsinstalling.
-        const UNINSTALL_STOP = 1 << 6;
+        const UNINSTALL_STOP = 1 << 5;
         // /// <reserved>
-        // const UNINSTALL_RESERVED = 1 << 7;
+        // const UNINSTALL_RESERVED = 1 << 6;
         /// Deletes the service during the DeleteServices action when uninstalling.
-        const UNINSTALL_DELETE = 1 << 8;
+        const UNINSTALL_DELETE = 1 << 7;
     }
 }

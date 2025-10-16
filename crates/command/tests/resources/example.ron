@@ -7,9 +7,8 @@ Msi (
 
     properties: {
         "Manufacturer": "Manny",
-        "ProgramName": "PING",
         "ProductVersion": "0.1.0",
-        "InstallDir": "[[ProgramFilesFolder]]/[Manufacturer]/[ProgramName]/",
+        "InstallDir": "[[ProgramFilesFolder]]/[Manufacturer]/[ProductName]/",
     },
 
     paths: {

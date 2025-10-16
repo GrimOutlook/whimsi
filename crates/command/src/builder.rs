@@ -16,6 +16,7 @@ use regex::Regex;
 use ron::Options;
 use ron::extensions::Extensions;
 use ron::to_string;
+use uuid::Uuid;
 use walkdir::WalkDir;
 use whimsi_lib::builder::MsiBuilder;
 use whimsi_lib::tables::directory::directory_identifier::DirectoryIdentifier;
@@ -34,6 +35,7 @@ use crate::config::MsiConfig;
 use crate::config::Permission;
 use crate::config::ServiceInstallConfigInfo;
 use crate::config::ShortcutConfigInfo;
+use crate::config::SummaryConfigInfo;
 use crate::constants::*;
 
 #[derive(Clone, Debug, Default, PartialEq, strum::Display, clap::ValueEnum)]
@@ -103,6 +105,8 @@ fn builder_from_config(
     config: &MsiConfig,
     base_path: &Utf8PathBuf,
 ) -> anyhow::Result<MsiBuilder> {
+    let properties =
+        generate_missing_properties(&config.summary, &config.properties)?;
     let meta = MetaInformation::new(
         whimsi_msi::PackageType::Installer,
         config.summary.subject.clone(),
@@ -110,20 +114,80 @@ fn builder_from_config(
     .with_author(Some(config.summary.author.clone()))
     .with_comments(config.summary.comments.clone());
     let mut builder = MsiBuilder::default().with_meta(meta);
-    add_properties(&mut builder, &config.properties)?;
-    add_paths(&mut builder, base_path, &config.paths, &config.properties)?;
+    add_properties(&mut builder, &properties)?;
+    add_paths(&mut builder, base_path, &config.paths, &properties)?;
     add_shortcuts(
         &mut builder,
         base_path,
         &config.shortcuts,
-        &config.properties,
+        &properties,
         &config.paths,
     )?;
-    add_services(&mut builder, &config.service_installs, &config.properties)?;
-    add_permissions(&mut builder, &config.permissions, &config.properties)?;
+    add_services(&mut builder, &config.service_installs, &properties)?;
+    add_permissions(&mut builder, &config.permissions, &properties)?;
 
     Ok(builder)
 }
+
+// NOTE: These are specifically for `Installer` type MSIs.
+fn generate_missing_properties(
+    summary: &SummaryConfigInfo,
+    properties: &HashMap<String, String>,
+) -> anyhow::Result<HashMap<String, String>> {
+    let mut properties = properties.clone();
+    const MANUFACTURER_PROPERTY: &str = "Manufacturer";
+    const PRODUCT_VERSION_PROPERTY: &str = "ProductVersion";
+    const PRODUCT_NAME_PROPERTY: &str = "ProductName";
+    const PRODUCT_CODE_PROPERTY: &str = "ProductCode";
+    const PRODUCT_LANGUAGE_PROPERTY: &str = "ProductLanguage";
+    const DEFAULT_LANGUAGE: &str = "1033";
+
+    if !properties.contains_key(PRODUCT_VERSION_PROPERTY) {
+        anyhow::bail!(
+            "No `ProductVersion` property defined which is required for installation MSI. Exiting..."
+        )
+    }
+
+    if !properties.contains_key(PRODUCT_NAME_PROPERTY) {
+        properties.insert(
+            PRODUCT_NAME_PROPERTY.to_string(),
+            summary.subject.to_string(),
+        );
+    }
+
+    if !properties.contains_key(PRODUCT_NAME_PROPERTY) {
+        eprintln!(
+            "No `Manufacturer` property defined for MSI. Using `Author` field from SummaryInfo stream and continuing..."
+        );
+        properties.insert(
+            MANUFACTURER_PROPERTY.to_string(),
+            summary.author.to_string(),
+        );
+    }
+
+    if !properties.contains_key(PRODUCT_CODE_PROPERTY) {
+        eprintln!(
+            "No `ProductCode` property defined for MSI. Generating one and continuing..."
+        );
+        properties.insert(
+            PRODUCT_CODE_PROPERTY.to_string(),
+            Uuid::new_v4().braced().to_string(),
+        );
+    }
+
+    if !properties.contains_key(PRODUCT_LANGUAGE_PROPERTY) {
+        eprintln!(
+            "No `ProductLanguage` property defined for MSI. Using 1033 (English) as a default and continuing..."
+        );
+        properties.insert(
+            PRODUCT_LANGUAGE_PROPERTY.to_string(),
+            DEFAULT_LANGUAGE.to_string(),
+        );
+    }
+
+    Ok(properties)
+}
+
 fn add_properties(
     builder: &mut MsiBuilder,
     properties: &HashMap<String, String>,

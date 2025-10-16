@@ -568,7 +568,7 @@ impl MsiBuilder {
             // "File",
             // "Shortcut",
             // "CustomAction",
-            "ServiceControl",
+            // "ServiceControl",
             "AdvtUISequence",
             "AppId",
             "BBControl",

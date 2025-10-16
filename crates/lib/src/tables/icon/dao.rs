@@ -17,11 +17,17 @@ use crate::types::column::identifier::ToIdentifier;
 use crate::types::helpers::to_msi_value::ToMsiOptionalValue;
 use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 
-#[derive(Debug, Clone, PartialEq, Getters, derive_more::Constructor)]
+#[derive(Debug, Clone, PartialEq, Getters)]
 #[getset(get = "pub(crate)")]
 pub struct IconDao {
     name: IconIdentifier,
     data: Binary,
+}
+
+impl IconDao {
+    pub fn new(name: IconIdentifier) -> IconDao {
+        IconDao { name, data: Default::default() }
+    }
 }
 
 impl IsDao for IconDao {

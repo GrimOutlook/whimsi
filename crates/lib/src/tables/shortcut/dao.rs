@@ -1,5 +1,4 @@
 use anyhow::Context;
-use getset::Getters;
 
 use crate::tables::builder_list_entry::MsiBuilderListEntry;
 use crate::tables::component::table::ComponentIdentifier;
@@ -17,8 +16,8 @@ use crate::types::column::shortcut::Shortcut;
 use crate::types::helpers::to_msi_value::ToMsiOptionalValue;
 use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 
-#[derive(Debug, Clone, PartialEq, Getters)]
-#[getset(get = "pub(crate)")]
+#[derive(Debug, Clone, PartialEq, getset::Getters, getset::WithSetters)]
+#[getset(get = "pub(crate)", set_with = "pub(crate)")]
 pub struct ShortcutDao {
     identifier: ShortcutIdentifier,
     component_: ComponentIdentifier,
@@ -27,14 +26,16 @@ pub struct ShortcutDao {
     target: Shortcut,
     arguments: Option<Formatted>,
     description: Option<String>,
-    // TODO: Make this a bitflag. Has a lot of options so I'm going to punt it off to later.
+    // TODO: Make this a bitflag. Has a lot of options so I'm going to punt it
+    // off to later.
     hotkey: Option<i16>,
     icon_: Option<IconIdentifier>,
     icon_index: Option<i16>,
     show_cmd: Option<i16>,
-    // TODO: Determine if this is actually an `Identifier` type. The documentation for this field
-    // says that the "Windows format [can be used] to reference environment variables, for example
-    // %USERPROFILE%" but the `Identifier` type does not allow `%`.
+    // TODO: Determine if this is actually an `Identifier` type. The
+    // documentation for this field says that the "Windows format [can be
+    // used] to reference environment variables, for example %USERPROFILE%"
+    // but the `Identifier` type does not allow `%`.
     wk_dir: Option<Identifier>,
     display_resource_dll: Option<Formatted>,
     display_resource_id: Option<i16>,

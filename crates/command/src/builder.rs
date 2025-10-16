@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::default;
+use std::env;
 use std::fs::read_to_string;
 use std::path::Component;
 use std::path::Path;
@@ -6,11 +8,15 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::LazyLock;
 
+use anyhow::Context;
 use anyhow::ensure;
 use camino::Utf8PathBuf;
 use itertools::Itertools;
 use regex::Regex;
+use ron::Options;
+use ron::extensions::Extensions;
 use ron::to_string;
+use walkdir::WalkDir;
 use whimsi_lib::builder::MsiBuilder;
 use whimsi_lib::tables::directory::directory_identifier::DirectoryIdentifier;
 use whimsi_lib::tables::meta::MetaInformation;
@@ -27,19 +33,48 @@ use whimsi_lib::types::properties::system_folder::SystemFolder;
 use crate::config::MsiConfig;
 use crate::config::Permission;
 use crate::config::ServiceInstallConfigInfo;
+use crate::config::ShortcutConfigInfo;
+
+#[derive(Clone, Debug, Default, PartialEq, strum::Display, clap::ValueEnum)]
+pub(crate) enum PathRelativity {
+    Config,
+    #[default]
+    Command,
+    // TODO: Can't use non-unit variants with ValueEnum and I can't think of a
+    // fast way to enable it.
+    // Custom(PathBuf),
+}
 
 pub(super) struct Builder {}
 
 impl Builder {
     pub fn build_from_config(
+        path_relativity: &PathRelativity,
         config_path: &Utf8PathBuf,
         output_path: &Utf8PathBuf,
     ) -> anyhow::Result<()> {
         // Parse the config
-        let config = ron::from_str::<MsiConfig>(&read_to_string(config_path)?)?;
+        let options = Options::default()
+            .with_default_extension(Extensions::IMPLICIT_SOME)
+            .with_default_extension(Extensions::UNWRAP_NEWTYPES);
+        let config =
+            options.from_str::<MsiConfig>(&read_to_string(config_path)?)?;
+
+        let base_path = match path_relativity {
+            PathRelativity::Config => config_path
+                .parent()
+                .expect("Config path doesn't have a parent")
+                .canonicalize_utf8()
+                .expect("Failed to get full path of config"),
+            PathRelativity::Command => Utf8PathBuf::from_path_buf(
+                env::current_dir()
+                    .expect("Failed to get current working directory"),
+            )
+            .expect("Current working directory path is not UTF-8 compatible"),
+        };
 
         // Build the MSI
-        let msi_builder = builder_from_config(&config)?;
+        let msi_builder = builder_from_config(&config, &base_path)?;
 
         // Open the output file
         let file = std::fs::File::options()
@@ -55,7 +90,10 @@ impl Builder {
     }
 }
 
-fn builder_from_config(config: &MsiConfig) -> anyhow::Result<MsiBuilder> {
+fn builder_from_config(
+    config: &MsiConfig,
+    base_path: &Utf8PathBuf,
+) -> anyhow::Result<MsiBuilder> {
     let meta = MetaInformation::new(
         whimsi_msi::PackageType::Installer,
         config.summary.subject.clone(),
@@ -64,8 +102,14 @@ fn builder_from_config(config: &MsiConfig) -> anyhow::Result<MsiBuilder> {
     .with_comments(config.summary.comments.clone());
     let mut builder = MsiBuilder::default().with_meta(meta);
     add_properties(&mut builder, &config.properties)?;
-    add_paths(&mut builder, &config.paths, &config.properties)?;
-    add_shortcuts(&mut builder, &config.shortcuts, &config.properties)?;
+    add_paths(&mut builder, base_path, &config.paths, &config.properties)?;
+    add_shortcuts(
+        &mut builder,
+        base_path,
+        &config.shortcuts,
+        &config.properties,
+        &config.paths,
+    )?;
     add_services(&mut builder, &config.service_installs, &config.properties)?;
     add_permissions(&mut builder, &config.permissions, &config.properties)?;
 
@@ -83,13 +127,14 @@ fn add_properties(
 
 fn add_paths(
     builder: &mut MsiBuilder,
+    base_path: &Utf8PathBuf,
     paths: &HashMap<Utf8PathBuf, String>,
     properties: &HashMap<String, String>,
 ) -> anyhow::Result<()> {
     for (source_path, destination_path) in paths {
-        println!("Adding path: {}", source_path);
+        let source_path = base_path.join(source_path);
         ensure!(
-            source_path.try_exists().unwrap(),
+            source_path.exists(),
             "Source path {} doesn't exist",
             source_path
         );
@@ -105,8 +150,6 @@ fn add_paths(
     Ok(())
 }
 
-// NOTE: My brain has shut off for some reason so this likely needs to be
-// redone. Works during testing though.
 fn add_components_to_directory_table(
     builder: &mut MsiBuilder,
     properties: &HashMap<String, String>,
@@ -189,30 +232,82 @@ fn get_component_value(
 
 fn add_shortcuts(
     builder: &mut MsiBuilder,
-    shortcuts: &HashMap<String, String>,
+    base_path: &Utf8PathBuf,
+    shortcuts: &Vec<ShortcutConfigInfo>,
     properties: &HashMap<String, String>,
+    paths: &HashMap<Utf8PathBuf, String>,
 ) -> anyhow::Result<()> {
-    for (source_path, destination_path) in shortcuts {
-        let destination_path = PathBuf::from_str(destination_path).unwrap();
+    for shortcut in shortcuts {
+        let target = &shortcut.target;
+        let location = PathBuf::from_str(&shortcut.location).unwrap();
         let destination_directory_id = get_directory_id_of_path(
-            destination_path.parent().unwrap(),
-            builder,
-            properties,
+            &location, builder, properties,
         )
-        .unwrap();
-        builder.add_shortcut(
-            destination_directory_id,
-            Filename::from_str(
-                destination_path
-                    .file_name()
-                    .unwrap()
-                    .to_string_lossy()
-                    .as_ref(),
-            )?,
-            Shortcut::Formatted(Formatted::from(source_path.to_string())),
-        )?;
+        .unwrap_or_else(|| {
+            panic!(
+                "Failed to get destination directory ID for path {location:?}"
+            )
+        });
+
+        // TODO: Fix this ugliness
+        if let Some(icon_path) = &shortcut.icon_path {
+            let icon_path =
+                find_icon_path(icon_path.clone(), base_path, paths)?;
+            builder.add_shortcut_with_icon(
+                destination_directory_id,
+                Shortcut::Formatted(Formatted::from(target.to_string())),
+                &Into::<PathBuf>::into(icon_path),
+            )?;
+        } else {
+            builder.add_shortcut(
+                destination_directory_id,
+                Shortcut::Formatted(Formatted::from(target.to_string())),
+            )?;
+        }
     }
     Ok(())
+}
+
+fn find_icon_path(
+    icon_path: Utf8PathBuf,
+    base_path: &Utf8PathBuf,
+    paths: &HashMap<Utf8PathBuf, String>,
+) -> anyhow::Result<Utf8PathBuf> {
+    // If there is more than one component to the path then this must be a
+    // relative or full path so we should not randomly search for the
+    // filename in all paths.
+    if icon_path.components().collect_vec().len() > 1 {
+        return Ok(base_path.join(icon_path));
+    }
+
+    let icon_filename = icon_path
+        .file_name()
+        .unwrap_or_else(|| {
+            panic!("No filename found for icon path {icon_path:?}")
+        })
+        .to_string();
+    let files = paths
+        .keys()
+        .flat_map(|path| {
+            WalkDir::new(base_path.join(path))
+                .into_iter()
+                .filter_map(|entry| entry.ok())
+                .map(|entry| entry.path().to_path_buf())
+        })
+        .collect_vec();
+    let corrected_path = files
+        .into_iter()
+        .filter(move |path| {
+            *path.file_name().unwrap_or_default().to_string_lossy().to_string()
+                == *icon_filename.clone()
+        })
+        .exactly_one()
+        .with_context(|| {
+            format!("Error finding {} in paths {:?}", icon_path, paths.keys())
+        })?;
+    Ok(Utf8PathBuf::from_path_buf(corrected_path.clone()).unwrap_or_else(
+        |_| panic!("Path for icon {corrected_path:?} is not valid UTF-8"),
+    ))
 }
 
 fn get_directory_id_of_path(
@@ -222,23 +317,19 @@ fn get_directory_id_of_path(
 ) -> Option<DirectoryIdentifier> {
     let last_component =
         get_last_component(path.to_string_lossy().as_ref(), properties)?;
-    let directory_with_name = builder
+    if let Ok(system_folder) = SystemFolder::from_str(&last_component) {
+        // Ignore any errors creating the system_folder as it's entirely likely
+        // it's already been made
+        let _ = builder.add_directory_dao(system_folder.into());
+        return Some(system_folder.to_identifier().into());
+    }
+
+    builder
         .directory()
         .entry_with_name(&DefaultDir::Filename(
             Filename::from_str(&last_component).unwrap(),
         ))
-        .map(|d| d.directory().clone());
-    match directory_with_name {
-        Some(d) => Some(d),
-        None => {
-            if let Ok(system_folder) = SystemFolder::from_str(&last_component) {
-                builder.add_directory_dao(system_folder.into()).unwrap();
-                Some(system_folder.to_identifier().into())
-            } else {
-                None
-            }
-        }
-    }
+        .map(|d| d.directory().clone())
 }
 
 fn add_services(
@@ -354,7 +445,9 @@ fn get_last_component(
             .ok()?
             .components()
             .next_back()
-            .unwrap()
+            .unwrap_or_else(|| {
+                panic!("Path {path} doesn't have any components")
+            })
             .as_os_str()
             .to_string_lossy()
             .to_string(),

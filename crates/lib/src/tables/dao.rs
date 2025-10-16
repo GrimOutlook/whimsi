@@ -3,6 +3,7 @@ use crate::tables::directory::dao::DirectoryDao;
 use crate::tables::feature::dao::FeatureDao;
 use crate::tables::feature_components::dao::FeatureComponentsDao;
 use crate::tables::file::dao::FileDao;
+use crate::tables::icon::dao::IconDao;
 use crate::tables::lock_permissions::dao::LockPermissionsDao;
 use crate::tables::media::dao::MediaDao;
 use crate::tables::msi_file_hash::dao::MsiFileHashDao;
@@ -27,6 +28,7 @@ pub(crate) enum Dao {
     ServiceInstall(ServiceInstallDao),
     ServiceControl(ServiceControlDao),
     LockPermissions(LockPermissionsDao),
+    Icon(IconDao),
 }
 
 pub(crate) trait IsDao {

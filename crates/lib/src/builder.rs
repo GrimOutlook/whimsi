@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::fs::File;
 use std::io::Read;
 use std::io::Seek;
 use std::io::Write;
@@ -48,6 +49,8 @@ use crate::tables::file::table::FileIdentifier;
 use crate::tables::file::table::FileTable;
 use crate::tables::generic_sequence::action_identifier::ActionIdentifier;
 use crate::tables::generic_sequence::dao::GenericSequenceDao;
+use crate::tables::icon::dao::IconDao;
+use crate::tables::icon::table::IconIdentifier;
 use crate::tables::icon::table::IconTable;
 use crate::tables::id_generator_builder_list::IdGeneratorBuilderList;
 use crate::tables::install_execute_sequence::table::InstallExecuteSequenceTable;
@@ -93,6 +96,7 @@ use crate::types::column::shortcut::Shortcut;
 use crate::types::helpers::architecture::MsiArchitecture;
 use crate::types::helpers::cabinet_info::CabinetInfo;
 use crate::types::helpers::cabinets::Cabinets;
+use crate::types::helpers::icon::IconInfo;
 use crate::types::helpers::id_generator::IdGenerator;
 use crate::types::helpers::page_count::PageCount;
 use crate::types::helpers::security_flag::DocSecurity;
@@ -117,6 +121,8 @@ pub struct MsiBuilder {
     identifiers: Rc<RefCell<Vec<Identifier>>>,
 
     cabinets: Cabinets,
+    icon_information: Vec<IconInfo>,
+
     component: ComponentTable,
     directory: DirectoryTable,
     file: FileTable,
@@ -416,10 +422,10 @@ impl MsiBuilder {
         Ok(self)
     }
 
+    // TODO: Fix the duplication
     pub fn add_shortcut(
         &mut self,
         directory_id: DirectoryIdentifier,
-        name: Filename,
         target: Shortcut,
     ) -> anyhow::Result<ShortcutIdentifier> {
         let shortcut_id = self.shortcut.generate_id();
@@ -428,11 +434,60 @@ impl MsiBuilder {
         self.add_to_tables(ShortcutDao::new(
             shortcut_id.clone(),
             directory_id,
-            name,
+            Filename::from_str(&shortcut_id.to_string()).unwrap_or_else(|_| {
+                panic!(
+                    "Shortcut
+                        identifier {shortcut_id} cannot be used as a Filename"
+                )
+            }),
             component_id,
             target,
         ))?;
         Ok(shortcut_id)
+    }
+
+    pub fn add_shortcut_with_icon(
+        &mut self,
+        directory_id: DirectoryIdentifier,
+        target: Shortcut,
+        icon_path: &PathBuf,
+    ) -> anyhow::Result<ShortcutIdentifier> {
+        let icon_id = self.add_icon(icon_path)?;
+        let shortcut_id = self.shortcut.generate_id();
+        let component_id = self.component.generate_id();
+        self.add_to_default_feature(&component_id);
+        self.add_to_tables(
+            ShortcutDao::new(
+                shortcut_id.clone(),
+                directory_id,
+                Filename::from_str(&shortcut_id.to_string()).unwrap_or_else(
+                    |_| {
+                        panic!(
+                            "Shortcut
+                        identifier {shortcut_id} cannot be used as a Filename"
+                        )
+                    },
+                ),
+                component_id,
+                target,
+            )
+            .with_icon_(Some(icon_id))
+            // Since we make a new icon stream for every icon the index will
+            // always be 0
+            .with_icon_index(Some(0)),
+        )?;
+        Ok(shortcut_id)
+    }
+
+    pub fn add_icon(
+        &mut self,
+        icon_path: &PathBuf,
+    ) -> anyhow::Result<IconIdentifier> {
+        let icon_id = self.icon.generate_id();
+        self.add_to_tables(IconDao::new(icon_id.clone()));
+        self.icon_information
+            .push(IconInfo::new(icon_path.clone(), icon_id.clone()));
+        Ok(icon_id)
     }
 
     pub fn add_service_install(
@@ -579,6 +634,7 @@ impl MsiBuilder {
         // )?;
         self.write_meta_info_to_package(&mut package, meta)?;
         self.write_tables_to_package(&mut package)?;
+        self.write_icons_to_package(&mut package)?;
         self.write_cabinets_to_package(&mut package)?;
 
         info!("Finished building MSI");
@@ -661,6 +717,7 @@ impl MsiBuilder {
         self.service_install.write_to_package(package)?;
         self.lock_permissions.write_to_package(package)?;
         self.shortcut.write_to_package(package)?;
+        self.icon.write_to_package(package)?;
 
         // NOTE: Empty tables that seem to be required?
         self.signature.write_to_package(package)?;
@@ -777,11 +834,42 @@ impl MsiBuilder {
         );
         let mut writer = package
             .write_stream(&cabinet_id.to_string())
-            .context("Failed to create stream writier for package")?;
+            .context("Failed to create cabinet stream writier for package")?;
         std::io::copy(cabinet, &mut writer).with_context(|| {
             format!("Failed to copy cabinet [{cabinet_id}] to package")
         })?;
 
+        Ok(())
+    }
+
+    // Icon stream writing information can be found partially
+    // [here](https://learn.microsoft.com/en-us/windows/win32/msi/ole-limitations-on-streams) in
+    // the first limitation listed
+    pub(crate) fn write_icons_to_package<
+        F: std::io::Read + std::io::Write + std::io::Seek,
+    >(
+        &self,
+        package: &mut whimsi_msi::Package<F>,
+    ) -> anyhow::Result<()> {
+        for icon in &self.icon_information {
+            let mut icon_data = File::open(icon.path()).with_context(|| {
+                format!("Failed to open icon at path {:?}", icon.path())
+            })?;
+            let icon_id = icon.identifier().to_string();
+            // Stream name for Icons is defined
+            // [here](https://learn.microsoft.com/en-us/windows/win32/msi/ole-limitations-on-streams) in
+            // in the first limitation listed
+            let stream_name = [self.icon.name(), ".", &icon_id].concat();
+
+            let mut writer = package
+                .write_stream(&stream_name)
+                .context("Failed to create icon stream writer for package")?;
+            std::io::copy(&mut icon_data, &mut writer).with_context(|| {
+                format!(
+                    "Failed to copy icon stream data [{icon_id}] to package"
+                )
+            })?;
+        }
         Ok(())
     }
 
@@ -836,6 +924,7 @@ impl MsiBuilder {
             Dao::ServiceControl(dao) => {
                 IdGeneratorBuilderList::add(&mut self.service_control, dao)
             }
+            Dao::Icon(dao) => IdGeneratorBuilderList::add(&mut self.icon, dao),
             Dao::Property(dao) => self.property.add(dao),
             Dao::Media(dao) => self.media.add(dao),
             Dao::MsiFileHash(dao) => self.msi_file_hash.add(dao),
@@ -850,6 +939,13 @@ impl Default for MsiBuilder {
         let empty_entries = Rc::new(RefCell::new(Vec::new()));
         Self {
             meta: None,
+
+            // Non-table trackers
+            icon_information: Default::default(),
+
+            // Non-tables that need access to all or generate entity IDs.
+            identifiers: empty_entries.clone(),
+            cabinets: Cabinets::new(empty_entries.clone()),
 
             // Tables that don't have IDs for their entries.
             property: Default::default(),
@@ -868,10 +964,6 @@ impl Default for MsiBuilder {
             app_search: Default::default(),
             custom_action: Default::default(),
             lock_permissions: Default::default(),
-
-            // Non-tables that need access to all or generate entity IDs.
-            identifiers: empty_entries.clone(),
-            cabinets: Cabinets::new(empty_entries.clone()),
 
             // Tables that can generate IDs for their entries and the IDs must
             // be uniqe across the MSI.

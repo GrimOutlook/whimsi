@@ -1,0 +1,55 @@
+Msi (
+    summary: Summary (
+        subject: "PING",
+        author: "Manny",
+        comments: "Summary of PING application",
+    ),
+
+    properties: {
+        "Manufacturer": "Manny",
+        "ProgramName": "PING",
+        "ProductVersion": "0.1.0",
+        "InstallDir": "[[ProgramFilesFolder]]/[Manufacturer]/[ProgramName]/",
+    },
+
+    paths: {
+        "../../../lib/examples/reference/root_dir/": "[InstallDir]"
+    },
+
+    permissions: {
+        "[InstallDir]/data/config/options.conf": (user: "Everyone", level: ALL)
+    },
+
+    shortcuts: [
+        (
+            target: "[InstallDir]/bin/ping.exe",
+            location: "[[DesktopFolder]]",
+            // File will be searched for within the provided paths. MSI building will fail
+            // if more than one file or no file can be found with the given name. Paths on
+            // building system are also allowed.
+            icon: "icon.ico",
+            // *Optional*
+            working_directory: "[INSTALLDIR]"
+        )
+    ],
+
+    service_installs: [
+        (
+            name: "PingService",
+            description: "Description for PingService",
+            executable: "[INSTALLDIR]/bin/ping.exe",
+            start_time: AutoStart,
+            type: OwnProcess,
+            interactive: false,
+            error_control: Normal,
+            vital: true,
+            account_name: "LocalSystem",
+            control: (
+                start: Install,
+                stop: Uninstall,
+                remove: Uninstall,
+                wait: true,
+            )
+        )
+    ]
+)

@@ -43,8 +43,8 @@ fn main() -> Result<()> {
 
     info!("Running WHIMSI...");
     match args.command {
-        Commands::Build { config, wk_dir, output } => {
-            Builder::build_from_config(&config, &output)?
+        Commands::Build { config, output, relative_to } => {
+            Builder::build_from_config(&relative_to, &config, &output)?
         }
         Commands::Inspect { input_file, list_args } => {
             let output = inspector::inspect(&input_file, list_args)?;

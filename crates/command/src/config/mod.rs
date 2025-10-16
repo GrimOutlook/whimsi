@@ -6,6 +6,7 @@ use camino::Utf8PathBuf;
 use flexstr::LocalStr;
 use serde::Deserialize;
 use serde_inline_default::serde_inline_default;
+use serde_with::skip_serializing_none;
 use whimsi_lib::tables::lock_permissions::lock_permissions::LockPermissions;
 use whimsi_lib::tables::service_install::error_control::ErrorControl;
 use whimsi_lib::tables::service_install::service_type::ServiceType;
@@ -16,6 +17,7 @@ use whimsi_lib::tables::service_install::start_type::StartType;
 pub(crate) struct SummaryConfigInfo {
     pub(crate) subject: String,
     pub(crate) author: String,
+    #[serde(default)]
     pub(crate) comments: Option<String>,
 }
 
@@ -59,13 +61,23 @@ pub(crate) struct Permission {
 }
 
 #[derive(Deserialize)]
+#[serde(rename = "Shortcut")]
+pub(crate) struct ShortcutConfigInfo {
+    pub(crate) target: String,
+    pub(crate) location: String,
+    pub(crate) working_directory: Option<String>,
+    #[serde(rename = "icon")]
+    pub(crate) icon_path: Option<Utf8PathBuf>,
+}
+
+#[derive(Deserialize)]
 #[serde(rename = "Msi")]
 pub(crate) struct MsiConfig {
     pub(crate) summary: SummaryConfigInfo,
     pub(crate) properties: HashMap<String, String>,
     pub(crate) paths: HashMap<Utf8PathBuf, String>,
     pub(crate) permissions: HashMap<String, Permission>,
-    pub(crate) shortcuts: HashMap<String, String>,
+    pub(crate) shortcuts: Vec<ShortcutConfigInfo>,
     pub(crate) service_installs: Vec<ServiceInstallConfigInfo>,
 }
 

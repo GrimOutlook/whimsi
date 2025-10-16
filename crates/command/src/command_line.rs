@@ -5,6 +5,8 @@ use clap::arg;
 use flexstr::SharedStr;
 use tracing::Level;
 
+use crate::builder::PathRelativity;
+
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 #[command(propagate_version = true)]
@@ -23,8 +25,8 @@ pub(crate) enum Commands {
         config: Utf8PathBuf,
         /// The relative root to use when generating full paths from the given
         /// config.
-        #[arg(short, long)]
-        wk_dir: Option<Utf8PathBuf>,
+        #[arg(short, long, default_value = "command")]
+        relative_to: PathRelativity,
         /// Filepath to output. This should end with .msi
         #[arg(short, long)]
         output: Utf8PathBuf,

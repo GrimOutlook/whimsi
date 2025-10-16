@@ -8,6 +8,7 @@
 mod builder;
 mod command_line;
 pub mod config;
+pub mod constants;
 pub mod enums;
 /// TODO: Deal with config after getting initial functionality working. Getting
 /// bogged down bikeshedding.

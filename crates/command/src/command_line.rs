@@ -21,15 +21,16 @@ pub(crate) struct CommandLineParser {
 pub(crate) enum Commands {
     Build {
         /// Path to config to build from
-        #[arg(short, long)]
         config: Utf8PathBuf,
+        /// Filepath to output.
+        /// If this points to an existing directory, the created file will be
+        /// named [PROGRAM_NAME].msi in the directory. Otherwise the
+        /// file is created at the given path as given.
+        output: Utf8PathBuf,
         /// The relative root to use when generating full paths from the given
         /// config.
         #[arg(short, long, default_value = "command")]
         relative_to: PathRelativity,
-        /// Filepath to output. This should end with .msi
-        #[arg(short, long)]
-        output: Utf8PathBuf,
     },
     Inspect {
         /// MSI to inspect

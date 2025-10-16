@@ -32,9 +32,7 @@ fn test_config_output() {
         "build",
         "--relative-to",
         "config",
-        "--config",
         CONFIG_PATH,
-        "--output",
         output_path,
     ]);
 

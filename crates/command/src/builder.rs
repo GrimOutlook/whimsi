@@ -34,6 +34,7 @@ use crate::config::MsiConfig;
 use crate::config::Permission;
 use crate::config::ServiceInstallConfigInfo;
 use crate::config::ShortcutConfigInfo;
+use crate::constants::*;
 
 #[derive(Clone, Debug, Default, PartialEq, strum::Display, clap::ValueEnum)]
 pub(crate) enum PathRelativity {
@@ -59,6 +60,14 @@ impl Builder {
             .with_default_extension(Extensions::UNWRAP_NEWTYPES);
         let config =
             options.from_str::<MsiConfig>(&read_to_string(config_path)?)?;
+
+        let output_path = if output_path.is_dir() {
+            &output_path
+                .join(config.summary.subject.clone())
+                .with_extension(MSI_EXTENSION)
+        } else {
+            output_path
+        };
 
         let base_path = match path_relativity {
             PathRelativity::Config => config_path

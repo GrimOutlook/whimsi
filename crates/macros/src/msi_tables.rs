@@ -131,6 +131,7 @@ fn gen_tables_for_enum(
     let tokens = quote! {
         #[derive(Clone, PartialEq, strum::EnumDiscriminants, derive_more::From, derive_more::TryFrom, derive_more::TryInto, strum::Display)]
         #[strum_discriminants(name(MsiTable))]
+        #[enum_delegate::implement(PackageWriter)]
         pub enum #table_enum_name {
             #(#struct_variants)*
         }

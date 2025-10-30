@@ -96,12 +96,25 @@ fn generate_msi_table_impl(
     let dao_name = dao_from_name(target_name);
 
     quote! {
-        impl MsiTableKind for #table_name {
-            type TableValue = #dao_name;
+        impl PackageWriter for #table_name {
 
             fn name(&self) -> &'static str {
                 #target_name
             }
+
+            fn primary_key_indices(&self) -> Vec<usize> {
+                vec![#primary_key_indices]
+            }
+
+            fn columns(&self) -> Vec<msi::Column> {
+                vec![
+                    #columns
+                ]
+            }
+        }
+
+        impl DaoContainer for #table_name {
+            type Dao = #dao_name;
 
             fn entries(&self) -> &Vec<#dao_name> {
                 &self.entries
@@ -117,16 +130,6 @@ fn generate_msi_table_impl(
 
             fn is_empty(&self) -> bool {
                 self.len() == 0
-            }
-
-            fn primary_key_indices(&self) -> Vec<usize> {
-                vec![#primary_key_indices]
-            }
-
-            fn columns(&self) -> Vec<msi::Column> {
-                vec![
-                    #columns
-                ]
             }
         }
     }

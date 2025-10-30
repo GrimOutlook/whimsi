@@ -13,47 +13,10 @@ use tracing::trace;
 use crate::tables::dao::MsiDao;
 use crate::types::helpers::primary_identifier::PrimaryIdentifier;
 
-pub trait MsiTableKind {
-    type TableValue: MsiDao + PrimaryIdentifier + PartialEq;
-
-    /// Utilized when creating the MSI using the `msi` crate.
+pub trait PackageWriter: DaoContainer {
     fn name(&self) -> &'static str;
     fn columns(&self) -> Vec<msi::Column>;
-    fn entries(&self) -> &Vec<Self::TableValue>;
-    fn entries_mut(&mut self) -> &mut Vec<Self::TableValue>;
     fn primary_key_indices(&self) -> Vec<usize>;
-
-    fn add(&mut self, entry: Self::TableValue) -> anyhow::Result<()> {
-        ensure!(
-            !self.contains(&entry),
-            "Input conflicts with value already present."
-        );
-        self.entries_mut().push(entry);
-        Ok(())
-    }
-
-    fn add_all(
-        &mut self,
-        entries: Vec<Self::TableValue>,
-    ) -> anyhow::Result<()> {
-        entries
-            .into_iter()
-            .map(|entry| self.add(entry))
-            .collect::<anyhow::Result<Vec<()>>>()?;
-        Ok(())
-    }
-
-    fn is_empty(&self) -> bool {
-        self.entries().is_empty()
-    }
-
-    fn len(&self) -> usize {
-        self.entries().len()
-    }
-
-    fn contains(&self, other: &Self::TableValue) -> bool {
-        self.entries().iter().any(|entry| entry.conflicts_with(other))
-    }
 
     fn rows(&self) -> Vec<Vec<msi::Value>> {
         self.entries()
@@ -93,5 +56,41 @@ pub trait MsiTableKind {
         let query = msi::Insert::into(self.name()).rows(rows);
         package.insert_rows(query)?;
         Ok(package.flush()?)
+    }
+}
+
+pub trait DaoContainer {
+    type Dao: MsiDao + PrimaryIdentifier + PartialEq;
+
+    fn entries(&self) -> &Vec<Self::Dao>;
+    fn entries_mut(&mut self) -> &mut Vec<Self::Dao>;
+
+    fn is_empty(&self) -> bool {
+        self.entries().is_empty()
+    }
+
+    fn len(&self) -> usize {
+        self.entries().len()
+    }
+
+    fn contains(&self, other: &Self::Dao) -> bool {
+        self.entries().iter().any(|entry| entry.conflicts_with(other))
+    }
+
+    fn add(&mut self, entry: Self::Dao) -> anyhow::Result<()> {
+        ensure!(
+            !self.contains(&entry),
+            "Input conflicts with value already present."
+        );
+        self.entries_mut().push(entry);
+        Ok(())
+    }
+
+    fn add_all(&mut self, entries: Vec<Self::Dao>) -> anyhow::Result<()> {
+        entries
+            .into_iter()
+            .map(|entry| self.add(entry))
+            .collect::<anyhow::Result<Vec<()>>>()?;
+        Ok(())
     }
 }

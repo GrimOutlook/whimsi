@@ -27,7 +27,7 @@ use crate::constants::*;
 use crate::tables::AdminExecuteSequenceTable;
 use crate::tables::MsiTable;
 use crate::tables::MsiTableContainer;
-use crate::tables::builder_table::MsiTableKind;
+use crate::tables::builder_table::DaoContainer;
 use crate::tables::dao::MsiDao;
 use crate::tables::meta::MetaInformation;
 use crate::types::column::default_dir::DefaultDir;
@@ -139,9 +139,9 @@ impl MsiBuilder {
     ) -> anyhow::Result<()> {
         info!("Writing tables to package");
         for table in self.tables() {
-            // TODO: Need to make this function and all others that don't
-            // operate on an associated type to their own traits.
-            table.write_to_package(package)?
+            // TODO: Make a method to call `write_tables_to_package(package)`
+            // for all tables.
+            todo!()
         }
         debug!(
             "Wrote tables to MSI: {:?}",

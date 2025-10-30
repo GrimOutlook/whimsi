@@ -5,7 +5,8 @@ pub mod meta;
 use whimsi_macros::msi_table_list;
 
 use crate as whimsi_lib;
-use crate::tables::builder_table::MsiTableKind;
+use crate::tables::builder_table::DaoContainer;
+use crate::tables::builder_table::PackageWriter;
 use crate::tables::dao::MsiDao;
 use crate::types::column::binary::Binary;
 use crate::types::column::condition::Condition;

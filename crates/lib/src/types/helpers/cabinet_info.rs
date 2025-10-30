@@ -2,17 +2,13 @@ use std::path::PathBuf;
 
 use getset::Getters;
 
-use crate::{
-    tables::FileIdentifier,
-    types::{
-        column::identifier::{Identifier, ToIdentifier},
-        helpers::{
-            cabinets::CabinetIdentifier, primary_identifier::PrimaryIdentifier,
-        },
-    },
-};
+use crate::tables::FileIdentifier;
+use crate::types::column::identifier::Identifier;
+use crate::types::column::identifier::ToIdentifier;
+use crate::types::helpers::cabinets::CabinetIdentifier;
+use crate::types::helpers::primary_identifier::PrimaryIdentifier;
 
-#[derive(Debug, Clone, Default, Getters, PartialEq)]
+#[derive(Debug, Clone, Getters, PartialEq)]
 #[getset(get = "pub")]
 pub struct CabinetInfo {
     id: CabinetIdentifier,

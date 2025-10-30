@@ -2,6 +2,7 @@ use std::io::Read;
 use std::io::Seek;
 use std::io::Write;
 
+use ambassador::delegatable_trait;
 use anyhow::anyhow;
 use anyhow::ensure;
 use itertools::Itertools;

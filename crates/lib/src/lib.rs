@@ -21,8 +21,6 @@
 #![cfg(debug_assertions)]
 #![allow(warnings)]
 
-use types::column::identifier::Identifier;
-
 pub mod builder;
 pub mod constants;
 pub mod macros;

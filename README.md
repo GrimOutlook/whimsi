@@ -31,3 +31,42 @@ Information on how to parse the CFB stream data into MSI tables and streams.
 - [MSI Reference Material](https://learn.microsoft.com/en-us/windows/win32/msi/windows-installer-reference):
 Information on MSI table layouts, data types, and relations.
 
+## Ongoing Troubleshooting Notes
+
+
+### Corrupted Tables
+
+Using the current codebase the Directory, AdminUISequence, and
+InstallUISequence tables all give failures when trying to view in Orca
+(alongside the install failing). If I change the order of when the tables are
+written I add additional tables to that list such as the Property,
+AdminExecuteSequence.
+
+When disabling the sorting of entries before insertion it can be seen that the
+order of the properties in the command line example does not change when
+inspected using whimsi, but the table is still unreadable by Orca and `msiexec`.
+
+
+#### Theory
+I have a hypothesis that what is happening is actually a storage problem. I
+think that when the data is finally written to the MSI it's too large to fit in
+one FAT block so it must be stored over multiple. When this happens the data is
+improperly stored in some way, resulting in select tables becoming unreadable.
+
+##### Caveats
+This would require all of the tables be stored in 1 CFB stream, since all of
+the tables are extremely small it would likely be the only explanation for why
+a table would cross a section boundary
+
+#### Leads
+
+- [ ] Check if tables are stored in 1 CFB stream, or multiple.
+    - If tables are stored in multiple streams
+        - [ ] Dump the raw stream data from the working property example and
+          the broken property example (with sorting turned off) and see if the
+          data in the dump files is any different.
+- [ ] Make parsing script for 010 editor for CFB/OLE/Property Set/MSI files.
+    - Differences between the `sortingon.msi` and `sortingoff.msi` are minimal
+      when compared in 010 editor. Need to elucidate what exact meaning the
+      bytes that differentiate mean, effect, and how that information is being
+      generated.

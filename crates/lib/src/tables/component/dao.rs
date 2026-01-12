@@ -9,6 +9,7 @@ use crate::types::column::condition::Condition;
 use crate::types::column::guid::Guid;
 use crate::types::column::identifier::Identifier;
 use crate::types::column::identifier::ToIdentifier;
+use crate::types::helpers::keypath::KeyPath;
 use crate::types::helpers::to_msi_value::ToMsiOptionalValue;
 use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 
@@ -20,9 +21,7 @@ pub struct ComponentDao {
     directory: DirectoryIdentifier,
     attributes: i16,
     condition: Option<Condition>,
-    // TODO: Determine if this should be constrained: e.g make a KeyPathIdentifier and make the
-    // enum values Directory and File and maybe Registry.
-    key_path: Option<Identifier>,
+    key_path: Option<KeyPath>,
 }
 
 impl ComponentDao {
@@ -40,7 +39,7 @@ impl ComponentDao {
         }
     }
 
-    pub fn with_keypath(mut self, key_path: Identifier) -> Self {
+    pub fn with_keypath(mut self, key_path: KeyPath) -> Self {
         self.key_path = Some(key_path);
         self
     }

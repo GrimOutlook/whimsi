@@ -1,6 +1,13 @@
+use std::io::Read;
+use std::io::Write;
+
+use anyhow::Context;
+use anyhow::bail;
+use byteorder::LittleEndian;
+use byteorder::ReadBytesExt;
+use byteorder::WriteBytesExt;
+
 use crate::internal::codepage::CodePage;
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use std::io::{self, Read, Write};
 
 // ========================================================================= //
 
@@ -11,7 +18,7 @@ const MAX_STRING_REF: i32 = 0xff_ffff;
 // ========================================================================= //
 
 /// A reference to a string in the string pool.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct StringRef(i32);
 
 impl StringRef {
@@ -21,7 +28,7 @@ impl StringRef {
     pub fn read<R: Read>(
         reader: &mut R,
         long_string_refs: bool,
-    ) -> io::Result<Option<StringRef>> {
+    ) -> anyhow::Result<Option<StringRef>> {
         let mut number = reader.read_u16::<LittleEndian>()? as i32;
         if long_string_refs {
             number |= (reader.read_u8()? as i32) << 16;
@@ -35,7 +42,7 @@ impl StringRef {
         writer: &mut W,
         string_ref: Option<StringRef>,
         long_string_refs: bool,
-    ) -> io::Result<()> {
+    ) -> anyhow::Result<()> {
         let number = if let Some(StringRef(number)) = string_ref {
             debug_assert!(number > 0);
             debug_assert!(number <= MAX_STRING_REF);
@@ -49,7 +56,7 @@ impl StringRef {
         } else if number <= (u16::MAX as i32) {
             writer.write_u16::<LittleEndian>(number as u16)?;
         } else {
-            invalid_input!(
+            bail!(
                 "Cannot write {:?} with long_string_refs=false",
                 StringRef(number)
             );
@@ -85,16 +92,13 @@ pub struct StringPoolBuilder {
 impl StringPoolBuilder {
     pub fn read_from_pool<R: Read>(
         mut reader: R,
-    ) -> io::Result<StringPoolBuilder> {
+    ) -> anyhow::Result<StringPoolBuilder> {
         let codepage_id = reader.read_u32::<LittleEndian>()?;
         let long_string_refs = (codepage_id & LONG_STRING_REFS_BIT) != 0;
         let codepage_id = (codepage_id & !LONG_STRING_REFS_BIT) as i32;
         let codepage = match CodePage::from_id(codepage_id) {
             Some(codepage) => codepage,
-            None => invalid_data!(
-                "Unknown codepage for string pool ({})",
-                codepage_id
-            ),
+            None => bail!("Unknown codepage for string pool ({})", codepage_id),
         };
         let mut lengths_and_refcounts = Vec::<(u32, u16)>::new();
         while let Ok(length) = reader.read_u16::<LittleEndian>() {
@@ -115,11 +119,11 @@ impl StringPoolBuilder {
     pub fn build_from_data<R: Read>(
         self,
         mut reader: R,
-    ) -> io::Result<StringPool> {
+    ) -> anyhow::Result<StringPool> {
         let mut strings = Vec::<(String, u16)>::new();
         for (length, refcount) in self.lengths_and_refcounts {
             let mut buffer = vec![0u8; length as usize];
-            reader.read_exact(&mut buffer)?;
+            reader.read_exact(&mut buffer).context(format!("Failed to read exact number of bytes [{}] from string pool data", length))?;
             strings.push((self.codepage.decode(&buffer), refcount));
         }
         Ok(StringPool {
@@ -198,11 +202,7 @@ impl StringPool {
     #[allow(dead_code)]
     pub fn refcount(&self, string_ref: StringRef) -> u16 {
         let index = string_ref.index();
-        if index < self.strings.len() {
-            self.strings[index].1
-        } else {
-            0
-        }
+        if index < self.strings.len() { self.strings[index].1 } else { 0 }
     }
 
     /// Inserts a string into the pool, or increments its refcount if it's
@@ -214,15 +214,16 @@ impl StringPool {
         for (index, &mut (ref mut st, ref mut refcount)) in
             self.strings.iter_mut().enumerate()
         {
+            let pool_index = index as i32 + 1;
             if *refcount == 0 {
                 debug_assert_eq!(st, "");
                 *st = string;
                 *refcount = 1;
-                return StringRef((index + 1) as i32);
+                return StringRef(pool_index);
             }
             if *st == string && *refcount < u16::MAX {
                 *refcount += 1;
-                return StringRef((index + 1) as i32);
+                return StringRef(pool_index);
             }
         }
         if self.strings.len() >= u16::MAX as usize && !self.long_string_refs {
@@ -262,7 +263,7 @@ impl StringPool {
     }
 
     /// Writes to the `_StringPool` table.
-    pub fn write_pool<W: Write>(&self, mut writer: W) -> io::Result<()> {
+    pub fn write_pool<W: Write>(&self, mut writer: W) -> anyhow::Result<()> {
         let mut codepage_id = self.codepage.id() as u32;
         if self.long_string_refs {
             codepage_id |= LONG_STRING_REFS_BIT;
@@ -281,7 +282,7 @@ impl StringPool {
     }
 
     /// Writes to the `_StringData` table.
-    pub fn write_data<W: Write>(&self, mut writer: W) -> io::Result<()> {
+    pub fn write_data<W: Write>(&self, mut writer: W) -> anyhow::Result<()> {
         for (string, _) in &self.strings {
             writer.write_all(&self.codepage.encode(string.as_str()))?;
         }
@@ -293,7 +294,9 @@ impl StringPool {
 
 #[cfg(test)]
 mod tests {
-    use super::{StringPool, StringPoolBuilder, StringRef};
+    use super::StringPool;
+    use super::StringPoolBuilder;
+    use super::StringRef;
     use crate::internal::codepage::CodePage;
 
     #[test]
@@ -338,8 +341,7 @@ mod tests {
         assert_eq!(&output as &[u8], b"\x00\x00\x00");
 
         let mut output = Vec::<u8>::new();
-        StringRef::write(&mut output, Some(StringRef(0x123456)), true)
-            .unwrap();
+        StringRef::write(&mut output, Some(StringRef(0x123456)), true).unwrap();
         assert_eq!(&output as &[u8], b"\x56\x34\x12");
     }
 
@@ -460,8 +462,7 @@ mod tests {
 
         // Serialize the pool into binary format
         let mut pool_output = Vec::new();
-        pool.write_pool(&mut pool_output)
-            .expect("Failed to write string pool");
+        pool.write_pool(&mut pool_output).expect("Failed to write string pool");
 
         // Deserialize the pool header from the binary output
         let builder = StringPoolBuilder::read_from_pool(&*pool_output)

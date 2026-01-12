@@ -10,6 +10,7 @@ readme.workspace = true
 edition.workspace = true
 
 [dependencies]
+anyhow = "1.0.100"
 byteorder = "1"
 cfb = "0.11"
 encoding_rs = "0.8"

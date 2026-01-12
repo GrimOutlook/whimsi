@@ -14,7 +14,8 @@ define_specific_identifier!(registry);
 define_specific_identifier_parsing!(registry);
 define_identifier_generator!(registry);
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, getset::Getters)]
+#[getset(get = "pub")]
 pub struct RegistryDao {
     registry: RegistryIdentifier,
     root: i16,

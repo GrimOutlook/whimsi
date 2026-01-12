@@ -1,34 +1,29 @@
 use std::collections::HashMap;
-use std::default;
 use std::env;
 use std::fs::read_to_string;
-use std::path::Component;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::LazyLock;
 
-use anyhow::Context;
+use anyhow::anyhow;
 use anyhow::ensure;
 use camino::Utf8PathBuf;
 use itertools::Itertools;
 use regex::Regex;
 use ron::Options;
 use ron::extensions::Extensions;
-use ron::to_string;
 use uuid::Uuid;
-use walkdir::WalkDir;
 use whimsi_lib::builder::MsiBuilder;
 use whimsi_lib::tables::directory::directory_identifier::DirectoryIdentifier;
+use whimsi_lib::tables::file::table::FileIdentifier;
 use whimsi_lib::tables::meta::MetaInformation;
 use whimsi_lib::tables::service_control::event::Event;
 use whimsi_lib::types::column::default_dir::DefaultDir;
 use whimsi_lib::types::column::filename::Filename;
 use whimsi_lib::types::column::formatted::Formatted;
-use whimsi_lib::types::column::identifier::Identifier;
 use whimsi_lib::types::column::identifier::ToIdentifier;
 use whimsi_lib::types::column::shortcut::Shortcut;
-use whimsi_lib::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 use whimsi_lib::types::properties::system_folder::SystemFolder;
 
 use crate::config::MsiConfig;
@@ -116,13 +111,7 @@ fn builder_from_config(
     let mut builder = MsiBuilder::default().with_meta(meta);
     add_properties(&mut builder, &properties)?;
     add_paths(&mut builder, base_path, &config.paths, &properties)?;
-    add_shortcuts(
-        &mut builder,
-        base_path,
-        &config.shortcuts,
-        &properties,
-        &config.paths,
-    )?;
+    add_shortcuts(&mut builder, base_path, &config.shortcuts, &properties)?;
     add_services(&mut builder, &config.service_installs, &properties)?;
     add_permissions(&mut builder, &config.permissions, &properties)?;
 
@@ -308,7 +297,6 @@ fn add_shortcuts(
     base_path: &Utf8PathBuf,
     shortcuts: &Vec<ShortcutConfigInfo>,
     properties: &HashMap<String, String>,
-    paths: &HashMap<Utf8PathBuf, String>,
 ) -> anyhow::Result<()> {
     for shortcut in shortcuts {
         let target = &shortcut.target;
@@ -322,65 +310,14 @@ fn add_shortcuts(
             )
         });
 
-        // TODO: Fix this ugliness
-        if let Some(icon_path) = &shortcut.icon_path {
-            let icon_path =
-                find_icon_path(icon_path.clone(), base_path, paths)?;
-            builder.add_shortcut_with_icon(
-                destination_directory_id,
-                Shortcut::Formatted(Formatted::from(target.to_string())),
-                &Into::<PathBuf>::into(icon_path),
-            )?;
-        } else {
-            builder.add_shortcut(
-                destination_directory_id,
-                Shortcut::Formatted(Formatted::from(target.to_string())),
-            )?;
-        }
+        let icon_path = base_path.join(shortcut.icon_path.clone().unwrap());
+        builder.add_shortcut(
+            destination_directory_id,
+            Shortcut::Formatted(Formatted::from(target.to_string())),
+            icon_path.as_std_path(),
+        )?;
     }
     Ok(())
-}
-
-fn find_icon_path(
-    icon_path: Utf8PathBuf,
-    base_path: &Utf8PathBuf,
-    paths: &HashMap<Utf8PathBuf, String>,
-) -> anyhow::Result<Utf8PathBuf> {
-    // If there is more than one component to the path then this must be a
-    // relative or full path so we should not randomly search for the
-    // filename in all paths.
-    if icon_path.components().collect_vec().len() > 1 {
-        return Ok(base_path.join(icon_path));
-    }
-
-    let icon_filename = icon_path
-        .file_name()
-        .unwrap_or_else(|| {
-            panic!("No filename found for icon path {icon_path:?}")
-        })
-        .to_string();
-    let files = paths
-        .keys()
-        .flat_map(|path| {
-            WalkDir::new(base_path.join(path))
-                .into_iter()
-                .filter_map(|entry| entry.ok())
-                .map(|entry| entry.path().to_path_buf())
-        })
-        .collect_vec();
-    let corrected_path = files
-        .into_iter()
-        .filter(move |path| {
-            *path.file_name().unwrap_or_default().to_string_lossy().to_string()
-                == *icon_filename.clone()
-        })
-        .exactly_one()
-        .with_context(|| {
-            format!("Error finding {} in paths {:?}", icon_path, paths.keys())
-        })?;
-    Ok(Utf8PathBuf::from_path_buf(corrected_path.clone()).unwrap_or_else(
-        |_| panic!("Path for icon {corrected_path:?} is not valid UTF-8"),
-    ))
 }
 
 fn get_directory_id_of_path(
@@ -411,11 +348,18 @@ fn add_services(
     properties: &HashMap<String, String>,
 ) -> anyhow::Result<()> {
     for service in service_installs {
-        let service_id = builder.add_service_install(
+        let service_path = PathBuf::from_str(&service.executable)?;
+        let (file_id, directory_id) = get_ids_of_path(&service_path, builder, properties)
+            .ok_or(
+                anyhow!("Failed to find directory and file table entries for exeecutable path {:?}", service_path)
+            )?;
+        let service_install_id = builder.add_service_install(
             service.name.clone().into(),
             service.typ,
             service.start_time,
             service.error_control,
+            file_id,
+            directory_id,
         )?;
 
         if let Some(control) = &service.control {
@@ -460,6 +404,7 @@ fn add_services(
             }
 
             builder.add_service_control(
+                &service_install_id,
                 service.name.clone().into(),
                 event,
                 control.wait,
@@ -479,11 +424,11 @@ fn add_permissions(
             .unwrap_or_else(|| todo!("Create a real error"));
         let filename = Filename::from_str(&last_component)
             .unwrap_or_else(|_| todo!("Create a real error"));
-        let (lock_object, table) = if let Some(file) =
+        let lock_object = if let Some(file) =
             builder.file().entry_with_name(&filename)
         {
-            (file.file().clone().into(), "File")
-        } else if let Some(directory) =
+            file.file().clone().into()
+        } else if let Some(_directory) =
             builder.directory().entry_with_name(&filename.into())
         {
             // TODO: Add support for directory permissions. These can only be
@@ -531,4 +476,25 @@ fn get_last_component(
     .unwrap()
     .to_string();
     Some(last_component)
+}
+
+fn get_ids_of_path(
+    service_path: &Path,
+    builder: &mut MsiBuilder,
+    properties: &HashMap<String, String>,
+) -> Option<(FileIdentifier, DirectoryIdentifier)> {
+    let parent_dir = service_path.parent()?;
+    let directory_id =
+        get_directory_id_of_path(parent_dir, builder, properties)?;
+    let executable_file = service_path.file_name()?;
+    let file_id = builder
+        .file_entries_with_directory_id(&directory_id)
+        .iter()
+        .find(|file_dao| {
+            file_dao.name().to_string() == executable_file.to_string_lossy()
+        })?
+        .file()
+        .clone();
+
+    Some((file_id, directory_id))
 }

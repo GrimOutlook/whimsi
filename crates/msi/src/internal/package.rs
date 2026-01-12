@@ -1,23 +1,40 @@
+use std::borrow::Borrow;
+use std::collections::BTreeMap;
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::collections::btree_map;
+use std::io::Read;
+use std::io::Seek;
+use std::io::Write;
+use std::rc::Rc;
+
+use anyhow::Context;
+use anyhow::bail;
+use cfb;
+use uuid::Uuid;
+
 use crate::internal::category::Category;
 use crate::internal::codepage::CodePage;
 use crate::internal::column::Column;
 use crate::internal::expr::Expr;
-use crate::internal::query::{Delete, Insert, Select, Update};
-use crate::internal::stream::{StreamReader, StreamWriter, Streams};
-use crate::internal::streamname::{
-    self, DIGITAL_SIGNATURE_STREAM_NAME, MSI_DIGITAL_SIGNATURE_EX_STREAM_NAME,
-    SUMMARY_INFO_STREAM_NAME,
-};
-use crate::internal::stringpool::{StringPool, StringPoolBuilder};
+use crate::internal::query::Delete;
+use crate::internal::query::Insert;
+use crate::internal::query::Select;
+use crate::internal::query::Update;
+use crate::internal::stream::StreamReader;
+use crate::internal::stream::StreamWriter;
+use crate::internal::stream::Streams;
+use crate::internal::streamname::DIGITAL_SIGNATURE_STREAM_NAME;
+use crate::internal::streamname::MSI_DIGITAL_SIGNATURE_EX_STREAM_NAME;
+use crate::internal::streamname::SUMMARY_INFO_STREAM_NAME;
+use crate::internal::streamname::{self};
+use crate::internal::stringpool::StringPool;
+use crate::internal::stringpool::StringPoolBuilder;
 use crate::internal::summary::SummaryInfo;
-use crate::internal::table::{Rows, Table};
-use crate::internal::value::{Value, ValueRef};
-use cfb;
-use std::borrow::Borrow;
-use std::collections::{BTreeMap, HashMap, HashSet, btree_map};
-use std::io::{self, Read, Seek, Write};
-use std::rc::Rc;
-use uuid::Uuid;
+use crate::internal::table::Rows;
+use crate::internal::table::Table;
+use crate::internal::value::Value;
+use crate::internal::value::ValueRef;
 
 // ========================================================================= //
 
@@ -147,8 +164,15 @@ impl PackageType {
 /// # Examples
 ///
 /// ```
-/// use whimsi_msi::{Column, Expr, Insert, Package, PackageType, Select, Value};
 /// use std::io::Cursor;
+///
+/// use whimsi_msi::Column;
+/// use whimsi_msi::Expr;
+/// use whimsi_msi::Insert;
+/// use whimsi_msi::Package;
+/// use whimsi_msi::PackageType;
+/// use whimsi_msi::Select;
+/// use whimsi_msi::Value;
 ///
 /// // Create an in-memory package using a Cursor:
 /// let cursor = Cursor::new(Vec::new());
@@ -179,8 +203,10 @@ impl PackageType {
 /// assert_eq!(rows.len(), 1);
 /// let row = rows.next().unwrap();
 /// assert_eq!(row["Property"], Value::Str("MoreMagic".to_string()));
-/// assert_eq!(row["Value"],
-///            Value::Str("Whether magic should be maximized".to_string()));
+/// assert_eq!(
+///     row["Value"],
+///     Value::Str("Whether magic should be maximized".to_string())
+/// );
 /// ```
 pub struct Package<F> {
     // The comp field is always `Some`, unless we are about to destroy the
@@ -255,7 +281,7 @@ impl<F> Package<F> {
     }
 
     /// Consumes the `Package` object, returning the underlying reader/writer.
-    pub fn into_inner(mut self) -> io::Result<F> {
+    pub fn into_inner(mut self) -> anyhow::Result<F> {
         if let Some(finisher) = self.finisher.take() {
             finisher.finish(&mut self)?;
         }
@@ -275,17 +301,16 @@ impl<F: Read + Seek> Package<F> {
     /// Opens an existing MSI file, using the underlying reader.  If the
     /// underlying reader also supports the `Write` trait, then the `Package`
     /// object will be writable as well.
-    pub fn open(inner: F) -> io::Result<Package<F>> {
+    pub fn open(inner: F) -> anyhow::Result<Package<F>> {
         let mut comp = cfb::CompoundFile::open_strict(inner)?;
         let package_type = {
             let root_entry = comp.root_entry();
             let clsid = root_entry.clsid();
             match PackageType::from_clsid(clsid) {
                 Some(ptype) => ptype,
-                None => invalid_data!(
-                    "Unrecognized package CLSID ({})",
-                    clsid.hyphenated()
-                ),
+                None => {
+                    bail!("Unrecognized package CLSID ({})", clsid.hyphenated())
+                }
             }
         };
         let summary_info =
@@ -293,12 +318,19 @@ impl<F: Read + Seek> Package<F> {
         let string_pool = {
             let builder = {
                 let name = streamname::encode(STRING_POOL_TABLE_NAME, true);
-                let stream = comp.open_stream(name)?;
-                StringPoolBuilder::read_from_pool(stream)?
+                let stream = comp.open_stream(&name).with_context(|| {
+                    format!("Failed to read stream [{}] from MSI", name)
+                })?;
+                StringPoolBuilder::read_from_pool(stream)
+                    .context("Failed to read stringpool from MSI")?
             };
             let name = streamname::encode(STRING_DATA_TABLE_NAME, true);
-            let stream = comp.open_stream(name)?;
-            builder.build_from_data(stream)?
+            let stream = comp.open_stream(&name).with_context(|| {
+                format!("Failed to read stream [{}] from MSI", name)
+            })?;
+            builder
+                .build_from_data(stream)
+                .context("Failed to build stringpool from MSI")?
         };
         let mut all_tables = BTreeMap::<String, Rc<Table>>::new();
         // Read in _Tables table:
@@ -316,7 +348,7 @@ impl<F: Read + Seek> Package<F> {
                 for row in rows {
                     let table_name = row[0].as_str().unwrap().to_string();
                     if names.contains(&table_name) {
-                        invalid_data!(
+                        bail!(
                             "Repeated key in {:?} table: {:?}",
                             TABLES_TABLE_NAME,
                             table_name
@@ -349,7 +381,7 @@ impl<F: Read + Seek> Package<F> {
                     if let Some(cols) = columns_map.get_mut(table_name) {
                         let col_index = row[1].as_int().unwrap();
                         if cols.contains_key(&col_index) {
-                            invalid_data!(
+                            bail!(
                                 "Repeated key in {:?} table: {:?}",
                                 COLUMNS_TABLE_NAME,
                                 (table_name, col_index)
@@ -357,9 +389,13 @@ impl<F: Read + Seek> Package<F> {
                         }
                         let col_name = row[2].as_str().unwrap().to_string();
                         let type_bits = row[3].as_int().unwrap();
+                        // println!(
+                        //     "Table [{table_name}] column [{col_name}] at
+                        // index [{col_index}] has type bitfield value
+                        // [{type_bits:X}]" );
                         cols.insert(col_index, (col_name, type_bits));
                     } else {
-                        invalid_data!(
+                        bail!(
                             "_Columns mentions table {:?}, which isn't in \
                              _Tables",
                             table_name
@@ -392,7 +428,7 @@ impl<F: Read + Seek> Package<F> {
                         .to_string();
                     let key = (table_name, column_name);
                     if validation_map.contains_key(&key) {
-                        invalid_data!(
+                        bail!(
                             "Repeated key in {:?} table: {:?}",
                             VALIDATION_TABLE_NAME,
                             key
@@ -405,13 +441,13 @@ impl<F: Read + Seek> Package<F> {
         // Construct Table objects from column/validation data:
         for (table_name, column_specs) in columns_map {
             if column_specs.is_empty() {
-                invalid_data!("No columns found for table {:?}", table_name);
+                bail!("No columns found for table {:?}", table_name);
             }
             let num_columns = column_specs.len() as i32;
             if column_specs.keys().next() != Some(&1)
                 || column_specs.keys().next_back() != Some(&num_columns)
             {
-                invalid_data!(
+                bail!(
                     "Table {:?} does not have a complete set of columns",
                     table_name
                 );
@@ -478,7 +514,7 @@ impl<F: Read + Seek> Package<F> {
     /// Attempts to execute a select query.  Returns an error if the query
     /// fails (e.g. due to the column names being incorrect or the table(s) not
     /// existing).
-    pub fn select_rows(&mut self, query: Select) -> io::Result<Rows<'_>> {
+    pub fn select_rows(&mut self, query: Select) -> anyhow::Result<Rows<'_>> {
         query.exec(self.comp.as_mut().unwrap(), &self.string_pool, &self.tables)
     }
 
@@ -486,18 +522,19 @@ impl<F: Read + Seek> Package<F> {
     pub fn read_stream(
         &mut self,
         stream_name: &str,
-    ) -> io::Result<StreamReader<F>> {
+    ) -> anyhow::Result<StreamReader<F>> {
         if !streamname::is_valid(stream_name, false) {
-            invalid_input!("{:?} is not a valid stream name", stream_name);
+            bail!("{:?} is not a valid stream name", stream_name);
         }
         let encoded_name = streamname::encode(stream_name, false);
         if !self.comp().is_stream(&encoded_name) {
-            not_found!("Stream {:?} does not exist", stream_name);
+            bail!("Stream {:?} does not exist", stream_name);
         }
         Ok(StreamReader::new(self.comp_mut().open_stream(&encoded_name)?))
     }
 
-    // TODO: pub fn has_valid_digital_signature(&mut self) -> io::Result<bool>
+    // TODO: pub fn has_valid_digital_signature(&mut self) ->
+    // anyhow::Result<bool>
 }
 
 impl<F: Read + Write + Seek> Package<F> {
@@ -506,7 +543,7 @@ impl<F: Read + Write + Seek> Package<F> {
     pub fn create(
         package_type: PackageType,
         inner: F,
-    ) -> io::Result<Package<F>> {
+    ) -> anyhow::Result<Package<F>> {
         let mut comp =
             cfb::CompoundFile::create_with_version(cfb::Version::V3, inner)?;
         comp.set_storage_clsid("/", package_type.clsid())?;
@@ -560,7 +597,7 @@ impl<F: Read + Write + Seek> Package<F> {
         &mut self,
         table_name: S,
         columns: Vec<Column>,
-    ) -> io::Result<()> {
+    ) -> anyhow::Result<()> {
         self.create_table_with_name(table_name.into(), columns)
     }
 
@@ -568,21 +605,21 @@ impl<F: Read + Write + Seek> Package<F> {
         &mut self,
         table_name: String,
         columns: Vec<Column>,
-    ) -> io::Result<()> {
+    ) -> anyhow::Result<()> {
         if !Table::is_valid_name(&table_name) {
-            invalid_input!("{:?} is not a valid table name", table_name);
+            bail!("{:?} is not a valid table name", table_name);
         }
         if columns.is_empty() {
-            invalid_input!("Cannot create a table with no columns");
+            bail!("Cannot create a table with no columns");
         }
         if columns.len() > MAX_NUM_TABLE_COLUMNS {
-            invalid_input!(
+            bail!(
                 "Cannot create a table with more than {} columns",
                 MAX_NUM_TABLE_COLUMNS
             );
         }
         if !columns.iter().any(Column::is_primary_key) {
-            invalid_input!(
+            bail!(
                 "Cannot create a table without at least one primary key column"
             );
         }
@@ -591,10 +628,10 @@ impl<F: Read + Write + Seek> Package<F> {
             for column in &columns {
                 let name = column.name();
                 if !Column::is_valid_name(name) {
-                    invalid_input!("{:?} is not a valid column name", name);
+                    bail!("{:?} is not a valid column name", name);
                 }
                 if column_names.contains(name) {
-                    invalid_input!(
+                    bail!(
                         "Cannot create a table with multiple columns with the \
                          same name ({:?})",
                         name
@@ -604,7 +641,7 @@ impl<F: Read + Write + Seek> Package<F> {
             }
         }
         if self.tables.contains_key(&table_name) {
-            already_exists!("Table {:?} already exists", table_name);
+            bail!("Table {:?} already exists", table_name);
         }
         self.insert_rows(
             Insert::into(COLUMNS_TABLE_NAME).rows(
@@ -678,15 +715,15 @@ impl<F: Read + Write + Seek> Package<F> {
 
     /// Removes an existing database table.  Returns an error without modifying
     /// the database if the table name is invalid, or if no such table exists.
-    pub fn drop_table(&mut self, table_name: &str) -> io::Result<()> {
+    pub fn drop_table(&mut self, table_name: &str) -> anyhow::Result<()> {
         if is_reserved_table_name(table_name) {
-            invalid_input!("Cannot drop special {:?} table", table_name);
+            bail!("Cannot drop special {:?} table", table_name);
         }
         if !Table::is_valid_name(table_name) {
-            invalid_input!("{:?} is not a valid table name", table_name);
+            bail!("{:?} is not a valid table name", table_name);
         }
         if !self.tables.contains_key(table_name) {
-            not_found!("Table {:?} does not exist", table_name);
+            bail!("Table {:?} does not exist", table_name);
         }
         let stream_name = self.tables.get(table_name).unwrap().stream_name();
         if self.comp().exists(&stream_name) {
@@ -710,7 +747,7 @@ impl<F: Read + Write + Seek> Package<F> {
 
     /// Attempts to execute a delete query.  Returns an error without modifying
     /// the database if the query fails (e.g. due to the table not existing).
-    pub fn delete_rows(&mut self, query: Delete) -> io::Result<()> {
+    pub fn delete_rows(&mut self, query: Delete) -> anyhow::Result<()> {
         self.set_finisher();
         query.exec(
             self.comp.as_mut().unwrap(),
@@ -722,7 +759,7 @@ impl<F: Read + Write + Seek> Package<F> {
     /// Attempts to execute an insert query.  Returns an error without
     /// modifying the database if the query fails (e.g. due to values being
     /// invalid, or keys not being unique, or the table not existing).
-    pub fn insert_rows(&mut self, query: Insert) -> io::Result<()> {
+    pub fn insert_rows(&mut self, query: Insert) -> anyhow::Result<()> {
         self.set_finisher();
         query.exec(
             self.comp.as_mut().unwrap(),
@@ -734,7 +771,7 @@ impl<F: Read + Write + Seek> Package<F> {
     /// Attempts to execute an update query.  Returns an error without
     /// modifying the database if the query fails (e.g. due to values being
     /// invalid, or column names being incorrect, or the table not existing).
-    pub fn update_rows(&mut self, query: Update) -> io::Result<()> {
+    pub fn update_rows(&mut self, query: Update) -> anyhow::Result<()> {
         self.set_finisher();
         query.exec(
             self.comp.as_mut().unwrap(),
@@ -747,32 +784,34 @@ impl<F: Read + Write + Seek> Package<F> {
     pub fn write_stream(
         &mut self,
         stream_name: &str,
-    ) -> io::Result<StreamWriter<F>> {
+    ) -> anyhow::Result<StreamWriter<F>> {
         if !streamname::is_valid(stream_name, false) {
-            invalid_input!("{:?} is not a valid stream name", stream_name);
+            bail!("{:?} is not a valid stream name", stream_name);
         }
         let encoded_name = streamname::encode(stream_name, false);
         Ok(StreamWriter::new(self.comp_mut().create_stream(&encoded_name)?))
     }
 
     /// Removes an existing binary stream from the package.
-    pub fn remove_stream(&mut self, stream_name: &str) -> io::Result<()> {
+    pub fn remove_stream(&mut self, stream_name: &str) -> anyhow::Result<()> {
         if !streamname::is_valid(stream_name, false) {
-            invalid_input!("{:?} is not a valid stream name", stream_name);
+            bail!("{:?} is not a valid stream name", stream_name);
         }
         let encoded_name = streamname::encode(stream_name, false);
         if !self.comp().is_stream(&encoded_name) {
-            not_found!("Stream {:?} does not exist", stream_name);
+            bail!("Stream {:?} does not exist", stream_name);
         }
-        self.comp_mut().remove_stream(&encoded_name)
+        self.comp_mut()
+            .remove_stream(&encoded_name)
+            .with_context(|| format!("Failed to remove stream {encoded_name}"))
     }
 
-    // TODO: pub fn add_digital_signature(&mut self, ...) -> io::Result<()>
+    // TODO: pub fn add_digital_signature(&mut self, ...) -> anyhow::Result<()>
 
     /// Removes any existing digital signature from the package.  This can be
     /// useful if you need to modify a signed package (which will invalidate
     /// the signature).
-    pub fn remove_digital_signature(&mut self) -> io::Result<()> {
+    pub fn remove_digital_signature(&mut self) -> anyhow::Result<()> {
         if self.comp().is_stream(DIGITAL_SIGNATURE_STREAM_NAME) {
             self.comp_mut().remove_stream(DIGITAL_SIGNATURE_STREAM_NAME)?;
         }
@@ -784,11 +823,11 @@ impl<F: Read + Write + Seek> Package<F> {
     }
 
     /// Flushes any buffered changes to the underlying writer.
-    pub fn flush(&mut self) -> io::Result<()> {
+    pub fn flush(&mut self) -> anyhow::Result<()> {
         if let Some(finisher) = self.finisher.take() {
             finisher.finish(self)?;
         }
-        self.comp_mut().flush()
+        self.comp_mut().flush().context("Failed to flush package")
     }
 
     fn set_finisher(&mut self) {
@@ -834,13 +873,13 @@ impl<'a> ExactSizeIterator for Tables<'a> {}
 // ========================================================================= //
 
 trait Finish<F> {
-    fn finish(&self, package: &mut Package<F>) -> io::Result<()>;
+    fn finish(&self, package: &mut Package<F>) -> anyhow::Result<()>;
 }
 
 struct FinishImpl {}
 
 impl<F: Read + Write + Seek> Finish<F> for FinishImpl {
-    fn finish(&self, package: &mut Package<F>) -> io::Result<()> {
+    fn finish(&self, package: &mut Package<F>) -> anyhow::Result<()> {
         if package.is_summary_info_modified {
             let stream = package
                 .comp
@@ -873,13 +912,17 @@ impl<F: Read + Write + Seek> Finish<F> for FinishImpl {
 
 #[cfg(test)]
 mod tests {
-    use super::{Package, PackageType};
+    use std::io::Cursor;
+
+    use super::Package;
+    use super::PackageType;
     use crate::internal::codepage::CodePage;
     use crate::internal::column::Column;
     use crate::internal::expr::Expr;
-    use crate::internal::query::{Insert, Select, Update};
+    use crate::internal::query::Insert;
+    use crate::internal::query::Select;
+    use crate::internal::query::Update;
     use crate::internal::value::Value;
-    use std::io::Cursor;
 
     #[test]
     fn set_database_codepage() {

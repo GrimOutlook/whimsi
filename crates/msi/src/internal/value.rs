@@ -1,8 +1,11 @@
-use crate::internal::language::Language;
-use crate::internal::stringpool::{StringPool, StringRef};
 use std::convert::From;
 use std::fmt;
+
 use uuid::Uuid;
+
+use crate::internal::language::Language;
+use crate::internal::stringpool::StringPool;
+use crate::internal::stringpool::StringRef;
 
 // ========================================================================= //
 
@@ -15,6 +18,8 @@ pub enum Value {
     Int(i32),
     /// A string value.
     Str(String),
+    /// A binary stream
+    Binary,
 }
 
 impl Value {
@@ -34,9 +39,8 @@ impl Value {
     #[must_use]
     pub fn as_int(&self) -> Option<i32> {
         match *self {
-            Value::Null => None,
             Value::Int(number) => Some(number),
-            Value::Str(_) => None,
+            _ => None,
         }
     }
 
@@ -50,9 +54,8 @@ impl Value {
     #[must_use]
     pub fn as_str(&self) -> Option<&str> {
         match *self {
-            Value::Null => None,
-            Value::Int(_) => None,
             Value::Str(ref string) => Some(string.as_str()),
+            _ => None,
         }
     }
 
@@ -65,9 +68,9 @@ impl Value {
     /// empty string; returns true for all other values.
     pub(crate) fn to_bool(&self) -> bool {
         match *self {
-            Value::Null => false,
             Value::Int(number) => number != 0,
             Value::Str(ref string) => !string.is_empty(),
+            _ => false,
         }
     }
 }
@@ -78,6 +81,7 @@ impl fmt::Display for Value {
             Value::Null => "NULL".fmt(formatter),
             Value::Int(number) => number.fmt(formatter),
             Value::Str(ref string) => format!("{string:?}").fmt(formatter),
+            Value::Binary => "BINARY_STREAM".fmt(formatter),
         }
     }
 }
@@ -157,6 +161,8 @@ pub enum ValueRef {
     Int(i32),
     /// A string value.
     Str(StringRef),
+    /// A binary stream
+    Binary,
 }
 
 impl ValueRef {
@@ -165,6 +171,7 @@ impl ValueRef {
     pub fn create(value: Value, string_pool: &mut StringPool) -> ValueRef {
         match value {
             Value::Null => ValueRef::Null,
+            Value::Binary => ValueRef::Binary,
             Value::Int(number) => ValueRef::Int(number),
             Value::Str(string) => ValueRef::Str(string_pool.incref(string)),
         }
@@ -173,8 +180,8 @@ impl ValueRef {
     /// Removes the reference from the string pool (if is a string reference).
     pub fn remove(self, string_pool: &mut StringPool) {
         match self {
-            ValueRef::Null | ValueRef::Int(_) => {}
             ValueRef::Str(string_ref) => string_pool.decref(string_ref),
+            ValueRef::Null | ValueRef::Int(_) | ValueRef::Binary => {}
         }
     }
 
@@ -186,19 +193,33 @@ impl ValueRef {
             ValueRef::Str(string_ref) => {
                 Value::Str(string_pool.get(string_ref).to_string())
             }
+            ValueRef::Binary => Value::Binary,
         }
     }
 }
 
 // ========================================================================= //
 
+// Values in the exact form they will be written to the table stream
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd)]
+pub(crate) enum TableValue {
+    Binary,
+    Int16(i16),
+    Int32(i32),
+    Str(Option<StringRef>),
+}
+
+// ========================================================================= //
+
 #[cfg(test)]
 mod tests {
-    use super::{Value, ValueRef};
+    use uuid::Uuid;
+
+    use super::Value;
+    use super::ValueRef;
     use crate::internal::codepage::CodePage;
     use crate::internal::language::Language;
     use crate::internal::stringpool::StringPool;
-    use uuid::Uuid;
 
     #[test]
     fn format_value() {

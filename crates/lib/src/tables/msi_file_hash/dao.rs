@@ -13,7 +13,8 @@ use crate::tables::file::{self};
 use crate::types::column::identifier::Identifier;
 use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, getset::Getters)]
+#[getset(get = "pub")]
 pub struct MsiFileHashDao {
     file: FileIdentifier,
     options: i16,
@@ -67,7 +68,8 @@ impl MsiFileHashDao {
         })
     }
 
-    /// This implementation is shamelessly stolen from `msitools` in `utils.vala`.
+    /// This implementation is shamelessly stolen from `msitools` in
+    /// `utils.vala`.
     ///
     /// https://gitlab.gnome.org/GNOME/msitools/-/blob/master/tools/wixl/util.vala?ref_type=heads#L151
     fn get_msi_file_hash_parts(

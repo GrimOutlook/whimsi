@@ -29,7 +29,7 @@ pub(crate) enum Commands {
         output: Utf8PathBuf,
         /// The relative root to use when generating full paths from the given
         /// config.
-        #[arg(short, long, default_value = "command")]
+        #[arg(short, long, default_value = "config")]
         relative_to: PathRelativity,
     },
     Inspect {

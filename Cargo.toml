@@ -1,15 +1,15 @@
 [workspace]
+resolver = "3"
 members = ["crates/*"]
 
 [workspace.package]
 version = "0.1.0"
 authors = ["Dominic J Grimaldi <self@grimoutlook.dev>"]
-repository = "https://github.com/GrimOutlook/whimsi"
-keywords = ["msi", "windows", "installer", "package"]
-license = "MIT"
-readme = "README.md"
 edition = "2024"
-
+readme = "README.md"
+repository = "https://github.com/GrimOutlook/whimsi"
+license = "MIT"
+keywords = ["installer", "msi", "package", "windows"]
 
 [profile.release]
 lints = "deny"

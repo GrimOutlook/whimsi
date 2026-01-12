@@ -4,9 +4,9 @@ use std::fmt;
 use std::io::Read;
 use std::io::Seek;
 use std::io::Write;
-use std::io::{self};
 use std::rc::Rc;
 
+use anyhow::bail;
 use cfb;
 
 use crate::internal::expr::Expr;
@@ -50,19 +50,19 @@ impl Delete {
         comp: &mut cfb::CompoundFile<F>,
         string_pool: &mut StringPool,
         tables: &BTreeMap<String, Rc<Table>>,
-    ) -> io::Result<()>
+    ) -> anyhow::Result<()>
     where
         F: Read + Write + Seek,
     {
         let table = match tables.get(&self.table_name) {
             Some(table) => table,
-            None => not_found!("Table {:?} does not exist", self.table_name),
+            None => bail!("Table {:?} does not exist", self.table_name),
         };
         // Validate the condition.
         if let Some(ref expr) = self.condition {
             for column_name in expr.column_names() {
                 if !table.has_column(column_name) {
-                    invalid_input!(
+                    bail!(
                         "Table {:?} has no column named {:?}",
                         self.table_name,
                         column_name
@@ -153,18 +153,18 @@ impl Insert {
         comp: &mut cfb::CompoundFile<F>,
         string_pool: &mut StringPool,
         tables: &BTreeMap<String, Rc<Table>>,
-    ) -> io::Result<()>
+    ) -> anyhow::Result<()>
     where
         F: Read + Write + Seek,
     {
         let table = match tables.get(&self.table_name) {
             Some(table) => table,
-            None => not_found!("Table {:?} does not exist", self.table_name),
+            None => bail!("Table {:?} does not exist", self.table_name),
         };
         // Validate the new rows.
         for values in &self.new_rows {
             if values.len() != table.columns().len() {
-                invalid_input!(
+                bail!(
                     "Table {:?} has {} columns, but a row with {} values was \
                      provided",
                     self.table_name,
@@ -174,11 +174,12 @@ impl Insert {
             }
             for (column, value) in table.columns().iter().zip(values.iter()) {
                 if !column.is_valid_value(value) {
-                    invalid_input!(
-                        "{:?} is not a valid value for column {:?} of type {:?}",
+                    bail!(
+                        "{:?} is not a valid value for column {:?} of type {:?} in table {}",
                         value,
                         column.name(),
                         column.coltype(),
+                        self.table_name,
                     );
                 }
                 // TODO: Validate foreign keys.
@@ -196,7 +197,7 @@ impl Insert {
                     .map(|&index| row[index].to_value(string_pool))
                     .collect();
                 if rows_map.contains_key(&keys) {
-                    invalid_data!(
+                    bail!(
                         "Malformed table {:?} contains multiple rows with \
                          key {:?}",
                         self.table_name,
@@ -215,17 +216,14 @@ impl Insert {
                 .map(|&index| values[index].clone())
                 .collect();
             if rows_map.contains_key(&keys) {
-                already_exists!(
+                bail!(
                     "Table {:?} already contains a row with key {:?}",
                     self.table_name,
                     keys
                 );
             }
             if new_keys_set.contains(&keys) {
-                invalid_input!(
-                    "Cannot insert multiple rows with key {:?}",
-                    keys
-                );
+                bail!("Cannot insert multiple rows with key {:?}", keys);
             }
             new_keys_set.insert(keys);
         }
@@ -293,7 +291,7 @@ impl Join {
         comp: &mut cfb::CompoundFile<F>,
         string_pool: &'a StringPool,
         tables: &BTreeMap<String, Rc<Table>>,
-    ) -> io::Result<Rows<'a>>
+    ) -> anyhow::Result<Rows<'a>>
     where
         F: Read + Seek,
     {
@@ -302,7 +300,7 @@ impl Join {
                 let table = match tables.get(&table_name) {
                     Some(table) => table,
                     None => {
-                        not_found!("Table {:?} does not exist", table_name)
+                        bail!("Table {:?} does not exist", table_name)
                     }
                 };
                 let stream_name = table.stream_name();
@@ -508,7 +506,7 @@ impl Select {
         comp: &mut cfb::CompoundFile<F>,
         string_pool: &'a StringPool,
         tables: &BTreeMap<String, Rc<Table>>,
-    ) -> io::Result<Rows<'a>>
+    ) -> anyhow::Result<Rows<'a>>
     where
         F: Read + Seek,
     {
@@ -522,7 +520,7 @@ impl Select {
             match table.index_for_column_name(column_name.as_str()) {
                 Some(index) => column_indices.push(index),
                 None => {
-                    invalid_input!(
+                    bail!(
                         "Table {:?} has no column named {:?}",
                         table.name(),
                         column_name
@@ -534,7 +532,7 @@ impl Select {
         if let Some(ref expr) = self.condition {
             for column_name in expr.column_names() {
                 if !table.has_column(column_name) {
-                    invalid_input!(
+                    bail!(
                         "Table {:?} has no column named {:?}",
                         table.name(),
                         column_name
@@ -575,10 +573,11 @@ impl Select {
         &self,
         formatter: &mut fmt::Formatter,
     ) -> Result<(), fmt::Error> {
-        if self.column_names.is_empty() && self.condition.is_none() {
-            if let Join::Table(ref name) = self.from {
-                return formatter.write_str(name.as_str());
-            }
+        if self.column_names.is_empty()
+            && self.condition.is_none()
+            && let Join::Table(ref name) = self.from
+        {
+            return formatter.write_str(name.as_str());
         }
         formatter.write_str("(")?;
         fmt::Display::fmt(self, formatter)?;
@@ -662,18 +661,18 @@ impl Update {
         comp: &mut cfb::CompoundFile<F>,
         string_pool: &mut StringPool,
         tables: &BTreeMap<String, Rc<Table>>,
-    ) -> io::Result<()>
+    ) -> anyhow::Result<()>
     where
         F: Read + Write + Seek,
     {
         let table = match tables.get(&self.table_name) {
             Some(table) => table,
-            None => not_found!("Table {:?} does not exist", self.table_name),
+            None => bail!("Table {:?} does not exist", self.table_name),
         };
         // Validate the updates.
         for (column_name, value) in &self.updates {
             if !table.has_column(column_name.as_str()) {
-                invalid_input!(
+                bail!(
                     "Table {:?} has no column named {:?}",
                     self.table_name,
                     column_name
@@ -681,7 +680,7 @@ impl Update {
             }
             let column = table.get_column(column_name).unwrap();
             if !column.is_valid_value(value) {
-                invalid_input!(
+                bail!(
                     "{} is not a valid value for column {:?}",
                     value,
                     column_name
@@ -693,7 +692,7 @@ impl Update {
         if let Some(ref expr) = self.condition {
             for column_name in expr.column_names() {
                 if !table.has_column(column_name) {
-                    invalid_input!(
+                    bail!(
                         "Table {:?} has no column named {:?}",
                         self.table_name,
                         column_name

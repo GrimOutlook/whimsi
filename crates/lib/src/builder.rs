@@ -1,35 +1,27 @@
 use std::cell::RefCell;
 use std::fs::File;
-use std::io::Read;
 use std::io::Seek;
-use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
+use std::sync::LazyLock;
 
 use anyhow::Context;
+use anyhow::anyhow;
 use anyhow::bail;
 use getset::Getters;
 use getset::Setters;
-use getset::WithSetters;
 use itertools::Itertools;
-use once_cell::sync::OnceCell;
-use once_cell::unsync::Lazy;
-use rand::distr::Alphanumeric;
-use rand::distr::SampleString;
+use regex::Regex;
 use tracing::debug;
 use tracing::info;
 use uuid::Uuid;
-use whimsi_msi::Insert;
-use whimsi_msi::Value;
 
-use crate::constants::*;
 use crate::tables::admin_execute_sequence::table::AdminExecuteSequenceTable;
 use crate::tables::admin_ui_sequence::table::AdminUiSequenceTable;
 use crate::tables::advt_execute_sequence::table::AdvtExecuteSequenceTable;
 use crate::tables::app_search::table::AppSearchTable;
-use crate::tables::binary::table::BinaryTable;
 use crate::tables::builder_list::MsiBuilderList;
 use crate::tables::builder_table::MsiBuilderTable;
 use crate::tables::component::dao::ComponentDao;
@@ -47,8 +39,6 @@ use crate::tables::feature_components::table::FeatureComponentsTable;
 use crate::tables::file::dao::FileDao;
 use crate::tables::file::table::FileIdentifier;
 use crate::tables::file::table::FileTable;
-use crate::tables::generic_sequence::action_identifier::ActionIdentifier;
-use crate::tables::generic_sequence::dao::GenericSequenceDao;
 use crate::tables::icon::dao::IconDao;
 use crate::tables::icon::table::IconIdentifier;
 use crate::tables::icon::table::IconTable;
@@ -61,7 +51,6 @@ use crate::tables::lock_permissions::lock_object::LockObject;
 use crate::tables::lock_permissions::lock_permissions::LockPermissions;
 use crate::tables::lock_permissions::table::LockPermissionsTable;
 use crate::tables::media::cabinet_identifier::CabinetHandle;
-use crate::tables::media::cabinet_identifier::CabinetIdentifier;
 use crate::tables::media::dao::MediaDao;
 use crate::tables::media::table::MediaTable;
 use crate::tables::meta::MetaInformation;
@@ -75,7 +64,6 @@ use crate::tables::service_control::dao::ServiceControlDao;
 use crate::tables::service_control::dao::ServiceControlIdentifier;
 use crate::tables::service_control::event::Event;
 use crate::tables::service_control::table::ServiceControlTable;
-use crate::tables::service_install;
 use crate::tables::service_install::dao::ServiceInstallDao;
 use crate::tables::service_install::error_control::ErrorControl;
 use crate::tables::service_install::service_type::ServiceType;
@@ -93,11 +81,9 @@ use crate::types::column::identifier::Identifier;
 use crate::types::column::identifier::ToIdentifier;
 use crate::types::column::sequence::Sequence;
 use crate::types::column::shortcut::Shortcut;
-use crate::types::helpers::architecture::MsiArchitecture;
 use crate::types::helpers::cabinet_info::CabinetInfo;
 use crate::types::helpers::cabinets::Cabinets;
 use crate::types::helpers::icon::IconInfo;
-use crate::types::helpers::id_generator::IdGenerator;
 use crate::types::helpers::page_count::PageCount;
 use crate::types::helpers::security_flag::DocSecurity;
 use crate::types::properties::system_folder::SystemFolder;
@@ -129,14 +115,6 @@ pub struct MsiBuilder {
     media: MediaTable,
     feature: FeatureTable,
     feature_components: FeatureComponentsTable,
-    // TODO: Ensure that the following properties are defined:
-    // - ProductCode
-    // - ProductName
-    // - ProductVersion
-    // - ProductLanguage
-    // - Manufacturer
-    // - UpgradeCode
-    // - ALLUSERS
     property: PropertyTable,
     registry: RegistryTable,
     msi_file_hash: MsiFileHashTable,
@@ -147,7 +125,6 @@ pub struct MsiBuilder {
     install_ui_sequence: InstallUiSequenceTable,
     signature: SignatureTable,
     launch_condition: LaunchConditionTable,
-    binary: BinaryTable,
     reg_locator: RegLocatorTable,
     app_search: AppSearchTable,
     custom_action: CustomActionTable,
@@ -176,7 +153,7 @@ impl MsiBuilder {
     /// - *path* Path to the directory you want to be copied to the system on
     ///   install.
     /// - *parent* `Identifier` for the directory where the given path should be
-    ///   placed. Identifer should already be present in the `Directory` table
+    ///   placed. Identifier should already be present in the `Directory` table
     ///   or should be a `SystemFolder`. Most commonly you will want to use
     ///   `SystemFolder::VARIANT` for this parameter.
     ///
@@ -235,7 +212,7 @@ impl MsiBuilder {
         path: impl Into<PathBuf>,
         parent: impl Into<DirectoryIdentifier>,
     ) -> anyhow::Result<Self> {
-        self.add_path_contents(path, parent);
+        self.add_path_contents(path, parent)?;
         Ok(self)
     }
 
@@ -251,10 +228,9 @@ impl MsiBuilder {
         let directory_contents: Vec<std::fs::DirEntry> =
             std::fs::read_dir(&path)?.try_collect()?;
         for item in directory_contents {
-            let filetype = item.file_type().expect(&format!(
-                "Failed to get file type for file {:?}",
-                item
-            ));
+            let filetype = item.file_type().unwrap_or_else(|_| {
+                panic!("Failed to get file type for file {:?}", item)
+            });
             let path = item.path();
 
             if filetype.is_file() {
@@ -277,14 +253,13 @@ impl MsiBuilder {
     ) -> anyhow::Result<DirectoryIdentifier> {
         let path = path.into();
 
-        let directory_id = self.directory.generate_id();
         let name = path
             .file_name()
             .with_context(|| format!(
                 "Directory path [{path:?}] ended with `..` which is illegal."
             ))?
             .to_str()
-            .with_context(|| format!("Directory path [{path:?}] has invlaid unicode"))?;
+            .with_context(|| format!("Directory path [{path:?}] has invalid unicode"))?;
         self.add_directory(name, parent)
     }
 
@@ -300,6 +275,7 @@ impl MsiBuilder {
             id.clone(),
             parent,
         ))?;
+        self.add_directory_actions();
 
         Ok(id)
     }
@@ -339,19 +315,23 @@ impl MsiBuilder {
         let file_id = self.file.generate_id();
         let component_id = self.component.generate_id();
         let file_hash_dao = MsiFileHashDao::from_path(file_id.clone(), &path)?;
-        self.add_to_tables(file_hash_dao)?;
-        self.add_to_default_feature(&component_id)?;
         let sequence = self.add_to_media(file_id.clone(), path.clone());
         let file_dao = FileDao::install_file_from_path(
             file_id.clone(),
             component_id.clone(),
             path,
-            sequence,
+            sequence?,
         )?;
+        let component_dao =
+            ComponentDao::new(component_id.clone(), parent_id.into())
+                .with_keypath(file_id.into());
+
+        self.add_to_tables(file_hash_dao)?;
         self.add_to_tables(file_dao)?;
-        let component_dao = ComponentDao::new(component_id, parent_id.into())
-            .with_keypath(file_id.to_identifier());
         self.add_to_tables(component_dao)?;
+        self.add_to_default_feature(&component_id)?;
+
+        self.add_file_actions();
         Ok(())
     }
 
@@ -363,7 +343,7 @@ impl MsiBuilder {
         &mut self,
         file_id: FileIdentifier,
         file_path: PathBuf,
-    ) -> Sequence {
+    ) -> anyhow::Result<Sequence> {
         debug!("Adding file [{file_id}] with path [{file_path:?}] to media");
         // Verify there is a Media entry to add on to.
         if self.media.is_empty() {
@@ -372,7 +352,7 @@ impl MsiBuilder {
             // Create a new media DAO.
             let dao = MediaDao::internal(1, cabinet_id.clone())
                 .expect("Creating first entry to Media table failed");
-            self.add_to_tables(dao);
+            self.add_to_tables(dao)?;
         }
 
         let media_dao = self
@@ -384,20 +364,22 @@ impl MsiBuilder {
         let cabinet_id = &media_dao
             .cabinet_id()
             .expect("Media DAO that had a cabinet ID apparently doesn't");
-        let mut cabinet_info =
-            self.cabinets.find_id_mut(cabinet_id).expect(&format!("Cabinet of ID [{}] referenced by media with disk ID [{}] was not found", cabinet_id, media_dao.disk_id()));
+        let cabinet_info =
+            self.cabinets.find_id_mut(cabinet_id).unwrap_or_else(|| panic!("Cabinet of ID [{}] referenced by media with disk ID [{}] was not found", cabinet_id, media_dao.disk_id()));
         cabinet_info.add_file(file_id, file_path);
         // Set the Media table entry's LastSequence to the number of files in
         // the cabinet.
-        media_dao
+        Ok(media_dao
             .set_last_sequence(cabinet_info)
-            .expect("LastSequence got too large. TODO: Handle this case.")
+            .expect("LastSequence got too large. TODO: Handle this case."))
     }
 
     /// Creates a new cabinet file and returns the ID.
     fn new_cabinet(&mut self) -> CabinetHandle {
         let id = self.cabinets.generate_id();
-        self.cabinets.add_new(id.clone());
+        self.cabinets
+            .add_new(id.clone())
+            .expect("Tried to insert cabinet of duplicate ID");
         CabinetHandle::Internal(id)
     }
 
@@ -409,7 +391,7 @@ impl MsiBuilder {
         self.property.add(PropertyDao::new(
             key.to_string().parse()?,
             value.to_string().parse()?,
-        ));
+        ))?;
         Ok(())
     }
 
@@ -422,40 +404,31 @@ impl MsiBuilder {
         Ok(self)
     }
 
-    // TODO: Fix the duplication
+    // TODO: Make it so you don't have to define an icon since it's optional
     pub fn add_shortcut(
         &mut self,
         directory_id: DirectoryIdentifier,
         target: Shortcut,
+        icon_path: &Path,
     ) -> anyhow::Result<ShortcutIdentifier> {
         let shortcut_id = self.shortcut.generate_id();
-        let component_id = self.component.generate_id();
-        self.add_to_default_feature(&component_id);
-        self.add_to_tables(ShortcutDao::new(
-            shortcut_id.clone(),
-            directory_id,
-            Filename::from_str(&shortcut_id.to_string()).unwrap_or_else(|_| {
-                panic!(
-                    "Shortcut
-                        identifier {shortcut_id} cannot be used as a Filename"
-                )
-            }),
-            component_id,
-            target,
-        ))?;
-        Ok(shortcut_id)
-    }
-
-    pub fn add_shortcut_with_icon(
-        &mut self,
-        directory_id: DirectoryIdentifier,
-        target: Shortcut,
-        icon_path: &PathBuf,
-    ) -> anyhow::Result<ShortcutIdentifier> {
+        let component_id = match target {
+            Shortcut::Formatted(ref formatted) => {
+                let (file_id, _directory_id) = self
+                    .get_ids_of_path(&PathBuf::from_str(&formatted.to_string())?)
+                    .ok_or(anyhow!("Directory and File entries couldn't be found for shortcut source path {formatted}"))?;
+                self.file.entry_with_id(&file_id).unwrap().component().clone()
+            }
+            Shortcut::Identifier(ref feature_identifier) => {
+                MsiBuilderList::entries(&self.feature_components)
+                    .iter()
+                    .find(|fc| *fc.feature() == *feature_identifier)
+                    .unwrap()
+                    .component()
+                    .clone()
+            }
+        };
         let icon_id = self.add_icon(icon_path)?;
-        let shortcut_id = self.shortcut.generate_id();
-        let component_id = self.component.generate_id();
-        self.add_to_default_feature(&component_id);
         self.add_to_tables(
             ShortcutDao::new(
                 shortcut_id.clone(),
@@ -476,17 +449,19 @@ impl MsiBuilder {
             // always be 0
             .with_icon_index(Some(0)),
         )?;
+        // Ignore duplicate errors
+        self.add_shortcut_actions();
         Ok(shortcut_id)
     }
 
     pub fn add_icon(
         &mut self,
-        icon_path: &PathBuf,
+        icon_path: &Path,
     ) -> anyhow::Result<IconIdentifier> {
         let icon_id = self.icon.generate_id();
-        self.add_to_tables(IconDao::new(icon_id.clone()));
+        self.add_to_tables(IconDao::new(icon_id.clone()))?;
         self.icon_information
-            .push(IconInfo::new(icon_path.clone(), icon_id.clone()));
+            .push(IconInfo::new(icon_path.to_path_buf(), icon_id.clone()));
         Ok(icon_id)
     }
 
@@ -496,10 +471,16 @@ impl MsiBuilder {
         service_type: ServiceType,
         start_type: StartType,
         error_control: ErrorControl,
+        file_id: FileIdentifier,
+        directory_id: DirectoryIdentifier,
     ) -> anyhow::Result<ServiceInstallIdentifier> {
         let service_install_id = self.service_install.generate_id();
         let component_id = self.component.generate_id();
-        self.add_to_default_feature(&component_id);
+        self.add_to_tables(
+            ComponentDao::new(component_id.clone(), directory_id)
+                .with_keypath(file_id.into()),
+        )?;
+        self.add_to_default_feature(&component_id)?;
         self.add_to_tables(ServiceInstallDao::new(
             service_install_id.clone(),
             name,
@@ -508,18 +489,25 @@ impl MsiBuilder {
             error_control,
             component_id,
         ))?;
+        self.add_service_actions();
         Ok(service_install_id)
     }
 
+    // TODO: Add support for services not in the ServiceInstall table
     pub fn add_service_control(
         &mut self,
+        service_install_id: &ServiceInstallIdentifier,
         name: Formatted,
         event: Event,
         wait: bool,
     ) -> anyhow::Result<ServiceControlIdentifier> {
-        let component_id = self.component.generate_id();
+        let component_id = self
+            .service_install
+            .entry_with_id(service_install_id)
+            .unwrap()
+            .component_()
+            .clone();
         let service_control_id = self.service_control.generate_id();
-        self.add_to_default_feature(&component_id);
         self.add_to_tables(ServiceControlDao::new(
             service_control_id.clone(),
             name,
@@ -527,6 +515,7 @@ impl MsiBuilder {
             wait,
             component_id,
         ))?;
+        self.add_service_actions();
         Ok(service_control_id)
     }
 
@@ -544,94 +533,62 @@ impl MsiBuilder {
         Ok(())
     }
 
+    // TODO: Optimize this to only run once
+    fn add_file_actions(&mut self) {
+        let service_actions =
+            vec![StandardAction::RemoveFiles, StandardAction::InstallFiles];
+        let _ = self
+            .install_execute_sequence
+            .add_all(service_actions.into_iter().map_into().collect());
+    }
+
+    fn add_directory_actions(&mut self) {
+        let service_actions =
+            vec![StandardAction::RemoveFolders, StandardAction::CreateFolders];
+        let _ = self
+            .install_execute_sequence
+            .add_all(service_actions.into_iter().map_into().collect());
+    }
+
+    // TODO: Optimize this to only run once
+    fn add_shortcut_actions(&mut self) {
+        let service_actions = vec![
+            StandardAction::RemoveShortcuts,
+            StandardAction::CreateShortcuts,
+        ];
+        let _ = self
+            .install_execute_sequence
+            .add_all(service_actions.into_iter().map_into().collect());
+    }
+
+    // TODO: Optimize this to only run once
+    fn add_service_actions(&mut self) {
+        let service_actions = vec![
+            StandardAction::StopServices,
+            StandardAction::DeleteServices,
+            StandardAction::InstallServices,
+            StandardAction::StartServices,
+        ];
+        let _ = self
+            .install_execute_sequence
+            .add_all(service_actions.into_iter().map_into().collect());
+    }
+
     /// Build the MSI from all information given to MSIBuilder.
     pub fn build<F: std::io::Read + std::io::Write + std::io::Seek>(
         self,
-        mut container: F,
+        container: F,
     ) -> anyhow::Result<whimsi_msi::Package<F>> {
         let Some(ref meta) = self.meta else {
             bail!("Meta information cannot be blank");
         };
         info!("Building MSI");
 
-        // Copy the information from the blank reference MSI to the container.
-        let mut reference_msi =
-            std::io::Cursor::new(include_bytes!("../resources/Schema.msi"));
-        std::io::copy(&mut reference_msi, &mut container);
-        let mut package = whimsi_msi::Package::open(container)?;
+        let mut package = whimsi_msi::Package::create(
+            whimsi_msi::PackageType::Installer,
+            container,
+        )?;
 
-        // TODO: Remove after getting everything working
-        let extra_tables = [
-            "ActionText",
-            // "Directory",
-            // "Media",
-            // "File",
-            // "Shortcut",
-            // "CustomAction",
-            // "ServiceControl",
-            "AdvtUISequence",
-            "AppId",
-            "BBControl",
-            "Billboard",
-            "BindImage",
-            "CCPSearch",
-            "CheckBox",
-            "Class",
-            "ComboBox",
-            "CompLocator",
-            "Complus",
-            // "Control",
-            "ControlCondition",
-            "ControlEvent",
-            "Dialog",
-            "DrLocator",
-            "DuplicateFile",
-            "Environment",
-            "EventMapping",
-            "Extension",
-            "FileSFPCatalog",
-            "Font",
-            "IniFile",
-            "IniLocator",
-            "IsolatedComponent",
-            "ListBox",
-            "ListView",
-            "LockPermissions",
-            "MIME",
-            "MoveFile",
-            "MsiAssembly",
-            "MsiAssemblyName",
-            "MsiDigitalCertificate",
-            "MsiDigitalSignature",
-            "MsiPatchHeaders",
-            "ODBCAttribute",
-            "ODBCDataSource",
-            "ODBCDriver",
-            "ODBCSourceAttribute",
-            "ODBCTranslator",
-            "Patch",
-            "PatchPackage",
-            "ProgId",
-            "PublishComponent",
-            "RadioButton",
-            "RemoveIniFile",
-            "RemoveRegistry",
-            "ReserveCost",
-            "SFPCatalog",
-            "SelfReg",
-            "TextStyle",
-            "TypeLib",
-            "UIText",
-            "Verb",
-        ];
-        for table in extra_tables {
-            package.drop_table(table);
-        }
-
-        // let mut package = whimsi_msi::Package::create(
-        //     whimsi_msi::PackageType::Installer,
-        //     container,
-        // )?;
         self.write_meta_info_to_package(&mut package, meta)?;
         self.write_tables_to_package(&mut package)?;
         self.write_icons_to_package(&mut package)?;
@@ -734,7 +691,6 @@ impl MsiBuilder {
         self.launch_condition.write_to_package(package)?;
         self.reg_locator.write_to_package(package)?;
         self.app_search.write_to_package(package)?;
-        self.binary.write_to_package(package)?;
         self.custom_action.write_to_package(package)?;
         debug!(
             "Wrote tables to MSI: {:?}",
@@ -770,19 +726,19 @@ impl MsiBuilder {
             let files = self
                 .file
                 .in_sequence_range(previous_last_sequence, last_sequence);
-            if files.len() == 0 {
+            if files.is_empty() {
                 unreachable!(
                     "No files found for given cabinet file. This should not happen."
                 )
             }
 
-            let mut cabinet_file = self.create_cabinet_file(&cabinet_info)?;
-            // Have to set the poisition of the file reader back to 0 so that it
+            let mut cabinet_file = self.create_cabinet_file(cabinet_info)?;
+            // Have to set the position of the file reader back to 0 so that it
             // gets read from the beginning when it gets read again.
-            cabinet_file.rewind();
+            cabinet_file.rewind().expect("Failed to rewind cabinet file");
 
             self.write_cabinet_to_package(
-                &cabinet_info,
+                cabinet_info,
                 &mut cabinet_file,
                 package,
             )?;
@@ -796,12 +752,12 @@ impl MsiBuilder {
     ) -> anyhow::Result<std::fs::File> {
         debug!("Creating cabinet file [{}]", cabinet_info.id());
         let mut cab_builder = cab::CabinetBuilder::new();
-        let mut folder = cab_builder.add_folder(cab::CompressionType::MsZip);
+        let folder = cab_builder.add_folder(cab::CompressionType::MsZip);
         cabinet_info.files().iter().for_each(|file| {
-            /// NOTE: From what I can tell attributes only need to be set on
-            /// files in the File table as those attributes
-            /// overwrite the attributes that are set in the cabinet
-            /// file.
+            // NOTE: From what I can tell attributes only need to be set on
+            // files in the File table as those attributes
+            // overwrite the attributes that are set in the cabinet
+            // file.
             folder.add_file(file.id().to_string());
         });
         let file = tempfile::tempfile().with_context(|| {
@@ -907,39 +863,240 @@ impl MsiBuilder {
     }
 
     /// Insert the given DAO into it's respective table.
-    pub fn add_to_tables(&mut self, dao: impl Into<Dao>) -> anyhow::Result<()> {
+    fn add_to_tables(&mut self, dao: impl Into<Dao>) -> anyhow::Result<()> {
         let dao = Into::<Dao>::into(dao);
         match dao {
-            Dao::Component(component_dao) => {
-                IdGeneratorBuilderList::add(&mut self.component, component_dao)
+            Dao::Component(dao) => {
+                debug!(
+                    "Adding component_id {} with directory_id {} to MSI",
+                    dao.component(),
+                    dao.directory()
+                );
+                IdGeneratorBuilderList::add(&mut self.component, dao)
             }
-            Dao::Directory(directory_dao) => {
-                IdGeneratorBuilderList::add(&mut self.directory, directory_dao)
+            Dao::Directory(dao) => {
+                debug!(
+                    "Adding directory_id {} with name {} to MSI",
+                    dao.directory(),
+                    dao.default_dir()
+                );
+                IdGeneratorBuilderList::add(&mut self.directory, dao)
             }
-            Dao::File(file_dao) => {
-                IdGeneratorBuilderList::add(&mut self.file, file_dao)
+            Dao::File(dao) => {
+                debug!(
+                    "Adding file id {} with name {} to MSI",
+                    dao.file(),
+                    dao.name()
+                );
+                IdGeneratorBuilderList::add(&mut self.file, dao)
             }
-            Dao::Registry(registry_dao) => {
-                IdGeneratorBuilderList::add(&mut self.registry, registry_dao)
+            Dao::Registry(dao) => {
+                debug!(
+                    "Adding registry id {} with path {:?} to MSI",
+                    dao.registry(),
+                    dao.name()
+                );
+                IdGeneratorBuilderList::add(&mut self.registry, dao)
             }
-            Dao::Feature(feature_dao) => {
-                IdGeneratorBuilderList::add(&mut self.feature, feature_dao)
+            Dao::Feature(dao) => {
+                debug!(
+                    "Adding feature id {} with name {:?} to MSI",
+                    dao.feature(),
+                    dao.title()
+                );
+                IdGeneratorBuilderList::add(&mut self.feature, dao)
             }
-            Dao::Shortcut(shortcut_dao) => {
-                IdGeneratorBuilderList::add(&mut self.shortcut, shortcut_dao)
+            Dao::Shortcut(dao) => {
+                debug!(
+                    "Adding shortcut id {} with target {:?} to MSI",
+                    dao.identifier(),
+                    dao.target()
+                );
+                IdGeneratorBuilderList::add(&mut self.shortcut, dao)
             }
             Dao::ServiceInstall(dao) => {
+                debug!(
+                    "Adding service install id {} with name {} to MSI",
+                    dao.identifier(),
+                    dao.name()
+                );
                 IdGeneratorBuilderList::add(&mut self.service_install, dao)
             }
             Dao::ServiceControl(dao) => {
+                debug!(
+                    "Adding service control id {} with name {} to MSI",
+                    dao.service_control(),
+                    dao.name()
+                );
                 IdGeneratorBuilderList::add(&mut self.service_control, dao)
             }
-            Dao::Icon(dao) => IdGeneratorBuilderList::add(&mut self.icon, dao),
-            Dao::Property(dao) => self.property.add(dao),
-            Dao::Media(dao) => self.media.add(dao),
-            Dao::MsiFileHash(dao) => self.msi_file_hash.add(dao),
-            Dao::FeatureComponents(dao) => self.feature_components.add(dao),
-            Dao::LockPermissions(dao) => self.lock_permissions.add(dao),
+            Dao::Icon(dao) => {
+                debug!("Adding icon id {} to MSI", dao.name());
+                IdGeneratorBuilderList::add(&mut self.icon, dao)
+            }
+            Dao::Property(dao) => {
+                debug!(
+                    "Adding property id {} with value {} to MSI",
+                    dao.property(),
+                    dao.value()
+                );
+                self.property.add(dao)
+            }
+            Dao::Media(dao) => {
+                debug!("Adding media id {} to MSI", dao.disk_id());
+                self.media.add(dao)
+            }
+            Dao::MsiFileHash(dao) => {
+                debug!("Adding file hash for file id {} to MSI", dao.file());
+                self.msi_file_hash.add(dao)
+            }
+            Dao::FeatureComponents(dao) => {
+                debug!(
+                    "Adding component id {} to feature id {} in MSI",
+                    dao.component(),
+                    dao.feature()
+                );
+                self.feature_components.add(dao)
+            }
+            Dao::LockPermissions(dao) => {
+                debug!(
+                    "Adding lock permission to target id {:?} in MSI",
+                    dao.lock_object()
+                );
+                self.lock_permissions.add(dao)
+            }
+        }
+    }
+
+    pub fn file_entries_with_directory_id(
+        &self,
+        directory_id: &DirectoryIdentifier,
+    ) -> Vec<&FileDao> {
+        self.file
+            .entries()
+            .iter()
+            .filter(|file| {
+                self.component()
+                    .entry_with_id(file.component())
+                    .expect(
+                        "Component ID referenced by FileDAO is not present in Component table",
+                    )
+                    .directory()
+                    == directory_id
+            })
+            .collect_vec()
+    }
+
+    fn get_ids_of_path(
+        &self,
+        service_path: &Path,
+    ) -> Option<(FileIdentifier, DirectoryIdentifier)> {
+        let parent_dir = service_path.parent()?;
+        let directory_id = self.get_directory_id_of_path(parent_dir)?;
+        let executable_file = service_path.file_name()?;
+        let file_id = self
+            .file_entries_with_directory_id(&directory_id)
+            .iter()
+            .find(|file_dao| {
+                file_dao.name().to_string() == executable_file.to_string_lossy()
+            })?
+            .file()
+            .clone();
+
+        Some((file_id, directory_id))
+    }
+
+    fn get_directory_id_of_path(
+        &self,
+        path: &Path,
+    ) -> Option<DirectoryIdentifier> {
+        let last_component =
+            self.get_last_component(path.to_string_lossy().as_ref())?;
+        if let Ok(system_folder) = SystemFolder::from_str(&last_component) {
+            return Some(system_folder.to_identifier().into());
+        }
+
+        self.directory()
+            .entry_with_name(&DefaultDir::Filename(
+                Filename::from_str(&last_component).unwrap(),
+            ))
+            .map(|d| d.directory().clone())
+    }
+
+    fn get_last_component(&self, path: &str) -> Option<String> {
+        let last_component = self
+            .get_component_value(
+                PathBuf::from_str(path)
+                    .ok()?
+                    .components()
+                    .next_back()
+                    .unwrap_or_else(|| {
+                        panic!("Path {path} doesn't have any components")
+                    })
+                    .as_os_str()
+                    .to_string_lossy()
+                    .to_string(),
+            )
+            .ok()?
+            .last()
+            .unwrap()
+            .to_string();
+        Some(last_component)
+    }
+
+    fn get_component_value(
+        &self,
+        component: String,
+    ) -> anyhow::Result<Vec<String>> {
+        static CUSTOM_PROPERTY: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r"\[([A-Za-z0-9_]+)\]").unwrap());
+
+        let value = if let Some(system_folder) =
+            Self::get_reserved_property(&component)
+        {
+            vec![system_folder]
+        } else if let Some(captures) = CUSTOM_PROPERTY.captures(&component)
+            && let Some(property) = captures.get(1)
+        {
+            PathBuf::from_str(
+                &self
+                    .property
+                    .get(property.as_str())
+                    .unwrap_or_else(|| {
+                        panic!("Failed to get property: {}", property.as_str())
+                    })
+                    .to_string(),
+            )?
+            .components()
+            .map(|c| {
+                self.get_component_value(
+                    c.as_os_str().to_string_lossy().to_string(),
+                )
+            })
+            .flatten_ok()
+            .collect::<anyhow::Result<Vec<String>>>()?
+        } else {
+            vec![component]
+        };
+        Ok(value)
+    }
+
+    fn get_reserved_property(prop: &str) -> Option<String> {
+        static RESERVED_PROPERTY: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r"\[\[([A-Za-z0-9_]+)\]\]").unwrap());
+        if let Some(captures) = RESERVED_PROPERTY.captures(prop)
+            && let Some(property) = captures.get(1)
+        {
+            let Ok(system_folder) = SystemFolder::from_str(property.as_str())
+            else {
+                panic!(
+                    "Property is not a valid reserved property: {}",
+                    property.as_str()
+                );
+            };
+            Some(system_folder.to_string())
+        } else {
+            None
         }
     }
 }
@@ -967,16 +1124,14 @@ impl Default for MsiBuilder {
             advt_execute_sequence: Default::default(),
             install_execute_sequence: Default::default(),
             install_ui_sequence: Default::default(),
-            signature: Default::default(),
             launch_condition: Default::default(),
-            binary: Default::default(),
             reg_locator: Default::default(),
             app_search: Default::default(),
             custom_action: Default::default(),
             lock_permissions: Default::default(),
 
             // Tables that can generate IDs for their entries and the IDs must
-            // be uniqe across the MSI.
+            // be unique across the MSI.
             component: ComponentTable::new(empty_entries.clone()),
             directory: DirectoryTable::new(empty_entries.clone()),
             feature: FeatureTable::new(empty_entries.clone()),
@@ -986,6 +1141,7 @@ impl Default for MsiBuilder {
             service_control: ServiceControlTable::new(empty_entries.clone()),
             shortcut: ShortcutTable::new(empty_entries.clone()),
             icon: IconTable::new(empty_entries.clone()),
+            signature: SignatureTable::new(empty_entries.clone()),
         }
     }
 }

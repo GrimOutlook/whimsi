@@ -18,7 +18,8 @@ define_specific_identifier!(ServiceControl);
 define_specific_identifier_parsing!(ServiceControl);
 define_identifier_generator!(ServiceControl);
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, getset::Getters)]
+#[getset(get = "pub")]
 pub struct ServiceControlDao {
     service_control: ServiceControlIdentifier,
     name: Formatted,

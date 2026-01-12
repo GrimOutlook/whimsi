@@ -4,6 +4,7 @@ pub mod cabinets;
 pub(crate) mod icon;
 pub(crate) mod id_generator;
 pub mod invalid_char;
+pub mod keypath;
 pub mod page_count;
 pub mod security_flag;
 pub mod to_msi_value;

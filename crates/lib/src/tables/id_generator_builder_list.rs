@@ -18,6 +18,15 @@ pub(crate) trait IdGeneratorBuilderList: MsiBuilderList {
         Ok(())
     }
 
+    fn entry_with_id(
+        &self,
+        id: &<Self::GeneratorType as IdGenerator>::IdentifierType,
+    ) -> Option<&Self::ListValue> {
+        self.entries().iter().find(|entry| {
+            entry.to_unique_msi_identifier().unwrap() == id.to_identifier()
+        })
+    }
+
     fn generator_mut(&mut self) -> &mut Self::GeneratorType;
     fn generate_id(
         &mut self,

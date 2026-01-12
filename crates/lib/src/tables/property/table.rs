@@ -8,11 +8,24 @@ use crate::msi_table_boilerplate;
 use crate::tables::builder_list::MsiBuilderList;
 use crate::tables::builder_table::MsiBuilderTable;
 use crate::tables::property::dao::PropertyDao;
+use crate::tables::property::property_text::PropertyText;
 use crate::types::column::identifier::Identifier;
 
 #[derive(Clone, Debug, Default)]
 pub struct PropertyTable {
     entries: Vec<PropertyDao>,
+}
+
+impl PropertyTable {
+    pub fn get(&self, key: &str) -> Option<PropertyText> {
+        Some(
+            self.entries
+                .iter()
+                .find(|p| p.property().to_string() == key)?
+                .value()
+                .clone(),
+        )
+    }
 }
 
 impl MsiBuilderTable for PropertyTable {

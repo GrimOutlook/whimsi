@@ -11,7 +11,8 @@ use crate::types::column::identifier::ToIdentifier;
 use crate::types::helpers::to_msi_value::ToMsiOptionalValue;
 use crate::types::helpers::to_unique_msi_identifier::ToUniqueMsiIdentifier;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, getset::Getters)]
+#[getset(get = "pub")]
 pub struct LockPermissionsDao {
     lock_object: LockObject,
     table: String,

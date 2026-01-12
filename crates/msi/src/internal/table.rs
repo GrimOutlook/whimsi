@@ -1,11 +1,21 @@
+use std::io::Read;
+use std::io::Seek;
+use std::io::SeekFrom;
+use std::io::Write;
+use std::ops::Index;
+use std::rc::Rc;
+
+use anyhow::Context;
+use anyhow::bail;
+
+use crate::ColumnType;
 use crate::internal::category::Category;
 use crate::internal::column::Column;
 use crate::internal::streamname;
 use crate::internal::stringpool::StringPool;
-use crate::internal::value::{Value, ValueRef};
-use std::io::{self, Read, Seek, SeekFrom, Write};
-use std::ops::Index;
-use std::rc::Rc;
+use crate::internal::value::TableValue;
+use crate::internal::value::Value;
+use crate::internal::value::ValueRef;
 
 // ========================================================================= //
 
@@ -94,12 +104,12 @@ impl Table {
         None
     }
 
-    /// Parses row data from the given data source and returns an interator
+    /// Parses row data from the given data source and returns an iterator
     /// over the rows.
     pub fn read_rows<R: Read + Seek>(
         &self,
         mut reader: R,
-    ) -> io::Result<Vec<Vec<ValueRef>>> {
+    ) -> anyhow::Result<Vec<Vec<ValueRef>>> {
         let data_length = reader.seek(SeekFrom::End(0))?;
         reader.rewind()?;
         let row_size = self
@@ -113,7 +123,7 @@ impl Table {
         // The number of rows cannot exceed 65536, according to this FAQ:
         // http://www.installsite.org/pages/en/msifaq/a/1043.htm
         if num_rows > 65536 {
-            invalid_data!("Number of rows is too large ({} > 65536)", num_rows);
+            bail!("Number of rows is too large ({} > 65536)", num_rows);
         }
         let mut rows =
             vec![Vec::<ValueRef>::with_capacity(num_columns); num_rows];
@@ -121,7 +131,11 @@ impl Table {
             let coltype = column.coltype();
             for row in &mut rows {
                 row.push(
-                    coltype.read_value(&mut reader, self.long_string_refs)?,
+                    coltype
+                        .read_value(&mut reader, self.long_string_refs)
+                        .context(format!(
+                            "Failed to read [{coltype}] from table"
+                        ))?,
                 );
             }
         }
@@ -132,10 +146,20 @@ impl Table {
         &self,
         mut writer: W,
         rows: Vec<Vec<ValueRef>>,
-    ) -> io::Result<()> {
+    ) -> anyhow::Result<()> {
+        let mut table_rows = rows
+            .iter()
+            .map(|row| TableRow::from_value_refs(row, self.columns.clone()))
+            .collect::<anyhow::Result<Vec<TableRow>>>()?;
+
+        // Make sure the rows are sorted correctly, or else the MSI will fail to
+        // install.
+        table_rows.sort();
+
         for (index, column) in self.columns.iter().enumerate() {
             let coltype = column.coltype();
-            for row in &rows {
+            for table_row in table_rows.iter() {
+                let row = table_row.row_data();
                 coltype.write_value(
                     &mut writer,
                     row[index],
@@ -144,6 +168,63 @@ impl Table {
             }
         }
         Ok(())
+    }
+}
+
+// ========================================================================= //
+
+// A row containing the exact data that will be written to the table stream when
+// written to file
+#[derive(PartialEq, Eq)]
+pub(crate) struct TableRow {
+    row: Vec<TableValue>,
+    columns: Vec<Column>,
+}
+
+impl TableRow {
+    pub(crate) fn row_data(&self) -> &Vec<TableValue> {
+        &self.row
+    }
+
+    pub(crate) fn from_value_refs(
+        val_refs: &[ValueRef],
+        columns: Vec<Column>,
+    ) -> anyhow::Result<TableRow> {
+        let table_row = columns
+            .iter()
+            .enumerate()
+            .map(|(col_idx, column)| {
+                column.coltype().to_table_value(val_refs[col_idx])
+            })
+            .collect::<anyhow::Result<Vec<TableValue>>>()?;
+        Ok(TableRow { row: table_row, columns })
+    }
+}
+
+impl PartialOrd for TableRow {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for TableRow {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        for (idx, column) in self.columns.iter().enumerate() {
+            if column.coltype() == ColumnType::Binary {
+                continue;
+            }
+
+            if self.row[idx] > other.row[idx] {
+                return std::cmp::Ordering::Greater;
+            } else if self.row[idx] == other.row[idx] {
+                // Sort by the next column in the row if the values are
+                // considered equal
+                continue;
+            } else {
+                return std::cmp::Ordering::Less;
+            }
+        }
+        std::cmp::Ordering::Equal
     }
 }
 

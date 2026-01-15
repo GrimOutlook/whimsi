@@ -5,7 +5,7 @@ use crate::types::helpers::to_msi_value::IntoMsiValue;
 bitflags! {
     /// Specifies options for remote execution.
     ///
-    /// # Note:
+    /// # Note
     /// In the case of an .msi file that is being downloaded from a web
     /// location, the attribute flags should not be set to allow a component to
     /// be run-from-source. This is a limitation of the Windows Installer and

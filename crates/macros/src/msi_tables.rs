@@ -64,7 +64,7 @@ pub(crate) enum FieldType {
     Binary,
 }
 
-#[derive(Clone, Debug, Default, darling::FromMeta)]
+#[derive(Clone, Debug, darling::FromMeta)]
 pub(crate) struct IdentifierOptions {
     // Identifier length presets. I've only seen 2 lengths for Identifier
     // types so this makes it simpler.
@@ -88,11 +88,10 @@ fn default_index() -> syn::Expr {
     syn::parse_quote!(0)
 }
 
-#[derive(Clone, Copy, Debug, Default, darling::FromMeta, strum::FromRepr)]
+#[derive(Clone, Copy, Debug, darling::FromMeta, strum::FromRepr)]
 #[repr(usize)]
 pub(crate) enum IdentifierLength {
-    Short = 38,
-    #[default]
+    Short = 32,
     Long  = 72,
 }
 

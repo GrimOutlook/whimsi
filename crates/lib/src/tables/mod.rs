@@ -2,6 +2,7 @@ pub(crate) mod builder_table;
 pub(crate) mod dao;
 pub mod meta;
 
+use msi::Category;
 use whimsi_macros::msi_table_list;
 
 use crate as whimsi_lib;
@@ -106,7 +107,7 @@ msi_table_list! {
             ///
             /// The directory names in this column may be formatted as short
             /// filename | long filename pairs.
-            #[msi_column(kind(string(localizable, category = msi::Category::DefaultDir, length = 255)))]
+            #[msi_column(kind(string(localizable, category = Category::DefaultDir, length = 255)))]
             default_dir: DefaultDir,
         },
 
@@ -134,7 +135,7 @@ msi_table_list! {
             /// that cleans up temporary files or removes an old product. It may
             /// also be useful when copying data files to a user's computer that
             /// do not need to be registered.
-            #[msi_column(kind(string(category = msi::Category::Guid, length = 38)))]
+            #[msi_column(kind(string(category = Category::Guid, length = 38)))]
             component_id: Option<Guid>,
 
             /// External key of an entry in the Directory table. This is a
@@ -177,7 +178,7 @@ msi_table_list! {
             /// expressions containing references to the installed states of
             /// features and components. For information on the syntax of
             /// conditional statements, see Conditional Statement Syntax.
-            #[msi_column(kind(string(category = msi::Category::Condition, length = 255)))]
+            #[msi_column(kind(string(category = Category::Condition, length = 255)))]
             condition: Option<Condition>,
 
             /// This value points to a file or folder belonging to the component
@@ -207,6 +208,117 @@ msi_table_list! {
 
             #[msi_column(kind(identifier(id_length = "long")))]
             key_path: Option<KeyPath>,
+        },
+
+        Feature {
+            /// The primary key that is used to identify a specific feature
+            /// record. The value in this field must not exceed a maximum length
+            /// of 38 characters.
+            #[msi_column(primary_key, kind(identifier(id_length = "short")))]
+            feature: Identifier,
+
+            /// An optional key of a parent record in the same table.
+            ///
+            /// The key points to the Feature column. If the parent feature is
+            /// not selected, then this feature is not installed. A null value
+            /// in this field indicates that this feature does not have a parent
+            /// and is a root item. The Feature_Parent column must not equal the
+            /// Feature column of the same record.
+            ///
+            /// # Note
+            /// The maximum depth of any feature is 16. An error 2701 results if
+            /// a feature that exceeds this maximum depth exists.
+            #[msi_column(kind(identifier(id_length = "short")), column_name = "Feature_Parent")]
+            parent_feature: Option<Identifier>,
+
+            /// A short string of text that identifies a feature.
+            ///
+            /// This string is listed as an item by the SelectionTree Control of
+            /// the Selection Dialog.
+            #[msi_column(kind(string(category = Category::Text, length = 64)))]
+            title: Option<Text>,
+
+            /// A longer string of text that describes a feature.
+            ///
+            /// This localizable string is displayed by the Text Control of the
+            /// Selection Dialog.
+            #[msi_column(kind(string(category = Category::Text, length = 255)))]
+            description: Option<Text>,
+
+            /// The number in this field specifies the order in which the
+            /// feature is to be displayed in the user interface.
+            ///
+            /// The value also determines whether or not the feature is
+            /// initially displayed expanded or collapsed. If the value is null
+            /// or 0 (zero), the record is not displayed.
+            /// - If the value is odd, the feature node is expanded initially.
+            /// - If the value is even, the feature node is collapsed initially.
+            #[msi_column(kind(integer))]
+            display: Option<Integer>,
+
+            /// The initial installation level of this feature. Processing the
+            /// Condition Table can modify the level value.
+            ///
+            /// An install level of 0 (zero) disables the item and prevents it
+            /// from being displayed. A feature with an installation level of 0
+            /// (zero) is not installed during any installation, including
+            /// administrative installations. For more information, see the
+            /// "Install Level" information in the Remarks section of this
+            /// topic.
+            #[msi_column(kind(integer))]
+            level: Integer,
+
+            /// The Directory_ column specifies the name of a directory that can
+            /// be configured by a Selection Dialog.
+            ///
+            /// Because this field is a key into the Directory Table, the
+            /// specified directory must be listed in the first column of the
+            /// Directory Table. You must enter a Public Property in this column
+            /// to make the directory configurable, and to display a Browse
+            /// button on the Selection Dialog.
+            #[msi_column(kind(identifier(id_length = "long", foreign_key(table = "Directory"))))]
+            directory_: Identifier,
+
+            /// The remote execution option for features that are not installed and for which no feature state request is made by using any of the following properties.
+            /// - [ADDLOCAL Property](https://learn.microsoft.com/en-us/windows/win32/msi/addlocal)
+            /// - [ADDSOURCE Property](https://learn.microsoft.com/en-us/windows/win32/msi/addsource)
+            /// - [ADDDEFAULT Property](https://learn.microsoft.com/en-us/windows/win32/msi/adddefault)
+            /// - [COMPADDLOCAL Property](https://learn.microsoft.com/en-us/windows/win32/msi/compaddlocal)
+            /// - [COMPADDSOURCE Property](https://learn.microsoft.com/en-us/windows/win32/msi/fileaddlocal)
+            /// - [FILEADDLOCAL Property](https://learn.microsoft.com/en-us/windows/win32/msi/fileaddlocal)
+            /// - [FILEADDSOURCE Property](https://learn.microsoft.com/en-us/windows/win32/msi/fileaddsource)
+            /// - [REMOVE Property](https://learn.microsoft.com/en-us/windows/win32/msi/remove)
+            /// - [REINSTALL Property](https://learn.microsoft.com/en-us/windows/win32/msi/reinstall)
+            /// - [ADVERTISE Property](https://learn.microsoft.com/en-us/windows/win32/msi/advertise)
+            ///
+            /// Add the indicated bits to the total value of this column to include a remote execution option.
+            /// - If this field is blank, the value defaults to 0 (zero), msidbFeatureAttributesFavorLocal.
+            /// - If the feature install level is 0 (zero), or greater than or equal to the current install level, no change is made in the feature state.
+            ///
+            /// Some attributes are exclusive of each other. Attempting to set
+            /// these attributes together on the same feature causes the
+            /// installation package to fail Package Validation.
+            /// - Do not use msidbFeatureAttributesFavorAdvertise with
+            /// msidbFeatureAttributesDisallowAdvertise.
+            /// - Do not use msidbFeatureAttributesNoUnsupportedAdvertise with
+            /// msidbFeatureAttributesDisallowAdvertise together.
+            /// - Do not use msidbFeatureAttributesFollowParent with
+            /// msidbFeatureAttributesFavorSource.
+            /// - Note that the msidbFeatureAttributesFollowParent and
+            /// msidbFeatureAttributesFavorLocal values are mutually exclusive.
+            /// If the msidbFeatureAttributesFollowParent value is used, the
+            /// msidbFeatureAttributesFavorLocal value is assumed to not exist.
+            ///
+            /// Note that if a child feature is installed, its parent feature is
+            /// also installed. If a parent feature is installed, its child
+            /// feature is not necessarily installed unless its
+            /// msidbFeatureAttributesFollowParent and
+            /// msidbFeatureAttributesUIDisallowAbsent attributes are set. This
+            /// hierarchical relationship of the installation of parent and
+            /// child features is also used for the GUI installations and
+            /// installations that use command-line properties.
+            #[msi_column(kind(integer))]
+            attributes: FeatureAttributes,
         },
     }
 }

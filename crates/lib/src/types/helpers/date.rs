@@ -1,3 +1,5 @@
+use crate::types::helpers::to_msi_value::IntoMsiValue;
+
 /// Microsoft sure loves their weird standards. We're bit packing date times but
 /// in every MSI they store the default error message.
 ///
@@ -8,8 +10,8 @@ pub struct Date {
     time: u16,
 }
 
-impl Into<msi::Value> for Date {
-    fn into(self) -> msi::Value {
+impl IntoMsiValue for Date {
+    fn into(&self) -> msi::Value {
         todo!()
     }
 }

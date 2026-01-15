@@ -9,14 +9,17 @@ use syn::parse_macro_input;
 pub fn str_to_value(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     let name = &ast.ident;
-    make_trait_impl(name, quote! { self.to_string().into() })
+    make_trait_impl(name, quote! { self.clone().to_string().into() })
 }
 
 #[proc_macro_derive(IdentifierToValue)]
 pub fn identifier_to_value(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     let name = &ast.ident;
-    make_trait_impl(name, quote! { self.to_identifier().to_string().into() })
+    make_trait_impl(
+        name,
+        quote! { IntoIdentifier::into(self).to_string().into() },
+    )
 }
 
 #[proc_macro_derive(IntToValue)]
@@ -30,14 +33,14 @@ pub fn int_to_value(input: TokenStream) -> TokenStream {
 pub fn wrapper_to_value(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     let name = &ast.ident;
-    make_trait_impl(name, quote! { self.0.into() })
+    make_trait_impl(name, quote! { self.clone().0.into() })
 }
 
 #[proc_macro_derive(BitmaskToValue)]
 pub fn bitmask_to_value_derive(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     let name = &ast.ident;
-    make_trait_impl(name, quote! { self.bits().into() })
+    make_trait_impl(name, quote! { self.clone().bits().into() })
 }
 
 #[proc_macro_derive(ReprToValue)]
@@ -52,18 +55,9 @@ fn make_trait_impl(
     fn_body: proc_macro2::TokenStream,
 ) -> proc_macro::TokenStream {
     quote! {
-        impl Into::<msi::Value> for #name {
-            fn into(self) -> msi::Value {
+        impl IntoMsiValue for #name {
+            fn into(&self) -> msi::Value {
                 #fn_body
-            }
-        }
-
-        impl Into::<msi::Value> for Option<#name> {
-            fn into(self) -> msi::Value {
-                match self {
-                    Some(val) => Into::<msi::Value>::into(val),
-                    None => msi::Value::Null,
-                }
             }
         }
     }
@@ -76,8 +70,7 @@ fn make_trait_impl(
 //     - Determine what datatype the stored data must be converted into for
 //       insertion.
 //         - Just make From<T> to Value a constraint on stored datatypes and we
-//           can just use
-//         `.into()`.
+//           can just use `.into()`.
 //     - Determine which columns are primary keys.
 //     - Determine which columns are nullable.
 //         - Wrap in `Option`?
@@ -86,13 +79,12 @@ fn make_trait_impl(
 //     constructor.
 //     - Determine which columns must have unique values for each row in the
 //       table.
-//     - Determine which columns must be unique accross the MSI.
+//     - Determine which columns must be unique across the MSI.
 //     - Allow custom implementations for insertion into certain tables.
 
 pub(crate) mod constants;
 pub(crate) mod dao;
 pub(crate) mod helper;
-pub(crate) mod identifier;
 mod msi_tables;
 pub(crate) mod table;
 

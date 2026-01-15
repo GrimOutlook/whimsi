@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use ambassador::delegatable_trait;
+use ambassador::delegatable_trait_remote;
 use anyhow::Context;
 use anyhow::bail;
 use derive_more::Display;
@@ -12,6 +13,7 @@ use thiserror::Error;
 
 use super::ColumnValue;
 use crate::types::helpers::invalid_char::InvalidChar;
+use crate::types::helpers::to_msi_value::IntoMsiValue;
 use crate::types::properties::system_folder::SystemFolder;
 
 static INVALID_FIRST_CHARACTER: Lazy<Regex> =
@@ -38,6 +40,17 @@ pub struct Identifier(String);
 impl Identifier {
     pub fn as_system_folder(&self) -> Option<SystemFolder> {
         SystemFolder::iter().find(|f| f == self)
+    }
+}
+
+#[delegatable_trait]
+pub trait IntoIdentifier {
+    fn into(&self) -> Identifier;
+}
+
+impl IntoIdentifier for Identifier {
+    fn into(&self) -> Identifier {
+        self.clone()
     }
 }
 
@@ -90,23 +103,12 @@ impl From<SystemFolder> for Identifier {
     }
 }
 
-impl ToIdentifier for Identifier {
-    fn to_identifier(&self) -> Identifier {
-        self.clone()
-    }
-}
-
 #[derive(Debug, Error, PartialEq)]
 pub enum IdentifierConversionError {
     #[error("Identifier has invalid first character: [{first_character}]")]
     InvalidFirstCharacter { first_character: InvalidChar },
     #[error("Identifier contains invalid characters")]
     InvalidCharacters { characters: Vec<InvalidChar> },
-}
-
-#[delegatable_trait]
-pub trait ToIdentifier {
-    fn to_identifier(&self) -> Identifier;
 }
 
 #[cfg(test)]
@@ -135,7 +137,10 @@ mod test {
             .downcast()
             .unwrap();
         let expected = IdentifierConversionError::InvalidFirstCharacter {
-            first_character: InvalidChar::new(input.chars().next().unwrap(), 0),
+            first_character: InvalidChar::new(
+                input.chars().next().unwrap(),
+                0,
+            ),
         };
         assert_eq!(expected, actual);
     }

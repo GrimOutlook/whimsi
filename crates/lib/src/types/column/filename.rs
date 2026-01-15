@@ -9,6 +9,7 @@ use itertools::Itertools;
 
 use crate::constants::*;
 use crate::types::helpers::invalid_char::InvalidChar;
+use crate::types::helpers::to_msi_value::IntoMsiValue;
 
 #[derive(
     Clone,
@@ -238,7 +239,7 @@ mod test {
         "INVALID short filename is evaluating as VALID";
 
     use super::FilenameParsingError;
-    #[test_case("long_filenae.ext"; "normal long")]
+    #[test_case("long_filename.ext"; "normal long")]
     fn valid_only_long(input: &str) {
         let expected = LongFilename { inner: input.into() };
         let actual =

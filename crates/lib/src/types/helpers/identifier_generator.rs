@@ -5,13 +5,13 @@ use std::str::FromStr;
 use anyhow::Context;
 
 use crate::types::column::identifier::Identifier;
-use crate::types::column::identifier::ToIdentifier;
 use crate::types::helpers::id_generator::IdentifierGenerator;
 #[derive(Debug, Clone, Default, PartialEq)]
 pub(crate) struct IdentifierGenerator {
     count: usize,
-    // A reference to a vec of all used Identifiers that should not be generated again.
-    // These are all identifiers that inhabit a primary_key column.
+    // A reference to a vec of all used Identifiers that should not be
+    // generated again. These are all identifiers that inhabit a
+    // primary_key column.
     used: std::rc::Rc<std::cell::RefCell<Vec<Identifier>>>,
 }
 
@@ -41,10 +41,7 @@ impl IdentifierGenerator {
                 })
                 .unwrap();
 
-            let generic_identifier =
-                <Self::IdentifierType as ToIdentifier>::to_identifier(
-                    &new_identifier,
-                );
+            let generic_identifier = Into::<Identifier>::into(&new_identifier);
             if !self.used().borrow().contains(&generic_identifier) {
                 return new_identifier;
             }
@@ -55,9 +52,9 @@ impl IdentifierGenerator {
 
     fn add_used_identifier(
         &mut self,
-        identifier: impl ToIdentifier,
+        identifier: impl Into<Identifier>,
     ) -> anyhow::Result<()> {
-        let identifier = identifier.to_identifier();
+        let identifier = identifier.into();
         if self.used().borrow().contains(&identifier) {
             anyhow::bail!("Identifier [{}] is already used", identifier)
         }

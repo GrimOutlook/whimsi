@@ -21,8 +21,7 @@
 #![cfg(debug_assertions)]
 #![allow(warnings)]
 
-pub mod builder;
 pub mod constants;
-pub mod macros;
+pub mod database;
 pub mod tables;
 pub mod types;

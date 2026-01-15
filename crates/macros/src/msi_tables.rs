@@ -1,6 +1,5 @@
 use darling::FromDeriveInput;
 use darling::FromField;
-use darling::FromMeta;
 use darling::FromVariant;
 use itertools::Itertools;
 use proc_macro2::TokenStream;
@@ -10,7 +9,6 @@ use syn::{self};
 
 use crate::dao::generate_dao_tokens;
 use crate::helper::*;
-use crate::identifier::generate_identifier_tokens;
 use crate::table::generate_table_tokens;
 
 #[derive(FromDeriveInput, Clone)]
@@ -36,7 +34,7 @@ pub(crate) struct VariantInformation {
 #[derive(FromField, Clone)]
 #[darling(attributes(msi_column))]
 pub(crate) struct FieldInformation {
-    // -- Builtins ------------------------------------------------------------
+    // -- Builtins -----------------------------------------------------------
     // Field name
     pub ident: Option<syn::Ident>,
     // Type of the field
@@ -68,8 +66,8 @@ pub(crate) enum FieldType {
 
 #[derive(Clone, Debug, Default, darling::FromMeta)]
 pub(crate) struct IdentifierOptions {
-    // Identifier length presets. I've only seen 2 lengths for Identifier types
-    // so this makes it simpler.
+    // Identifier length presets. I've only seen 2 lengths for Identifier
+    // types so this makes it simpler.
     pub id_length: IdentifierLength,
 
     // Denotes if the given identifier is a foreign key into the table and if
@@ -129,16 +127,12 @@ pub fn gen_tables_impl(input: TokenStream) -> TokenStream {
             gen_tables_for_enum(&derive_input.ident.to_string(), items)
         }
         darling::ast::Data::Struct(fields) => {
-            let name = capitalize(
-                &derive_input.name.unwrap_or(derive_input.ident.to_string()),
-            );
-            gen_tables_for_fields(&name, fields.fields)
+            gen_tables_for_fields(&derive_input.ident, fields.fields)
         }
     };
 
     quote! {
         use whimsi_lib::types::column::identifier::Identifier;
-        use whimsi_lib::types::column::identifier::ToIdentifier;
 
         #output_tokens
     }
@@ -167,7 +161,7 @@ fn gen_tables_for_enum(
     let dao_enum_name = dao_from_name(name);
     let tokens = quote! {
         #[derive(Clone, PartialEq, strum::EnumDiscriminants, derive_more::From, derive_more::TryFrom, derive_more::TryInto, strum::Display)]
-        #[strum_discriminants(#table_variant_enum_name)]
+        #[strum_discriminants(name(#table_variant_enum_name))]
         pub enum #table_enum_name {
             #(#struct_variants)*
         }
@@ -179,7 +173,7 @@ fn gen_tables_for_enum(
     };
     items.iter().fold(tokens, |acc, variant| {
         let table_def_tokens = gen_tables_for_fields(
-            &variant.ident.to_string(),
+            &variant.ident,
             variant.fields.fields.clone(),
         );
         quote! {
@@ -190,18 +184,28 @@ fn gen_tables_for_enum(
 }
 
 fn gen_tables_for_fields(
-    base_name: &str,
+    base_name: &syn::Ident,
     fields: Vec<FieldInformation>,
 ) -> TokenStream {
-    let target_name = capitalize(base_name);
+    let target_name = capitalize(&base_name.to_string());
+
+    let primary_keys =
+        fields.iter().filter(|field| field.primary_key).collect_vec();
+    if primary_keys.is_empty() {
+        return syn::Error::new_spanned(
+            base_name,
+            "Tables require at least 1 primary key column. Add the `primary_key` attribute to the primary key column.",
+        )
+        .to_compile_error();
+    }
 
     // Create the table-specific identifier if one should be made. These are
     // made when a table has a column with a type that has a field_type of
     // Identifier and the column is not marked as storing a foreign key.
-    let primary_identifier = fields
-        .iter()
+    let primary_identifier = primary_keys
+        .into_iter()
         .filter(|field| {
-            if field.primary_key && let FieldType::Identifier(options) = &field.field_type && options.foreign_key.is_none() {
+            if let FieldType::Identifier(options) = &field.field_type && options.foreign_key.is_none() {
                 true
             } else {
                 false
@@ -214,12 +218,6 @@ fn gen_tables_for_fields(
             )
         });
 
-    let identifier_tokens = if primary_identifier.is_some() {
-        generate_identifier_tokens(&target_name)
-    } else {
-        Default::default()
-    };
-
     let dao_tokens =
         generate_dao_tokens(&target_name, &primary_identifier, &fields);
 
@@ -227,7 +225,6 @@ fn gen_tables_for_fields(
 
     // Generate the DAO code.
     let output_tokens = quote! {
-        #identifier_tokens
         #dao_tokens
         #table_tokens
     };

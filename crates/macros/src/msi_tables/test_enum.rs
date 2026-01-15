@@ -7,21 +7,21 @@ use crate::msi_tables;
 #[test]
 fn test_msi_tables_enum() {
     let input = quote! {
-        enum MsiTables {
+        enum MsiTable {
             Directory {
-                #[msi_column(primary_key, identifier(), category = msi::Category::Identifier, length = 72)]
-                directory: DirectoryIdentifier,
-                #[msi_column(identifier(foreign_key = "Directory"), column_name = "Directory_Parent", category = msi::Category::Identifier, length = 72)]
-                parent_directory: Option<DirectoryIdentifier>,
-                #[msi_column(localizable, category = msi::Category::DefaultDir, length = 255)]
+                #[msi_column(primary_key, kind(identifier(id_length = "long")))]
+                directory: Identifier,
+                #[msi_column(kind(identifier(foreign_key(table = "Directory"), id_length = "long")), column_name = "Directory_Parent")]
+                parent_directory: Option<Identifier>,
+                #[msi_column(kind(string(localizable, category = msi::Category::DefaultDir, length = 255)))]
                 default_dir: DefaultDir,
             },
 
             FeatureComponent {
-                #[msi_column(primary_key, identifier(foreign_key = "Feature"), category = msi::Category::Identifier, length = 72)]
-                feature_: FeatureIdentifier,
-                #[msi_column(primary_key, identifier(foreign_key = "Component"), category = msi::Category::Identifier, length = 72)]
-                component_: ComponentIdentifier,
+                #[msi_column(primary_key, kind(identifier(foreign_key(table = "Feature"), id_length = "short")))]
+                feature_: Identifier,
+                #[msi_column(primary_key, kind(identifier(foreign_key(table = "Component"), id_length = "long")))]
+                component_: Identifier,
             }
         }
     };
@@ -31,59 +31,41 @@ fn test_msi_tables_enum() {
 
     let expected_output = quote! {
         use whimsi_lib::types::column::identifier::Identifier;
-        use whimsi_lib::types::column::identifier::ToIdentifier;
 
         #[derive(Clone, PartialEq, strum::EnumDiscriminants, derive_more::From, derive_more::TryFrom, derive_more::TryInto, strum::Display)]
-        #[strum_discriminants(name(MsiTable))]
-        pub enum MsiTables {
+        #[strum_discriminants(name(MsiTableKind))]
+        pub enum MsiTable {
             Directory(DirectoryTable),
             FeatureComponent(FeatureComponentTable),
         }
 
         #[derive(Clone, PartialEq)]
-        pub enum MsiTablesDao {
+        pub enum MsiTableDao {
             Directory(DirectoryDao),
             FeatureComponent(FeatureComponentDao),
-        }
-
-        #[doc = "This is a simple wrapper around `Identifier` for the `DirectoryTable`. Used to ensure that identifiers for the `DirectoryTable` are only used in valid locations."]
-        #[derive(Clone, Debug, Default, PartialEq, derive_more::Display, whimsi_macros::IdentifierToValue)]
-        pub struct DirectoryIdentifier(Identifier);
-
-        impl ToIdentifier for DirectoryIdentifier {
-            fn to_identifier(&self) -> Identifier {
-                self.0.clone()
-            }
-        }
-        impl std::str::FromStr for DirectoryIdentifier {
-            type Err = anyhow::Error;
-
-            fn from_str(s: &str) -> anyhow::Result<Self> {
-                Ok(Self(Identifier::from_str(s)?))
-            }
         }
 
         #[derive(Clone, Debug, PartialEq, getset::Getters)]
         #[getset(get = "pub")]
         pub struct DirectoryDao {
-            directory: DirectoryIdentifier,
-            parent_directory: Option<DirectoryIdentifier>,
+            directory: Identifier,
+            parent_directory: Option<Identifier>,
             default_dir: DefaultDir,
         }
 
         impl DirectoryDao {
-            pub fn new(directory: impl Into<DirectoryIdentifier>, parent_directory: impl Into<Option<DirectoryIdentifier>>, default_dir: impl Into<DefaultDir>) -> DirectoryDao {
+            pub fn new(directory: impl Into<&Identifier>, parent_directory: impl Into<&Option<Identifier>>, default_dir: impl Into<&DefaultDir>) -> DirectoryDao {
                 DirectoryDao {
-                    directory: directory.into(),
-                    parent_directory: parent_directory.into(),
-                    default_dir: default_dir.into()
+                    directory: directory.into().clone(),
+                    parent_directory: parent_directory.into().clone(),
+                    default_dir: default_dir.into().clone()
                 }
             }
         }
 
         impl PrimaryIdentifier for DirectoryDao {
             fn primary_identifier(&self) -> Option<Identifier> {
-                Some( self.directory.to_identifier() )
+                Some( self.directory.clone() )
             }
         }
 
@@ -95,9 +77,9 @@ fn test_msi_tables_enum() {
 
             fn to_row(&self) -> Vec<msi::Value> {
                 vec![
-                    Into::<msi::Value>::into(&self.directory),
-                    Into::<msi::Value>::into(&self.parent_directory),
-                    Into::<msi::Value>::into(&self.default_dir),
+                    IntoMsiValue::into(&self.directory),
+                    IntoMsiValue::into(&self.parent_directory),
+                    IntoMsiValue::into(&self.default_dir),
                 ]
             }
         }
@@ -107,26 +89,10 @@ fn test_msi_tables_enum() {
             entries: Vec<DirectoryDao>,
         }
 
-        impl MsiTableKind for DirectoryTable {
-            type TableValue = DirectoryDao;
+        impl PackageTable for DirectoryTable {
+
             fn name(&self) -> &'static str {
                 "Directory"
-            }
-
-            fn entries(&self) -> &Vec<DirectoryDao> {
-                &self.entries
-            }
-
-            fn entries_mut(&mut self) -> &mut Vec<DirectoryDao> {
-                &mut self.entries
-            }
-
-            fn len(&self) -> usize {
-                self.entries.len()
-            }
-
-            fn is_empty(&self) -> bool {
-                self.len() == 0
             }
 
             fn primary_key_indices(&self) -> Vec<usize> {
@@ -135,25 +101,37 @@ fn test_msi_tables_enum() {
 
             fn columns(&self) -> Vec<msi::Column> {
                 vec![
-                    msi::Column::build("Directory").primary_key().category(msi::Category::Identifier).string(72),
-                    msi::Column::build("Directory_Parent").nullable().foreign_key("Directory", 0).category(msi::Category::Identifier).string(72),
+                    msi::Column::build("Directory").primary_key().id_string(72usize),
+                    msi::Column::build("Directory_Parent").nullable().foreign_key("Directory", 0).id_string(72usize),
                     msi::Column::build("DefaultDir").localizable().category(msi::Category::DefaultDir).string(255),
                 ]
+            }
+        }
+
+        impl DaoList for DirectoryTable {
+            type Dao = DirectoryDao;
+
+            fn entries(&self) -> &Vec<DirectoryDao> {
+                &self.entries
+            }
+
+            fn entries_mut(&mut self) -> &mut Vec<DirectoryDao> {
+                &mut self.entries
             }
         }
 
         #[derive(Clone, Debug, PartialEq, getset::Getters)]
         #[getset(get = "pub")]
         pub struct FeatureComponentDao {
-            feature_: FeatureIdentifier,
-            component_: ComponentIdentifier,
+            feature_: Identifier,
+            component_: Identifier,
         }
 
         impl FeatureComponentDao {
-            pub fn new(feature_: impl Into<FeatureIdentifier> ,component_: impl Into <ComponentIdentifier>) -> FeatureComponentDao {
+            pub fn new(feature_: impl Into<&Identifier> ,component_: impl Into <&Identifier>) -> FeatureComponentDao {
                 FeatureComponentDao {
-                    feature_: feature_.into(),
-                    component_: component_.into()
+                    feature_: feature_.into().clone(),
+                    component_: component_.into().clone()
                 }
             }
         }
@@ -172,8 +150,8 @@ fn test_msi_tables_enum() {
 
             fn to_row(&self) -> Vec<msi::Value> {
                 vec![
-                    Into::<msi::Value>::into(&self.feature_),
-                    Into::<msi::Value>::into(&self.component_),
+                    IntoMsiValue::into(&self.feature_),
+                    IntoMsiValue::into(&self.component_),
                 ]
             }
         }
@@ -183,27 +161,10 @@ fn test_msi_tables_enum() {
             entries: Vec<FeatureComponentDao>,
         }
 
-        impl MsiTableKind for FeatureComponentTable {
-            type TableValue = FeatureComponentDao;
+        impl PackageTable for FeatureComponentTable {
 
             fn name(&self) -> &'static str {
                 "FeatureComponent"
-            }
-
-            fn entries(&self) -> &Vec<FeatureComponentDao> {
-                &self.entries
-            }
-
-            fn entries_mut(&mut self) -> &mut Vec<FeatureComponentDao> {
-                &mut self.entries
-            }
-
-            fn len(&self) -> usize {
-                self.entries.len()
-            }
-
-            fn is_empty(&self) -> bool {
-                self.len() == 0
             }
 
             fn primary_key_indices(&self) -> Vec<usize> {
@@ -212,9 +173,20 @@ fn test_msi_tables_enum() {
 
             fn columns(&self) -> Vec<msi::Column> {
                 vec![
-                    msi::Column::build("Feature_").primary_key().foreign_key("Feature", 0).category(msi::Category::Identifier).string(72),
-                    msi::Column::build("Component_").primary_key().foreign_key("Component", 0).category(msi::Category::Identifier).string(72),
+                    msi::Column::build("Feature_").primary_key().foreign_key("Feature", 0).id_string(38usize),
+                    msi::Column::build("Component_").primary_key().foreign_key("Component", 0).id_string(72usize),
                 ]
+            }
+        }
+
+        impl DaoList for FeatureComponentTable {
+            type Dao = FeatureComponentDao;
+            fn entries(&self) -> &Vec<FeatureComponentDao> {
+                &self.entries
+            }
+
+            fn entries_mut(&mut self) -> &mut Vec<FeatureComponentDao> {
+                &mut self.entries
             }
         }
     };

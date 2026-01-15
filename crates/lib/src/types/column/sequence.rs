@@ -1,4 +1,4 @@
-use super::identifier::Identifier;
+use crate::types::helpers::to_msi_value::IntoMsiValue;
 
 #[derive(
     Clone,

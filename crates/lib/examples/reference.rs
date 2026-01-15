@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use msi::Language;
 use tracing::level_filters::LevelFilter;
-use whimsi_lib::builder::MsiDatabase;
+use whimsi_lib::database::MsiDatabase;
 use whimsi_lib::tables::meta::MetaInformation;
 use whimsi_lib::types::helpers::architecture::MsiArchitecture;
 use whimsi_lib::types::properties::system_folder::SystemFolder;

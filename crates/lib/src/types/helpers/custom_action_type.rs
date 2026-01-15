@@ -1,4 +1,5 @@
 use crate::types::column::integer::Integer;
+use crate::types::helpers::to_msi_value::IntoMsiValue;
 
 /// *References*:
 /// - [Summary List of All Custom Action Types](https://learn.microsoft.com/en-us/windows/win32/msi/summary-list-of-all-custom-action-types)
@@ -19,9 +20,9 @@ pub enum CustomActionType {
     Arbitrary(Integer),
 }
 
-impl Into<msi::Value> for CustomActionType {
-    fn into(self) -> msi::Value {
-        let int = match self {
+impl IntoMsiValue for CustomActionType {
+    fn into(&self) -> msi::Value {
+        let int = match *self {
             CustomActionType::Basic(basic_custom_action_type) => {
                 basic_custom_action_type as i32
             }

@@ -40,7 +40,7 @@ fn generate_dao_struct_definition(
     // but I want to explicitly drop visibilities here so all properties are
     // private.
     //
-    // TODO: This will _not_ propogate proc-macros placed on the fields.
+    // TODO: This will _not_ propagate proc-macros placed on the fields.
     // Determine if this is needed.
     let mut field_tokens = TokenStream::new();
     for field in fields {
@@ -68,7 +68,7 @@ fn generate_primary_identifier_impl_definition(
     let dao_primary_identifier = match primary_identifier {
         Some(identifier) => {
             let identifier_ident = identifier.ident.clone();
-            quote! { Some( self.#identifier_ident.to_identifier() ) }
+            quote! { Some( self.#identifier_ident.clone() ) }
         }
         None => {
             quote! { None }
@@ -139,7 +139,7 @@ fn generate_msi_dao_to_row_definition(
         let field_ident = &field.ident;
         fields_to_msi_value_tokens = quote! {
             #fields_to_msi_value_tokens
-            Into::<msi::Value>::into(self.#field_ident),
+            IntoMsiValue::into(&self.#field_ident),
         }
     }
 
@@ -165,7 +165,7 @@ fn generate_new_for_dao(
     quote! {
         impl #dao_name {
             pub fn new( #(#field_idents: impl Into<#field_types>),* ) -> #dao_name {
-                #dao_name { #(#field_idents: #field_idents.into()),* }
+                #dao_name { #(#field_idents: #field_idents.into().clone()),* }
             }
         }
     }

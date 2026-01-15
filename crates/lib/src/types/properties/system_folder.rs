@@ -13,7 +13,6 @@ use strum::IntoEnumIterator;
 use thiserror::Error;
 
 use crate::types::column::identifier::Identifier;
-use crate::types::column::identifier::ToIdentifier;
 use crate::types::helpers::primary_identifier::PrimaryIdentifier;
 
 #[derive(
@@ -56,20 +55,14 @@ impl TryFrom<Identifier> for SystemFolder {
     }
 }
 
-impl ToIdentifier for SystemFolder {
-    fn to_identifier(&self) -> Identifier {
-        self.into()
-    }
-}
-
 impl PrimaryIdentifier for SystemFolder {
     fn primary_identifier(&self) -> Option<Identifier> {
-        Some(self.to_identifier())
+        Some(self.into())
     }
 }
 
 #[derive(Debug, Error)]
 pub enum SystemFolderConversionError {
-    #[error("Identifer {identifier} didn't match any known system folder")]
+    #[error("Identifier {identifier} didn't match any known system folder")]
     InvalidSystemFolder { identifier: Identifier },
 }

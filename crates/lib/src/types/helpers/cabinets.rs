@@ -4,8 +4,8 @@ use anyhow::ensure;
 
 use crate::types::column::filename::ShortFilename;
 use crate::types::column::identifier::Identifier;
-use crate::types::column::identifier::ToIdentifier;
-use crate::types::helpers::cabinet_info::CabinetInfo;
+use crate::types::column::identifier::ambassador_impl_Into;
+// use crate::types::helpers::cabinet_info::CabinetInfo;
 
 // TODO: This area could be almost completely removed by making the MsiTables
 // derive macro more modular.
@@ -16,14 +16,10 @@ use crate::types::helpers::cabinet_info::CabinetInfo;
     Debug,
     PartialEq,
     derive_more::Display,
+    derive_more::Into,
     whimsi_macros::IdentifierToValue,
 )]
 pub struct CabinetIdentifier(Identifier);
-impl ToIdentifier for CabinetIdentifier {
-    fn to_identifier(&self) -> Identifier {
-        self.0.clone()
-    }
-}
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub(crate) struct CabinetIdentifierGenerator {

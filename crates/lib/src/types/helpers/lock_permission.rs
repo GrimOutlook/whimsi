@@ -1,3 +1,5 @@
+use crate::types::helpers::to_msi_value::IntoMsiValue;
+
 #[derive(Clone, Copy, Debug, PartialEq, whimsi_macros::ReprToValue)]
 #[repr(i32)]
 pub enum LockPermission {

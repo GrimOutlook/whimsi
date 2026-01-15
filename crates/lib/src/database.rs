@@ -25,18 +25,18 @@ use uuid::Uuid;
 
 use crate::constants::*;
 use crate::tables::SupportedTable;
+use crate::tables::SupportedTableKind;
 use crate::tables::builder_table::DaoList;
 use crate::tables::dao::MsiDao;
 use crate::tables::meta::MetaInformation;
 use crate::types::column::default_dir::DefaultDir;
 use crate::types::column::filename::Filename;
 use crate::types::column::identifier::Identifier;
-use crate::types::column::identifier::ToIdentifier;
 use crate::types::column::sequence::Sequence;
 use crate::types::helpers::architecture::MsiArchitecture;
-use crate::types::helpers::cabinet_info::CabinetInfo;
-use crate::types::helpers::cabinets::CabinetHandle;
-use crate::types::helpers::cabinets::Cabinets;
+// use crate::types::helpers::cabinet_info::CabinetInfo;
+// use crate::types::helpers::cabinets::CabinetHandle;
+// use crate::types::helpers::cabinets::Cabinets;
 use crate::types::helpers::page_count::PageCount;
 use crate::types::helpers::security_flag::DocSecurity;
 use crate::types::properties::system_folder::SystemFolder;
@@ -158,7 +158,7 @@ impl MsiDatabase {
             .unwrap()
     }
 
-    pub fn table(&self, table: SupportedTable) -> &SupportedTableKind {
+    pub fn table(&self, table: SupportedTableKind) -> &SupportedTable {
         self.tables
             .iter()
             .find(|t| SupportedTableKind::from(*t as &SupportedTable) == table)

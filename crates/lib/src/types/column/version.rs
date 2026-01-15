@@ -3,6 +3,8 @@ use std::str::FromStr;
 use anyhow::Context;
 use anyhow::ensure;
 
+use crate::types::helpers::to_msi_value::IntoMsiValue;
+
 #[derive(
     Clone, Debug, PartialEq, derive_more::Display, whimsi_macros::StrToValue,
 )]

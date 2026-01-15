@@ -1,5 +1,7 @@
 use bitflags::bitflags;
 
+use crate::types::helpers::to_msi_value::IntoMsiValue;
+
 bitflags! {
     /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/servicecontrol-table#event)
     #[derive(Clone, Copy, Debug, PartialEq, whimsi_macros::BitmaskToValue)]

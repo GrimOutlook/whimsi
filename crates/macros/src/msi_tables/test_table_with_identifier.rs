@@ -23,15 +23,14 @@ fn test_msi_table_with_generated_identifier() {
 
     let expected_output = quote! {
         use whimsi_lib::types::column::identifier::Identifier;
-        use whimsi_lib::types::column::identifier::ToIdentifier;
 
         #[doc = "This is a simple wrapper around `Identifier` for the `DirectoryTable`. Used to ensure that identifiers for the `DirectoryTable` are only used in valid locations."]
         #[derive(Clone, Debug, Default, PartialEq, derive_more::Display, whimsi_macros::IdentifierToValue)]
         pub struct DirectoryIdentifier(Identifier);
 
-        impl ToIdentifier for DirectoryIdentifier {
-            fn to_identifier(&self) -> Identifier {
-                self.0.clone()
+        impl From<DirectoryIdentifier> for Identifier {
+            fn from(val: DirectoryIdentifier) -> Identifier {
+                val.0.clone()
             }
         }
 
@@ -63,7 +62,7 @@ fn test_msi_table_with_generated_identifier() {
 
         impl PrimaryIdentifier for DirectoryDao {
             fn primary_identifier(&self) -> Option<Identifier> {
-                Some( self.directory.to_identifier() )
+                Some( self.directory.into() )
             }
         }
 

@@ -6,9 +6,9 @@ use version::Version;
 use crate::types::column::filename::Filename;
 
 pub mod binary;
-pub mod cabinet;
+// pub mod cabinet;
 pub mod condition;
-pub mod custom_source;
+// pub mod custom_source;
 pub mod default_dir;
 pub mod double_integer;
 pub mod filename;
@@ -21,7 +21,7 @@ pub mod language;
 pub mod property;
 pub mod reg_path;
 pub mod sequence;
-pub mod shortcut;
+// pub mod shortcut;
 pub mod text;
 pub mod version;
 

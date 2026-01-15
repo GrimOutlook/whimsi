@@ -1,3 +1,5 @@
+use crate::types::helpers::to_msi_value::IntoMsiValue;
+
 /// This column specifies the action taken by the startup program if the service
 /// fails to start during startup. These values affect the ServiceControl
 /// StartService events for installed services. One of the following error

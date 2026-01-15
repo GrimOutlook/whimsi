@@ -2,8 +2,7 @@ use crate::tables::FileIdentifier;
 use crate::tables::RegistryIdentifier;
 use crate::tables::ServiceInstallIdentifier;
 use crate::types::column::identifier::Identifier;
-use crate::types::column::identifier::ToIdentifier;
-use crate::types::column::identifier::ambassador_impl_ToIdentifier;
+use crate::types::column::identifier::ambassador_impl_Into;
 
 #[derive(
     Debug,
@@ -13,7 +12,7 @@ use crate::types::column::identifier::ambassador_impl_ToIdentifier;
     strum::Display,
     whimsi_macros::IdentifierToValue,
 )]
-#[delegate(ToIdentifier)]
+#[delegate(Into<Identifier>)]
 pub enum LockObject {
     File(FileIdentifier),
     Registry(RegistryIdentifier),

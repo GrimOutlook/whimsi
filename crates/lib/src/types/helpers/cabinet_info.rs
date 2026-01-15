@@ -4,7 +4,6 @@ use getset::Getters;
 
 use crate::tables::FileIdentifier;
 use crate::types::column::identifier::Identifier;
-use crate::types::column::identifier::ToIdentifier;
 use crate::types::helpers::cabinets::CabinetIdentifier;
 use crate::types::helpers::primary_identifier::PrimaryIdentifier;
 
@@ -31,7 +30,7 @@ impl CabinetInfo {
 
 impl PrimaryIdentifier for CabinetInfo {
     fn primary_identifier(&self) -> Option<Identifier> {
-        Some(self.id.to_identifier())
+        Some(self.id.clone().into())
     }
 }
 

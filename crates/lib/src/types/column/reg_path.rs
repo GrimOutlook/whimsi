@@ -3,6 +3,7 @@ use std::str::FromStr;
 use anyhow::ensure;
 
 use crate::types::column::formatted::Formatted;
+use crate::types::helpers::to_msi_value::IntoMsiValue;
 
 /// Formatted string that cannot start or end with backslashes.
 #[derive(

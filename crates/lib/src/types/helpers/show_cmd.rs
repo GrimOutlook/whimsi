@@ -1,3 +1,5 @@
+use crate::types::helpers::to_msi_value::IntoMsiValue;
+
 /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/shortcut-table#showcmd)
 #[derive(Clone, Copy, Debug, PartialEq, whimsi_macros::ReprToValue)]
 #[repr(i16)]

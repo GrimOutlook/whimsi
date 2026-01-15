@@ -7,15 +7,16 @@ edition = "2024"
 proc-macro = true
 
 [dependencies]
-syn = { version = "2.0", features = ["full"] }
-quote = "1.0"
-proc-macro2 = "1.0"
 darling = "0.21.3"
-itertools = "0.14.0"
 debug_print = "1.0.0"
-msi = {path = "../../../rust-msi/"}
 fancy-regex = "0.16.2"
+itertools = "0.14.0"
+msi = { path = "../../../rust-msi/" }
+proc-macro2 = "1.0"
+quote = "1.0"
+strum = { version = "0.27.2", features = ["derive"] }
+syn = { version = "2.0", features = ["full"] }
 
 [dev-dependencies]
+ambassador = "0.5.0"
 pretty_assertions = "1.4.1"
-

@@ -52,9 +52,18 @@ fn make_trait_impl(
     fn_body: proc_macro2::TokenStream,
 ) -> proc_macro::TokenStream {
     quote! {
-        impl msi::ToValue for #name {
-            fn to_value(&self) -> msi::Value {
+        impl Into::<msi::Value> for #name {
+            fn into(self) -> msi::Value {
                 #fn_body
+            }
+        }
+
+        impl Into::<msi::Value> for Option<#name> {
+            fn into(self) -> msi::Value {
+                match self {
+                    Some(val) => Into::<msi::Value>::into(val),
+                    None => msi::Value::Null,
+                }
             }
         }
     }

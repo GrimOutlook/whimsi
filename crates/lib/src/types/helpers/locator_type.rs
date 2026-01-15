@@ -18,8 +18,8 @@ pub enum LocatorArch {
     _64bit,
 }
 
-impl msi::ToValue for LocatorType {
-    fn to_value(&self) -> msi::Value {
+impl Into::<msi::Value> for LocatorType {
+    fn into(self) -> msi::Value {
         todo!()
     }
 }

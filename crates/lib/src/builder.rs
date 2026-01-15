@@ -24,10 +24,8 @@ use tracing::info;
 use uuid::Uuid;
 
 use crate::constants::*;
-use crate::tables::AdminExecuteSequenceTable;
-use crate::tables::MsiTable;
-use crate::tables::MsiTableContainer;
-use crate::tables::builder_table::DaoContainer;
+use crate::tables::SupportedTable;
+use crate::tables::builder_table::DaoList;
 use crate::tables::dao::MsiDao;
 use crate::tables::meta::MetaInformation;
 use crate::types::column::default_dir::DefaultDir;
@@ -47,7 +45,7 @@ use crate::types::standard_action::StandardAction;
 /// An in-memory representation of the final MSI to be created.
 #[derive(Getters, Setters)]
 #[getset(get = "pub")]
-pub struct MsiBuilder {
+pub struct MsiDatabase {
     /// Information about the whole package. Tracks both information for
     /// creating the MSI and information that is tracked in the
     /// _SummaryInformation table.
@@ -62,10 +60,10 @@ pub struct MsiBuilder {
     identifiers: Rc<RefCell<Vec<Identifier>>>,
 
     /// List of all the tables managed by this builder
-    tables: Vec<MsiTableContainer>,
+    tables: Vec<SupportedTable>,
 }
 
-impl MsiBuilder {
+impl MsiDatabase {
     /// Build the MSI from all information given to MSIBuilder.
     pub fn build<F: std::io::Read + std::io::Write + std::io::Seek>(
         self,
@@ -150,22 +148,25 @@ impl MsiBuilder {
         Ok(())
     }
 
-    pub fn table_mut(&mut self, table: MsiTable) -> &mut MsiTableContainer {
+    pub fn table_mut(
+        &mut self,
+        table: SupportedTableKind,
+    ) -> &mut SupportedTable {
         self.tables
             .iter_mut()
-            .find(|t| MsiTable::from(*t as &MsiTableContainer) == table)
+            .find(|t| SupportedTableKind::from(*t as &SupportedTable) == table)
             .unwrap()
     }
 
-    pub fn table(&self, table: MsiTable) -> &MsiTableContainer {
+    pub fn table(&self, table: SupportedTable) -> &SupportedTableKind {
         self.tables
             .iter()
-            .find(|t| MsiTable::from(*t as &MsiTableContainer) == table)
+            .find(|t| SupportedTableKind::from(*t as &SupportedTable) == table)
             .unwrap()
     }
 }
 
-impl Default for MsiBuilder {
+impl Default for MsiDatabase {
     fn default() -> Self {
         let empty_entries = Rc::new(RefCell::new(Vec::new()));
         Self {

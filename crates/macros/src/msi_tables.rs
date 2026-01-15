@@ -1,5 +1,6 @@
 use darling::FromDeriveInput;
 use darling::FromField;
+use darling::FromMeta;
 use darling::FromVariant;
 use itertools::Itertools;
 use proc_macro2::TokenStream;
@@ -41,9 +42,65 @@ pub(crate) struct FieldInformation {
     // Type of the field
     pub ty: syn::Type,
 
-    // -- Custom --------------------------------------------------------------
-    // The category that the given column will be converted to when placed in
-    // the table.
+    // What the name of the column is. If it is not provided the identifier of
+    // the field is converted to title case and underscores are removed.
+    #[darling(default)]
+    pub column_name: Option<String>,
+
+    // Denotes if the given field is an identifier.
+    #[darling(rename = "kind")]
+    pub field_type: FieldType,
+
+    // Denotes if the given field corresponds to a primary key in the table.
+    #[darling(default)]
+    pub primary_key: bool,
+}
+
+#[allow(clippy::large_enum_variant)]
+#[derive(Clone, Debug, darling::FromMeta)]
+pub(crate) enum FieldType {
+    Identifier(IdentifierOptions),
+    String(StringOptions),
+    Integer,
+    DoubleInteger,
+    Binary,
+}
+
+#[derive(Clone, Debug, Default, darling::FromMeta)]
+pub(crate) struct IdentifierOptions {
+    // Identifier length presets. I've only seen 2 lengths for Identifier types
+    // so this makes it simpler.
+    pub id_length: IdentifierLength,
+
+    // Denotes if the given identifier is a foreign key into the table and if
+    // it is, what table the key is from.
+    #[darling(default)]
+    pub foreign_key: Option<ForeignKey>,
+}
+
+#[derive(Clone, Debug, darling::FromMeta)]
+pub(crate) struct ForeignKey {
+    pub table: String,
+
+    #[darling(default = default_index)]
+    pub index: syn::Expr,
+}
+
+fn default_index() -> syn::Expr {
+    syn::parse_quote!(0)
+}
+
+#[derive(Clone, Copy, Debug, Default, darling::FromMeta, strum::FromRepr)]
+#[repr(usize)]
+pub(crate) enum IdentifierLength {
+    Short = 38,
+    #[default]
+    Long  = 72,
+}
+
+#[derive(Clone, Debug, darling::FromMeta)]
+pub(crate) struct StringOptions {
+    // The kind of string that is to be stored.
     pub category: syn::Expr,
 
     // The maximum length of the string placed in the column. This is specific
@@ -54,33 +111,12 @@ pub(crate) struct FieldInformation {
     // columns based on the given category but I like the idea of not
     // obscuring what values are being used for a given column. This is
     // only optional for categories of Integer and DoubleInteger.
-    pub length: Option<syn::Expr>,
-
-    // What the name of the column is. If it is not provided the identifier of
-    // the field is converted to title case and underscores are removed.
-    #[darling(default)]
-    pub column_name: Option<String>,
-
-    // Denotes if the given field corresponds to a primary key in the table.
-    #[darling(default)]
-    pub primary_key: bool,
-
-    // Denotes if the given field is an identifier.
-    #[darling(default, rename = "identifier")]
-    pub identifier_options: Option<IdentifierInformation>,
+    pub length: syn::Expr,
 
     // Whether or not the given field is localizable as specified in the MSI
     // documentation.
     #[darling(default)]
     pub localizable: bool,
-}
-
-#[derive(darling::FromMeta, FromField, Clone)]
-pub(crate) struct IdentifierInformation {
-    // Denotes if the given identifier is a foreign key into the table and if
-    // it is, what table the key is from.
-    #[darling(default)]
-    pub foreign_key: Option<String>,
 }
 
 pub fn gen_tables_impl(input: TokenStream) -> TokenStream {
@@ -127,11 +163,11 @@ fn gen_tables_for_enum(
 
     // Generate the enum containing all of the variant structs
     let table_enum_name = format_ident!("{name}");
+    let table_variant_enum_name = format_ident!("{name}Kind");
     let dao_enum_name = dao_from_name(name);
     let tokens = quote! {
         #[derive(Clone, PartialEq, strum::EnumDiscriminants, derive_more::From, derive_more::TryFrom, derive_more::TryInto, strum::Display)]
-        #[strum_discriminants(name(MsiTable))]
-        #[enum_delegate::implement(PackageWriter)]
+        #[strum_discriminants(#table_variant_enum_name)]
         pub enum #table_enum_name {
             #(#struct_variants)*
         }
@@ -160,19 +196,21 @@ fn gen_tables_for_fields(
     let target_name = capitalize(base_name);
 
     // Create the table-specific identifier if one should be made. These are
-    // made when a table has a column with a type that implements
-    // `ToIdentifier` and the column is not marked as a foreign key.
+    // made when a table has a column with a type that has a field_type of
+    // Identifier and the column is not marked as storing a foreign key.
     let primary_identifier = fields
         .iter()
-        .filter(|f| {
-            f.primary_key
-                && f.identifier_options.is_some()
-                && f.identifier_options.clone().unwrap().foreign_key.is_none()
+        .filter(|field| {
+            if field.primary_key && let FieldType::Identifier(options) = &field.field_type && options.foreign_key.is_none() {
+                true
+            } else {
+                false
+            }
         })
         .at_most_one()
         .unwrap_or_else(|_| {
             panic!(
-                "More than one field marked as primary identifier found in defintion. This is not supported."
+                "More than one field marked as primary identifier found in definition. This is not supported."
             )
         });
 
@@ -198,4 +236,8 @@ fn gen_tables_for_fields(
 }
 
 #[cfg(test)]
-mod tests;
+mod test_enum;
+#[cfg(test)]
+mod test_table_no_identifier;
+#[cfg(test)]
+mod test_table_with_identifier;

@@ -2,7 +2,6 @@ use std::io::Read;
 use std::io::Seek;
 use std::io::Write;
 
-use ambassador::delegatable_trait;
 use anyhow::anyhow;
 use anyhow::ensure;
 use itertools::Itertools;
@@ -13,22 +12,15 @@ use tracing::trace;
 use crate::tables::dao::MsiDao;
 use crate::types::helpers::primary_identifier::PrimaryIdentifier;
 
-pub trait PackageWriter: DaoContainer {
+/// Structs that implement this trait are able to write to a table in an
+/// msi::Package.
+pub trait PackageTable: DaoList {
     fn name(&self) -> &'static str;
     fn columns(&self) -> Vec<msi::Column>;
     fn primary_key_indices(&self) -> Vec<usize>;
 
     fn rows(&self) -> Vec<Vec<msi::Value>> {
-        self.entries()
-            .into_iter()
-            .map(MsiDao::to_row)
-            .sorted_by_key(|row| {
-                // TODO: Determine if this needs to be sorted by the first
-                // column or by the primary key. My guess is the
-                // primary key but this is easier to do for now.
-                row.first().unwrap().clone()
-            })
-            .collect_vec()
+        self.entries().into_iter().map(MsiDao::to_row).collect_vec()
     }
 
     /// Write the columns contained in the table to the package.
@@ -59,7 +51,7 @@ pub trait PackageWriter: DaoContainer {
     }
 }
 
-pub trait DaoContainer {
+pub trait DaoList {
     type Dao: MsiDao + PrimaryIdentifier + PartialEq;
 
     fn entries(&self) -> &Vec<Self::Dao>;
@@ -77,6 +69,13 @@ pub trait DaoContainer {
         self.entries().iter().any(|entry| entry.conflicts_with(other))
     }
 
+    /// Add the given `Dao` to the list.
+    ///
+    /// # Returns
+    /// - `Ok(())`: If the entry does not share the same primary key(s) as an
+    /// item already in the list.
+    /// - `Err(E)`: If the entry shares the same primary key(s) as an item
+    /// already in the list
     fn add(&mut self, entry: Self::Dao) -> anyhow::Result<()> {
         ensure!(
             !self.contains(&entry),

@@ -1,10 +1,9 @@
-use std::str::FromStr;
-
 use proc_macro2::TokenStream;
 use quote::quote;
 
 use crate::helper::*;
 use crate::msi_tables::FieldInformation;
+use crate::msi_tables::FieldType;
 
 pub fn generate_table_tokens(
     target_name: &str,
@@ -60,35 +59,40 @@ fn generate_msi_table_impl(
         } else {
             Default::default()
         };
-        let localizable = if field.localizable {
-            quote!{.localizable()}
-        } else {
-            Default::default()
-        };
 
         // If this causes issues it can probably be removed.
-        let foreign_key = if let Some(identifier_options) = &field.identifier_options &&
-            let Some(foreign_key) = &identifier_options.foreign_key {
-            // TODO: This is almost certainly wrong in some circumstance. It assumes that the
-            // foreign_key points to the first column of the referenced table. I really want to add
-            // a way to dynamically get the primary_key index for the given table, but I would need
-            // to split the parsing into 2 sections for that. I might circle back and implement
-            // that at some point but I'm gonna skip it for now.
-            quote!{.foreign_key(#foreign_key, 0)}
+        let foreign_key = if let FieldType::Identifier(options) = &field.field_type &&
+            let Some(foreign_key) = &options.foreign_key {
+            let table = &foreign_key.table;
+            let index = &foreign_key.index;
+            quote!{.foreign_key(#table, #index)}
         } else {
             Default::default()
         };
 
-        // TODO: I dislike having to hard code in the `msi` path here but couldn't find a
-        // better solution. Should probably look into it some more.
-        let field_category = &field.category;
-        let category = quote! { .category( #field_category ) };
-        let finish = generate_finish_build_for_field(field);
+        let finish = match &field.field_type {
+            FieldType::Identifier(options) => {
+                let length = options.id_length as usize;
+                quote!{ .id_string( #length ) }
+            },
+            FieldType::String(options) => {
+                let field_category = &options.category;
+                let string_length = &options.length;
+                let localizable = match &options.localizable {
+                    true => quote!(.localizable()),
+                    false => Default::default(),
+                };
+                quote! { #localizable .category( #field_category ).string( #string_length ) }
+            },
+            FieldType::Integer => quote! { .int16() },
+            FieldType::DoubleInteger => quote! { .int32() },
+            FieldType::Binary => quote! { .binary() },
+        };
 
         quote! {
             #acc
 
-            msi::Column::build(#column_name) #primary_key #nullable #localizable #foreign_key #category #finish,
+            msi::Column::build(#column_name) #primary_key #nullable #foreign_key #finish,
         }
     });
 
@@ -96,7 +100,7 @@ fn generate_msi_table_impl(
     let dao_name = dao_from_name(target_name);
 
     quote! {
-        impl PackageWriter for #table_name {
+        impl PackageTable for #table_name {
 
             fn name(&self) -> &'static str {
                 #target_name
@@ -113,7 +117,7 @@ fn generate_msi_table_impl(
             }
         }
 
-        impl DaoContainer for #table_name {
+        impl DaoList for #table_name {
             type Dao = #dao_name;
 
             fn entries(&self) -> &Vec<#dao_name> {
@@ -123,42 +127,6 @@ fn generate_msi_table_impl(
             fn entries_mut(&mut self) -> &mut Vec<#dao_name> {
                 &mut self.entries
             }
-
-            fn len(&self) -> usize {
-                self.entries.len()
-            }
-
-            fn is_empty(&self) -> bool {
-                self.len() == 0
-            }
-        }
-    }
-}
-
-fn generate_finish_build_for_field(field: &FieldInformation) -> TokenStream {
-    let syn::Expr::Path(ref path) = field.category else {
-        panic!("Category is not a valid syn::Expr::Path.")
-    };
-    let category_str = path
-        .path
-        .segments
-        .last()
-        .expect("Path contains no segments")
-        .ident
-        .to_string();
-    let category = msi::Category::from_str(&category_str)
-        .unwrap_or_else(|_| panic!("Category is invalid: {}", category_str));
-    match category {
-        msi::Category::Integer => quote! {.int16()},
-        msi::Category::DoubleInteger => quote! {.int32()},
-        _ => {
-            let length = field.clone().length.unwrap_or_else(|| {
-                panic!(
-                    "Field {:?} with category {} must define a length",
-                    field.ident, category_str
-                )
-            });
-            quote! {.string(#length)}
         }
     }
 }

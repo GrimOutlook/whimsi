@@ -5,7 +5,6 @@ use anyhow::Context;
 use anyhow::bail;
 use derive_more::Display;
 use itertools::Itertools;
-use msi::ToValue;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use strum::IntoEnumIterator;

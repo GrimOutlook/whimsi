@@ -5,8 +5,8 @@ pub mod meta;
 use whimsi_macros::msi_table_list;
 
 use crate as whimsi_lib;
-use crate::tables::builder_table::DaoContainer;
-use crate::tables::builder_table::PackageWriter;
+use crate::tables::builder_table::DaoList;
+use crate::tables::builder_table::PackageTable;
 use crate::tables::dao::MsiDao;
 use crate::types::column::binary::Binary;
 use crate::types::column::condition::Condition;
@@ -51,35 +51,36 @@ use crate::types::standard_action::StandardAction;
 // TODO: Look at Directory to see the form that I eventually want to have
 // implemented.
 msi_table_list! {
+    /// Tables that are supported per the Microsoft MSI standard.
     /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/database-tables)
-    enum MsiTableContainer {
+    enum SupportedTable {
         // TODO: ActionTable,
 
-        /// Lists ADMIN actions in sequence.
-        ///
-        /// The AdminExecuteSequence table lists actions that the installer calls in sequence when
-        /// the top-level ADMIN action is executed.
-        ///
-        /// ADMIN actions in the install sequence, up to the InstallValidate action and any exit
-        /// dialog boxes, are located in the AdminUISequence table.
-        ///
-        /// ADMIN actions from the InstallValidate action through the end of the install sequence
-        /// are in the AdminExecuteSequence table. Because the AdminExecuteSequence table needs to
-        /// stand alone, it also contains any necessary initialization actions such as
-        /// LaunchConditions, CostInitialize, FileCost, and CostFinalize.
-        ///
-        /// Custom actions requiring a user interface should use MsiProcessMessage instead of
-        /// authored dialog boxes created using the Dialog table.
-        ///
-        /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/adminexecutesequence-table)
-        AdminExecuteSequence {
-            #[msi_column(primary_key, category = msi::Category::Identifier, length = 72)]
-            action: ActionIdentifier,
-            #[msi_column(category = msi::Category::Condition, length = 255)]
-            condition: Option<Condition>,
-            #[msi_column(category = msi::Category::Condition, length = 255)]
-            sequence: Option<Integer>,
-        },
+        // /// Lists ADMIN actions in sequence.
+        // ///
+        // /// The AdminExecuteSequence table lists actions that the installer calls in sequence when
+        // /// the top-level ADMIN action is executed.
+        // ///
+        // /// ADMIN actions in the install sequence, up to the InstallValidate action and any exit
+        // /// dialog boxes, are located in the AdminUISequence table.
+        // ///
+        // /// ADMIN actions from the InstallValidate action through the end of the install sequence
+        // /// are in the AdminExecuteSequence table. Because the AdminExecuteSequence table needs to
+        // /// stand alone, it also contains any necessary initialization actions such as
+        // /// LaunchConditions, CostInitialize, FileCost, and CostFinalize.
+        // ///
+        // /// Custom actions requiring a user interface should use MsiProcessMessage instead of
+        // /// authored dialog boxes created using the Dialog table.
+        // ///
+        // /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/adminexecutesequence-table)
+        // AdminExecuteSequence {
+        //     #[msi_column(primary_key, category = msi::Category::Identifier, length = 72)]
+        //     action: ActionIdentifier,
+        //     #[msi_column(category = msi::Category::Condition, length = 255)]
+        //     condition: Option<Condition>,
+        //     #[msi_column(category = msi::Category::Condition, length = 255)]
+        //     sequence: Option<Integer>,
+        // },
 
         // /// Lists UI ADMIN actions in sequence.
         // ///
@@ -156,20 +157,20 @@ msi_table_list! {
         // // TODO: BBControl,
         // // TODO: Billboard,
 
-        /// Holds binary data for bitmaps and icons.
-        ///
-        /// The Binary table holds the binary data for items such as bitmaps, animations, and
-        /// icons. The binary table is also used to store data for custom actions. See [OLE
-        /// Limitations](https://learn.microsoft.com/en-us/windows/win32/msi/ole-limitations-on-streams)
-        /// on Streams.
-        ///
-        /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/binary-table)
-        Binary {
-            #[msi_column(primary_key, identifier(), category = msi::Category::Identifier, length = 72)]
-            name: BinaryIdentifier,
-            #[msi_column(category = msi::Category::Binary, length = 0)]
-            data: Binary,
-        },
+        // /// Holds binary data for bitmaps and icons.
+        // ///
+        // /// The Binary table holds the binary data for items such as bitmaps, animations, and
+        // /// icons. The binary table is also used to store data for custom actions. See [OLE
+        // /// Limitations](https://learn.microsoft.com/en-us/windows/win32/msi/ole-limitations-on-streams)
+        // /// on Streams.
+        // ///
+        // /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/binary-table)
+        // Binary {
+        //     #[msi_column(primary_key, identifier(), category = msi::Category::Identifier, length = 72)]
+        //     name: BinaryIdentifier,
+        //     #[msi_column(category = msi::Category::Binary, length = 0)]
+        //     data: Binary,
+        // },
 
         // // TODO: BindImage,
         // // TODO: CCPSearch,
@@ -179,23 +180,23 @@ msi_table_list! {
         // // TODO: CompLocators,
         // // TODO: Complus,
 
-        /// Lists installation components.
-        ///
-        /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/component-table)
-        Component {
-            #[msi_column(primary_key, identifier(), category = msi::Category::Identifier, length = 72)]
-            component: ComponentIdentifier,
-            #[msi_column(category = msi::Category::Guid, length = 38)]
-            component_id: Option<Guid>,
-            #[msi_column(identifier(foreign_key = "Directory"), category = msi::Category::Identifier, length = 72)]
-            directory_: DirectoryIdentifier,
-            #[msi_column(category = msi::Category::Integer)]
-            attributes: ComponentAttributes,
-            #[msi_column(category = msi::Category::Condition, length = 255)]
-            condition: Option<Condition>,
-            #[msi_column(category = msi::Category::Identifier, length = 72)]
-            key_path: Option<KeyPath>,
-        },
+        // /// Lists installation components.
+        // ///
+        // /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/component-table)
+        // Component {
+        //     #[msi_column(primary_key, identifier(), category = msi::Category::Identifier, length = 72)]
+        //     component: ComponentIdentifier,
+        //     #[msi_column(category = msi::Category::Guid, length = 38)]
+        //     component_id: Option<Guid>,
+        //     #[msi_column(identifier(foreign_key = "Directory"), category = msi::Category::Identifier, length = 72)]
+        //     directory_: DirectoryIdentifier,
+        //     #[msi_column(category = msi::Category::Integer)]
+        //     attributes: ComponentAttributes,
+        //     #[msi_column(category = msi::Category::Condition, length = 255)]
+        //     condition: Option<Condition>,
+        //     #[msi_column(category = msi::Category::Identifier, length = 72)]
+        //     key_path: Option<KeyPath>,
+        // },
 
         // // TODO: Condition,
         // // TODO: Control,
@@ -217,7 +218,7 @@ msi_table_list! {
         //     #[msi_column(primary_key, category = msi::Category::Identifier, length = 72)]
         //     action: ActionIdentifier,
         //     #[msi_column(column_name = "Type", category = msi::Category::Integer)]
-        //     typ: CustomActionType,
+        //     kind: CustomActionType,
         //     #[msi_column(category = msi::Category::CustomSource, length = 72)]
         //     source: Option<CustomSource>,
         //     #[msi_column(category = msi::Category::Formatted, length = 255)]
@@ -236,11 +237,11 @@ msi_table_list! {
         ///
         /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/directory-table)
         Directory {
-            #[msi_column(primary_key, identifier(), category = msi::Category::Identifier, length = 72)]
+            #[msi_column(primary_key, kind(identifier(id_length = "long")))]
             directory: DirectoryIdentifier,
-            #[msi_column(identifier(foreign_key = "Directory"), column_name = "Directory_Parent", category = msi::Category::Identifier, length = 72)]
+            #[msi_column(kind(identifier(foreign_key(table = "Directory"), id_length = "long")), column_name = "Directory_Parent")]
             parent_directory: Option<DirectoryIdentifier>,
-            #[msi_column(localizable, category = msi::Category::DefaultDir, length = 255)]
+            #[msi_column(kind(string(localizable, category = msi::Category::DefaultDir, length = 255)))]
             default_dir: DefaultDir,
         },
 
@@ -251,30 +252,30 @@ msi_table_list! {
         // // TODO: EventMapping,
         // // TODO: Extensiuon,
 
-        /// Defines the logical tree structure of features.
-        ///
-        /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/feature-table)
-        Feature {
-            // Yes I know it's weird that features have a different Identifier length, but it is
-            // explicitly stated [here](https://learn.microsoft.com/en-us/windows/win32/msi/feature-table#feature).
-            #[msi_column(primary_key, identifier(), category = msi::Category::Identifier, length = 38)]
-            feature: FeatureIdentifier,
-            #[msi_column(identifier(foreign_key = "Feature"), column_name = "Feature_Parent", category = msi::Category::Identifier, length = 38)]
-            parent_feature: Option<FeatureIdentifier>,
-            #[msi_column(localizable, category = msi::Category::Text, length = 64)]
-            title: Option<Text>,
-            #[msi_column(localizable, category = msi::Category::Text, length = 255)]
-            description: Option<Text>,
-            #[msi_column(category = msi::Category::Integer)]
-            display: Option<Integer>,
-            #[msi_column(category = msi::Category::Integer)]
-            level: Integer,
-            #[msi_column(identifier(foreign_key = "Directory"), category = msi::Category::Identifier, length = 72)]
-            directory_: Option<DirectoryIdentifier>,
-            #[msi_column(category = msi::Category::Integer)]
-            attributes: FeatureAttributes,
-
-        },
+        // /// Defines the logical tree structure of features.
+        // ///
+        // /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/feature-table)
+        // Feature {
+        //     // Yes I know it's weird that features have a different Identifier length, but it is
+        //     // explicitly stated [here](https://learn.microsoft.com/en-us/windows/win32/msi/feature-table#feature).
+        //     #[msi_column(primary_key, identifier(), category = msi::Category::Identifier, length = 38)]
+        //     feature: FeatureIdentifier,
+        //     #[msi_column(identifier(foreign_key = "Feature"), column_name = "Feature_Parent", category = msi::Category::Identifier, length = 38)]
+        //     parent_feature: Option<FeatureIdentifier>,
+        //     #[msi_column(localizable, category = msi::Category::Text, length = 64)]
+        //     title: Option<Text>,
+        //     #[msi_column(localizable, category = msi::Category::Text, length = 255)]
+        //     description: Option<Text>,
+        //     #[msi_column(category = msi::Category::Integer)]
+        //     display: Option<Integer>,
+        //     #[msi_column(category = msi::Category::Integer)]
+        //     level: Integer,
+        //     #[msi_column(identifier(foreign_key = "Directory"), category = msi::Category::Identifier, length = 72)]
+        //     directory_: Option<DirectoryIdentifier>,
+        //     #[msi_column(category = msi::Category::Integer)]
+        //     attributes: FeatureAttributes,
+        //
+        // },
 
         // /// Defines features and component relationships.
         // ///
@@ -286,27 +287,27 @@ msi_table_list! {
         //     component_: ComponentIdentifier,
         // },
 
-        /// Complete list of source files with their attributes.
-        ///
-        /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/file-table)
-        File {
-            #[msi_column(primary_key, identifier(), category = msi::Category::Identifier, length = 72)]
-            file: FileIdentifier,
-            #[msi_column(identifier(foreign_key = "Component"), category = msi::Category::Identifier, length = 72)]
-            component_: ComponentIdentifier,
-            #[msi_column(localizable, category = msi::Category::Filename, length = 255)]
-            file_name: Filename,
-            #[msi_column(category = msi::Category::DoubleInteger)]
-            file_size: DoubleInteger,
-            #[msi_column(category = msi::Category::Version, length = 72)]
-            version: Option<Version>,
-            #[msi_column(category = msi::Category::Language, length = 20)]
-            language: Option<Language>,
-            #[msi_column(category = msi::Category::Integer)]
-            attributes: Option<FileAttributes>,
-            #[msi_column(category = msi::Category::Integer)]
-            sequence: Sequence,
-        },
+        // /// Complete list of source files with their attributes.
+        // ///
+        // /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/file-table)
+        // File {
+        //     #[msi_column(primary_key, identifier(), category = msi::Category::Identifier, length = 72)]
+        //     file: FileIdentifier,
+        //     #[msi_column(identifier(foreign_key = "Component"), category = msi::Category::Identifier, length = 72)]
+        //     component_: ComponentIdentifier,
+        //     #[msi_column(localizable, category = msi::Category::Filename, length = 255)]
+        //     file_name: Filename,
+        //     #[msi_column(category = msi::Category::DoubleInteger)]
+        //     file_size: DoubleInteger,
+        //     #[msi_column(category = msi::Category::Version, length = 72)]
+        //     version: Option<Version>,
+        //     #[msi_column(category = msi::Category::Language, length = 20)]
+        //     language: Option<Language>,
+        //     #[msi_column(category = msi::Category::Integer)]
+        //     attributes: Option<FileAttributes>,
+        //     #[msi_column(category = msi::Category::Integer)]
+        //     sequence: Sequence,
+        // },
 
         // // TODO: FileSFPCatqalog,
         // // TODO: Font,
@@ -435,7 +436,7 @@ msi_table_list! {
         // // TODO: MsiAssembly,
         // // TODO: MsiAssemblyName,
         // // TODO: MsiDigitalCertificate,
-        // // TODO: MsiDigitalSiganture,
+        // // TODO: MsiDigitalSignature,
         // // TODO: MsiEmbeddedChainer,
         //
         // /// Stores a 128-bit hash of source files provided by the Windows Installer package.
@@ -477,36 +478,36 @@ msi_table_list! {
         // // TODO: PatchPackage,
         // // TODO: ProgId,
 
-        /// Lists property names and values for all properties.
-        ///
-        /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/property-table)
-        Property {
-            #[msi_column(primary_key, identifier(), category = msi::Category::Identifier, length = 72)]
-            property: PropertyIdentifier,
-            #[msi_column(localizable, category = msi::Category::Text, length = 0)]
-            value: Text,
-        },
+        // /// Lists property names and values for all properties.
+        // ///
+        // /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/property-table)
+        // Property {
+        //     #[msi_column(primary_key, identifier(), category = msi::Category::Identifier, length = 72)]
+        //     property: PropertyIdentifier,
+        //     #[msi_column(localizable, category = msi::Category::Text, length = 0)]
+        //     value: Text,
+        // },
 
         // // TODO: PublishComponent,
         // // TODO: RadioButton,
 
-        /// Lists registry information for the application.
-        ///
-        /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/registry-table)
-        Registry {
-            #[msi_column(primary_key, identifier(), category = msi::Category::Identifier, length = 72)]
-            registry: RegistryIdentifier,
-            #[msi_column(category = msi::Category::Integer)]
-            root: RegistryRoot,
-            #[msi_column(localizable, category = msi::Category::RegPath, length = 255)]
-            key: RegPath,
-            #[msi_column(localizable, category = msi::Category::Formatted, length = 255)]
-            name: Option<Formatted>,
-            #[msi_column(localizable, category = msi::Category::Formatted, length = 0)]
-            value: Option<Formatted>,
-            #[msi_column(identifier(foreign_key = "Component"), category = msi::Category::Identifier, length = 72)]
-            component_: ComponentIdentifier,
-        },
+        // /// Lists registry information for the application.
+        // ///
+        // /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/registry-table)
+        // Registry {
+        //     #[msi_column(primary_key, identifier(), category = msi::Category::Identifier, length = 72)]
+        //     registry: RegistryIdentifier,
+        //     #[msi_column(category = msi::Category::Integer)]
+        //     root: RegistryRoot,
+        //     #[msi_column(localizable, category = msi::Category::RegPath, length = 255)]
+        //     key: RegPath,
+        //     #[msi_column(localizable, category = msi::Category::Formatted, length = 255)]
+        //     name: Option<Formatted>,
+        //     #[msi_column(localizable, category = msi::Category::Formatted, length = 0)]
+        //     value: Option<Formatted>,
+        //     #[msi_column(identifier(foreign_key = "Component"), category = msi::Category::Identifier, length = 72)]
+        //     component_: ComponentIdentifier,
+        // },
 
 
         // /// Searches for file or directory using the registry.
@@ -522,7 +523,7 @@ msi_table_list! {
         //     #[msi_column(localizable, category = msi::Category::Formatted, length = 255)]
         //     name: Option<Formatted>,
         //     #[msi_column(column_name = "Type", category = msi::Category::Integer)]
-        //     typ: Option<LocatorType>,
+        //     kind: Option<LocatorType>,
         // },
         //
         // // TODO: RemoveFile,
@@ -578,37 +579,37 @@ msi_table_list! {
         //     component_: ComponentIdentifier,
         // },
 
-        /// Lists information used to install a service.
-        ///
-        /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/serviceinstall-table)
-        ServiceInstall {
-            #[msi_column(primary_key, identifier(), category = msi::Category::Identifier, length = 72)]
-            service_install: ServiceInstallIdentifier,
-            #[msi_column(category = msi::Category::Formatted, length = 255)]
-            name: Formatted,
-            #[msi_column(category = msi::Category::Formatted, length = 255)]
-            display_name: Option<Formatted>,
-            #[msi_column(category = msi::Category::DoubleInteger)]
-            service_type: ServiceType,
-            #[msi_column(category = msi::Category::DoubleInteger)]
-            start_type: StartType,
-            #[msi_column(category = msi::Category::DoubleInteger)]
-            error_control: ErrorControl,
-            #[msi_column(category = msi::Category::Formatted, length = 255)]
-            load_order_group: Option<Formatted>,
-            #[msi_column(category = msi::Category::Formatted, length = 255)]
-            dependencies: Option<Formatted>,
-            #[msi_column(category = msi::Category::Formatted, length = 255)]
-            start_name: Option<Formatted>,
-            #[msi_column(category = msi::Category::Formatted, length = 255)]
-            password: Option<Formatted>,
-            #[msi_column(category = msi::Category::Formatted, length = 255)]
-            arguments: Option<Formatted>,
-            #[msi_column(identifier(foreign_key = "Component"), category = msi::Category::Identifier, length = 72)]
-            component_: ComponentIdentifier,
-            #[msi_column(localizable, category = msi::Category::Formatted, length = 255)]
-            description: Option<Formatted>,
-        },
+        // /// Lists information used to install a service.
+        // ///
+        // /// [*Reference*](https://learn.microsoft.com/en-us/windows/win32/msi/serviceinstall-table)
+        // ServiceInstall {
+        //     #[msi_column(primary_key, identifier(), category = msi::Category::Identifier, length = 72)]
+        //     service_install: ServiceInstallIdentifier,
+        //     #[msi_column(category = msi::Category::Formatted, length = 255)]
+        //     name: Formatted,
+        //     #[msi_column(category = msi::Category::Formatted, length = 255)]
+        //     display_name: Option<Formatted>,
+        //     #[msi_column(category = msi::Category::DoubleInteger)]
+        //     service_type: ServiceType,
+        //     #[msi_column(category = msi::Category::DoubleInteger)]
+        //     start_type: StartType,
+        //     #[msi_column(category = msi::Category::DoubleInteger)]
+        //     error_control: ErrorControl,
+        //     #[msi_column(category = msi::Category::Formatted, length = 255)]
+        //     load_order_group: Option<Formatted>,
+        //     #[msi_column(category = msi::Category::Formatted, length = 255)]
+        //     dependencies: Option<Formatted>,
+        //     #[msi_column(category = msi::Category::Formatted, length = 255)]
+        //     start_name: Option<Formatted>,
+        //     #[msi_column(category = msi::Category::Formatted, length = 255)]
+        //     password: Option<Formatted>,
+        //     #[msi_column(category = msi::Category::Formatted, length = 255)]
+        //     arguments: Option<Formatted>,
+        //     #[msi_column(identifier(foreign_key = "Component"), category = msi::Category::Identifier, length = 72)]
+        //     component_: ComponentIdentifier,
+        //     #[msi_column(localizable, category = msi::Category::Formatted, length = 255)]
+        //     description: Option<Formatted>,
+        // },
 
         // // TODO: SFPCatalog,
         //

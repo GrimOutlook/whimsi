@@ -12,20 +12,21 @@ use crate::types::column::integer::Integer;
 #[repr(i32)]
 pub enum CustomActionType {
     Basic(BasicCustomActionType),
-    // TODO: Much bigger task than implementing the basic tasks unless I want to just let them
-    // calculate the type number themselves from the docs which I don't really.
+    // TODO: Much bigger task than implementing the basic tasks unless I want
+    // to just let them calculate the type number themselves from the docs
+    // which I don't really.
     Advanced,
     Arbitrary(Integer),
 }
 
-impl msi::ToValue for CustomActionType {
-    fn to_value(&self) -> msi::Value {
+impl Into<msi::Value> for CustomActionType {
+    fn into(self) -> msi::Value {
         let int = match self {
             CustomActionType::Basic(basic_custom_action_type) => {
-                *basic_custom_action_type as i32
+                basic_custom_action_type as i32
             }
             CustomActionType::Advanced => todo!(),
-            CustomActionType::Arbitrary(val) => *val as i32,
+            CustomActionType::Arbitrary(val) => val as i32,
         };
 
         msi::Value::Int(int)
@@ -42,43 +43,45 @@ pub enum BasicCustomActionType {
     ///
     /// Source: Key to Binary table.
     /// Target: DLL entry point.
-    BinaryTableDll = 1,
+    BinaryTableDll       = 1,
 
     /// EXE file stored in a Binary table stream.
     ///
     /// Source: Key to Binary table.
     /// Target:  Command-line string.
-    BinaryTableExe = 2,
+    BinaryTableExe       = 2,
 
     /// JScript file stored in a Binary table stream.
     ///
     /// Source: Key to Binary table.
     /// Target: An optional JScript function that can be called.
-    BinaryTableJScript = 5,
+    BinaryTableJScript   = 5,
 
     /// VBScript file stored in a Binary table stream.
     ///
     /// Source: Key to Binary table.
     /// Target: An optional VBScript function that can be called.
-    BinaryTableVBScript = 6,
+    BinaryTableVBScript  = 6,
 
     /// DLL file that is installed with a product.
     ///
     /// Source: Key to File table.
     /// Target: DLL entry point.
-    InstalledFileDll = 17,
+    InstalledFileDll     = 17,
 
     /// EXE file that is installed with a product.
     ///
     /// Source: Key to File table.
     /// Target: Command-line string.
-    InstalledFileExe = 18,
+    InstalledFileExe     = 18,
 
-    /// Displays a specified error message and returns failure, terminating the installation.
+    /// Displays a specified error message and returns failure, terminating the
+    /// installation.
     ///
     /// Source: Blank
-    /// Target:  	Formatted text string. The literal message or an index into the Error table.
-    CustomError = 19,
+    /// Target:  	Formatted text string. The literal message or an index into
+    /// the Error table.
+    CustomError          = 19,
 
     /// JScript file that is installed with a product.
     ///
@@ -94,49 +97,53 @@ pub enum BasicCustomActionType {
 
     /// EXE file having a path referencing a directory.
     ///
-    /// Source: Key to Directory table. This is the working directory for execution.
-    /// Target: The Target column is formatted and contains the full path and name of the executable file followed by optional arguments.
+    /// Source: Key to Directory table. This is the working directory for
+    /// execution. Target: The Target column is formatted and contains the
+    /// full path and name of the executable file followed by optional
+    /// arguments.
     ExistingExeDirectory = 34,
 
     /// Directory set with formatted text.
     ///
-    /// Source: A key to the Directory table. The designated directory is set by the formatted string in the Target field.
-    /// Target: A formatted text string.
-    SetDirectory = 35,
+    /// Source: A key to the Directory table. The designated directory is set by
+    /// the formatted string in the Target field. Target: A formatted text
+    /// string.
+    SetDirectory         = 35,
 
     ///JScript text stored in this sequence table.
     ///
     /// Source: Null
     /// Target:  	A string of JScript code.
-    RawJScript = 37,
+    RawJScript           = 37,
 
     /// VBScript text stored in this sequence table.
     ///
     /// Source: Null
     /// Target: A string of VBScript code.
-    RawVBScript = 38,
+    RawVBScript          = 38,
 
     /// EXE file having a path specified by a property value.
     ///
     /// Source: Property name or key to Property table.
     /// Target: Command-line string.
-    PropertyExe = 50,
+    PropertyExe          = 50,
 
     /// Property set with formatted text.
     ///
-    /// Source: Property name or key to the Property table. This property is set by the formatted string in the Target field.
-    /// Target: A formatted text string.
-    SetProperty = 51,
+    /// Source: Property name or key to the Property table. This property is set
+    /// by the formatted string in the Target field. Target: A formatted
+    /// text string.
+    SetProperty          = 51,
 
     /// JScript text specified by a property value.
     ///
     /// Source: Property name or key to Property table.
     /// Target: An optional JScript function that can be called.
-    PropertyJScript = 53,
+    PropertyJScript      = 53,
 
     /// VBScript text specified by a property value.
     ///
     /// Source: Property name or key to Property table.
     /// Target: An optional VBScript function that can be called.
-    PropertyVBScript = 54,
+    PropertyVBScript     = 54,
 }

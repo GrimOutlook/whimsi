@@ -2,12 +2,12 @@ use std::fs::File;
 use std::path::PathBuf;
 
 use clap::Parser;
+use msi::Language;
 use tracing::level_filters::LevelFilter;
-use whimsi_lib::builder::MsiBuilder;
+use whimsi_lib::builder::MsiDatabase;
 use whimsi_lib::tables::meta::MetaInformation;
 use whimsi_lib::types::helpers::architecture::MsiArchitecture;
 use whimsi_lib::types::properties::system_folder::SystemFolder;
-use msi::Language;
 
 #[derive(Parser)]
 struct Args {
@@ -24,17 +24,15 @@ fn main() {
         .open(args.output_location)
         .expect("Failed to open file");
 
-    let meta = MetaInformation::new(
-        msi::PackageType::Installer,
-        "PING".to_string(),
-    )
-    .with_author(Some("Manny".to_string()))
-    .with_languages(vec![Language::from_code(1033)])
-    .with_comments(Some("Summary of PING application".to_string()))
-    .with_keywords(vec!["Installer".to_string(), "0.1.0".to_string()])
-    .with_architecture(Some(MsiArchitecture::X64));
+    let meta =
+        MetaInformation::new(msi::PackageType::Installer, "PING".to_string())
+            .with_author(Some("Manny".to_string()))
+            .with_languages(vec![Language::from_code(1033)])
+            .with_comments(Some("Summary of PING application".to_string()))
+            .with_keywords(vec!["Installer".to_string(), "0.1.0".to_string()])
+            .with_architecture(Some(MsiArchitecture::X64));
 
-    let mut builder = MsiBuilder::default();
+    let mut builder = MsiDatabase::default();
     let manny_id = builder
         .add_directory("manny", SystemFolder::ProgramFiles64Folder)
         .expect("Failed to create manny directory");

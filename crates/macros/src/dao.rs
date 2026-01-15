@@ -139,7 +139,7 @@ fn generate_msi_dao_to_row_definition(
         let field_ident = &field.ident;
         fields_to_msi_value_tokens = quote! {
             #fields_to_msi_value_tokens
-            msi::ToValue::to_value(&self.#field_ident),
+            Into::<msi::Value>::into(self.#field_ident),
         }
     }
 

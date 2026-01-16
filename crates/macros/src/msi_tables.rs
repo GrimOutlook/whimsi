@@ -204,18 +204,17 @@ fn gen_tables_for_fields(
     let primary_identifier = primary_keys
         .into_iter()
         .filter(|field| {
-            if let FieldType::Identifier(options) = &field.field_type && options.foreign_key.is_none() {
+            if let FieldType::Identifier(options) = &field.field_type
+                && options.foreign_key.is_none()
+            {
                 true
             } else {
                 false
             }
         })
         .at_most_one()
-        .unwrap_or_else(|_| {
-            panic!(
-                "More than one field marked as primary identifier found in definition. This is not supported."
-            )
-        });
+        .ok()
+        .unwrap_or_default();
 
     let dao_tokens =
         generate_dao_tokens(&target_name, &primary_identifier, &fields);

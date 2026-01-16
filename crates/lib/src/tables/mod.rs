@@ -63,11 +63,6 @@ msi_table_list! {
 
             /// A string GUID unique to this component, version, and language.
             ///
-            /// Note that the letters of these GUIDs must be uppercase.
-            /// Utilities such as GUIDGEN can generate GUIDs containing
-            /// lowercase letters. The lowercase letters must be changed to
-            /// uppercase to make these valid component code GUIDs.
-            ///
             /// If this column is null the installer does not register the
             /// component and the component cannot be removed or repaired by the
             /// installer. This might be intentionally done if the component is
@@ -333,8 +328,21 @@ msi_table_list! {
             value: Property,
         },
 
+        /// The FeatureComponents table defines the relationship between features and components.
+        /// For each feature, this table lists all the components that make up that feature.
+        ///
+        /// There is a maximum limit of 1600 components per feature.
+        FeatureComponents {
+            /// An external key into the first column of the Feature table.
+            #[msi_column(primary_key, kind(identifier(id_length = "long")))]
+            feature_: Identifier,
+
+            /// An external key into the first column of the Component table.
+            #[msi_column(primary_key, kind(identifier(id_length = "long")))]
+            components_: Identifier,
+        },
+
         // TODO:
-        // FeatureComponents,
         // Condition,
         // PublishComponent,
         // File,

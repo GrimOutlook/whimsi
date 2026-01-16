@@ -7,7 +7,7 @@ use tracing::level_filters::LevelFilter;
 use whimsi_lib::database::MsiDatabase;
 use whimsi_lib::tables::meta::MetaInformation;
 use whimsi_lib::types::helpers::architecture::MsiArchitecture;
-use whimsi_lib::types::properties::system_folder::SystemFolder;
+use whimsi_lib::types::properties::SystemFolderProperty;
 
 #[derive(Parser)]
 struct Args {

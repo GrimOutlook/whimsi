@@ -1,9 +1,13 @@
+use std::str::FromStr;
+
+use msi::Category;
 use proc_macro2::TokenStream;
 use quote::quote;
 
 use crate::helper::*;
 use crate::msi_tables::FieldInformation;
 use crate::msi_tables::FieldType;
+use crate::msi_tables::StringSubtype;
 
 pub fn generate_table_tokens(
     target_name: &str,
@@ -61,28 +65,28 @@ fn generate_msi_table_impl(
         };
 
         // If this causes issues it can probably be removed.
-        let foreign_key = if let FieldType::Identifier(options) = &field.field_type &&
-            let Some(foreign_key) = &options.foreign_key {
-            let table = &foreign_key.table;
-            let index = &foreign_key.index;
-            quote!{.foreign_key(#table, #index)}
-        } else {
-            Default::default()
-        };
 
         let finish = match &field.field_type {
-            FieldType::Identifier(options) => {
-                let length = options.id_length as usize;
-                quote!{ .id_string( #length ) }
-            },
-            FieldType::String(options) => {
-                let field_category = &options.category;
-                let string_length = &options.length;
-                let localizable = match &options.localizable {
+            FieldType::String(str_options) => {
+                let (field_category, foreign_key) = if let FieldType::String(str_options) =
+                    &field.field_type && let StringSubtype::Identifier(Some(id_options)) =
+                    &str_options.subtype && let Some(foreign_key) =
+                    &id_options.foreign_key {
+                        let table = &foreign_key.table;
+                        let index = &foreign_key.index;
+                        (quote!{ Category::Identifier }, quote!{.foreign_key(#table, #index)} )
+                    } else {
+                        let msi_category: syn::Ident = syn::parse_str(
+                            &str_options.subtype.to_string()).unwrap();
+                        (quote!{ msi::Category::#msi_category }, Default::default( ))
+                    };
+
+                let string_length = &str_options.length;
+                let localizable = match &str_options.localizable {
                     true => quote!(.localizable()),
                     false => Default::default(),
                 };
-                quote! { #localizable .category( #field_category ).string( #string_length ) }
+                quote! { #localizable #foreign_key .category( #field_category ).string( #string_length ) }
             },
             FieldType::Integer => quote! { .int16() },
             FieldType::DoubleInteger => quote! { .int32() },
@@ -92,7 +96,7 @@ fn generate_msi_table_impl(
         quote! {
             #acc
 
-            msi::Column::build(#column_name) #primary_key #nullable #foreign_key #finish,
+            msi::Column::build(#column_name) #primary_key #nullable #finish,
         }
     });
 

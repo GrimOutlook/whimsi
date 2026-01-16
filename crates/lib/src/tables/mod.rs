@@ -58,7 +58,7 @@ msi_table_list! {
             /// Identifies the component record.
             ///
             /// Primary table key.
-            #[msi_column(primary_key, kind(identifier(id_length = "long")))]
+            #[msi_column(primary_key, kind(string(subtype(identifier()), length = 72)))]
             component: Identifier,
 
             /// A string GUID unique to this component, version, and language.
@@ -70,7 +70,7 @@ msi_table_list! {
             /// that cleans up temporary files or removes an old product. It may
             /// also be useful when copying data files to a user's computer that
             /// do not need to be registered.
-            #[msi_column(kind(string(category = Category::Guid, length = 38)))]
+            #[msi_column(kind(string(subtype(guid), length = 38)))]
             component_id: Option<Guid>,
 
             /// External key of an entry in the Directory table. This is a
@@ -85,7 +85,7 @@ msi_table_list! {
             /// repair.
             ///
             /// External key to column one of the Directory table.
-            #[msi_column(kind(identifier(id_length = "long", foreign_key(table = "Directory"))))]
+            #[msi_column(kind(string(subtype(identifier(foreign_key(table = "Directory"))), length = 72)))]
             directory_: Identifier,
 
             /// Specifies options for remote execution.
@@ -113,7 +113,7 @@ msi_table_list! {
             /// expressions containing references to the installed states of
             /// features and components. For information on the syntax of
             /// conditional statements, see Conditional Statement Syntax.
-            #[msi_column(kind(string(category = Category::Condition, length = 255)))]
+            #[msi_column(kind(string(subtype(condition), length = 255)))]
             condition: Option<Condition>,
 
             /// This value points to a file or folder belonging to the component
@@ -141,7 +141,7 @@ msi_table_list! {
             /// Windows Resource Protection. For more information, see Using
             /// Windows Installer and Windows Resource Protection.
 
-            #[msi_column(kind(identifier(id_length = "long")))]
+            #[msi_column(kind(string(subtype(identifier()), length = 72)))]
             key_path: Option<KeyPath>,
         },
 
@@ -149,7 +149,7 @@ msi_table_list! {
         /// entry in the Feature table based on a conditional expression.
         Condition {
             /// The identifier of the feature that this condition effects.
-            #[msi_column(primary_key, kind(identifier(id_length = "short")))]
+            #[msi_column(primary_key, kind(string(subtype(identifier()), length = 32)))]
             feature_: Identifier,
 
             /// A conditional install level for the feature in the Feature_
@@ -170,7 +170,7 @@ msi_table_list! {
             /// features and components. Any expression in the Condition table
             /// that attempts to check the installed state of a feature or
             /// component always evaluates to false.
-            #[msi_column(kind(string(category = Category::Condition, length = 255)))]
+            #[msi_column(kind(string(subtype(condition), length = 255)))]
             condition: Condition,
         },
 
@@ -196,7 +196,7 @@ msi_table_list! {
             /// value of the Directory column, the Directory column represents a
             /// root target directory. Only one root directory may be specified
             /// in the Directory table.
-            #[msi_column(primary_key, kind(identifier(id_length = "long")))]
+            #[msi_column(primary_key, kind(string(subtype(identifier()), length = 72)))]
             directory: Identifier,
 
             /// This column is a reference to the directory's parent directory.
@@ -208,7 +208,7 @@ msi_table_list! {
             /// directory named PDIR, the parent directory of PDIR is given in
             /// the Directory_Parent column of the row with PDIR in the
             /// Directory column.
-            #[msi_column(kind(identifier(foreign_key(table = "Directory"), id_length = "long")), column_name = "Directory_Parent")]
+            #[msi_column(kind(string(subtype(identifier(foreign_key(table = "Directory"))), length = 72)), column_name = "Directory_Parent")]
             parent_directory: Option<Identifier>,
 
             /// The DefaultDir column contains the directory's name
@@ -229,7 +229,7 @@ msi_table_list! {
             ///
             /// The directory names in this column may be formatted as short
             /// filename | long filename pairs.
-            #[msi_column(kind(string(localizable, category = Category::DefaultDir, length = 255)))]
+            #[msi_column(kind(string(subtype(default_dir), localizable, length = 255)))]
             default_dir: DefaultDir,
         },
 
@@ -237,7 +237,7 @@ msi_table_list! {
             /// The primary key that is used to identify a specific feature
             /// record. The value in this field must not exceed a maximum length
             /// of 38 characters.
-            #[msi_column(primary_key, kind(identifier(id_length = "short")))]
+            #[msi_column(primary_key, kind(string(subtype(identifier()), length = 32)))]
             feature: Identifier,
 
             /// An optional key of a parent record in the same table.
@@ -251,21 +251,21 @@ msi_table_list! {
             /// # Note
             /// The maximum depth of any feature is 16. An error 2701 results if
             /// a feature that exceeds this maximum depth exists.
-            #[msi_column(kind(identifier(id_length = "short")), column_name = "Feature_Parent")]
+            #[msi_column(kind(string(subtype(identifier()), length = 32)), column_name = "Feature_Parent")]
             parent_feature: Option<Identifier>,
 
             /// A short string of text that identifies a feature.
             ///
             /// This string is listed as an item by the SelectionTree Control of
             /// the Selection Dialog.
-            #[msi_column(kind(string(category = Category::Text, length = 64)))]
+            #[msi_column(kind(string(subtype(text), length = 64)))]
             title: Option<Text>,
 
             /// A longer string of text that describes a feature.
             ///
             /// This localizable string is displayed by the Text Control of the
             /// Selection Dialog.
-            #[msi_column(kind(string(category = Category::Text, length = 255)))]
+            #[msi_column(kind(string(subtype(text), length = 255)))]
             description: Option<Text>,
 
             /// The number in this field specifies the order in which the
@@ -299,7 +299,7 @@ msi_table_list! {
             /// Directory Table. You must enter a Public Property in this column
             /// to make the directory configurable, and to display a Browse
             /// button on the Selection Dialog.
-            #[msi_column(kind(identifier(id_length = "long", foreign_key(table = "Directory"))))]
+            #[msi_column(kind(string(subtype(identifier(foreign_key(table = "Directory"))), length = 72)))]
             directory_: Identifier,
 
             /// The remote execution option for features that are not installed and for which no feature state request is made by using any of the following properties.
@@ -350,11 +350,11 @@ msi_table_list! {
         /// There is a maximum limit of 1600 components per feature.
         FeatureComponents {
             /// An external key into the first column of the Feature table.
-            #[msi_column(primary_key, kind(identifier(id_length = "short")))]
+            #[msi_column(primary_key, kind(string(subtype(identifier()), length = 32)))]
             feature_: Identifier,
 
             /// An external key into the first column of the Component table.
-            #[msi_column(primary_key, kind(identifier(id_length = "long")))]
+            #[msi_column(primary_key, kind(string(subtype(identifier()), length = 72)))]
             components_: Identifier,
         },
 
@@ -363,11 +363,11 @@ msi_table_list! {
         /// are not present in the table.
         Property {
             /// The name of a property.
-            #[msi_column(primary_key, kind(identifier(id_length = "long")))]
+            #[msi_column(primary_key, kind(string(subtype(identifier()), length = 72)))]
             property: Identifier,
             /// A localizable string value for the property. This may never be
             /// Null or an empty string.
-            #[msi_column(kind(string(length = 0, category = Category::Text)))]
+            #[msi_column(kind(string(subtype(text), length = 0)))]
             value: Property,
         },
 

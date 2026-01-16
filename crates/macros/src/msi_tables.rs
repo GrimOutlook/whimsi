@@ -57,7 +57,6 @@ pub(crate) struct FieldInformation {
 #[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, darling::FromMeta)]
 pub(crate) enum FieldType {
-    Identifier(IdentifierOptions),
     String(StringOptions),
     Integer,
     DoubleInteger,
@@ -65,41 +64,7 @@ pub(crate) enum FieldType {
 }
 
 #[derive(Clone, Debug, darling::FromMeta)]
-pub(crate) struct IdentifierOptions {
-    // Identifier length presets. I've only seen 2 lengths for Identifier
-    // types so this makes it simpler.
-    pub id_length: IdentifierLength,
-
-    // Denotes if the given identifier is a foreign key into the table and if
-    // it is, what table the key is from.
-    #[darling(default)]
-    pub foreign_key: Option<ForeignKey>,
-}
-
-#[derive(Clone, Debug, darling::FromMeta)]
-pub(crate) struct ForeignKey {
-    pub table: String,
-
-    #[darling(default = default_index)]
-    pub index: syn::Expr,
-}
-
-fn default_index() -> syn::Expr {
-    syn::parse_quote!(0)
-}
-
-#[derive(Clone, Copy, Debug, darling::FromMeta, strum::FromRepr)]
-#[repr(usize)]
-pub(crate) enum IdentifierLength {
-    Short = 32,
-    Long  = 72,
-}
-
-#[derive(Clone, Debug, darling::FromMeta)]
 pub(crate) struct StringOptions {
-    // The kind of string that is to be stored.
-    pub category: syn::Expr,
-
     // The maximum length of the string placed in the column. This is specific
     // to each table so I can't abstract it away. If it is not provided a
     // default based on the provided Category is used.
@@ -110,10 +75,66 @@ pub(crate) struct StringOptions {
     // only optional for categories of Integer and DoubleInteger.
     pub length: syn::Expr,
 
+    // Subtype of the string value
+    pub subtype: StringSubtype,
+
     // Whether or not the given field is localizable as specified in the MSI
     // documentation.
     #[darling(default)]
     pub localizable: bool,
+}
+
+#[derive(Clone, Debug, strum::Display, darling::FromMeta)]
+pub(crate) enum StringSubtype {
+    Identifier(Option<IdentifierOptions>),
+    Text,
+    Uppercase,
+    LowerCase,
+    Integer,
+    DoubleInteger,
+    TimeDate,
+    Property,
+    Filename,
+    WildCardFilename,
+    Path,
+    Paths,
+    AnyPath,
+    DefaultDir,
+    RegPath,
+    Formatted,
+    FormattedSddlText,
+    Template,
+    Condition,
+    Guid,
+    Version,
+    Language,
+    Binary,
+    CustomSource,
+    Cabinet,
+    Shortcut,
+}
+
+#[derive(Clone, Debug, Default, darling::FromMeta)]
+#[darling(default)]
+pub(crate) struct IdentifierOptions {
+    // Denotes if the given identifier is a foreign key into the table and if
+    // it is, what table the key is from.
+    #[darling(default)]
+    pub foreign_key: Option<ForeignKey>,
+}
+
+#[derive(Clone, Debug, darling::FromMeta)]
+pub(crate) struct ForeignKey {
+    // Table that the foreign key references
+    pub table: String,
+
+    // Column index of the table that the foreign key references.
+    #[darling(default = default_index)]
+    pub index: syn::Expr,
+}
+
+fn default_index() -> syn::Expr {
+    syn::parse_quote!(0)
 }
 
 pub fn gen_tables_impl(input: TokenStream) -> TokenStream {
@@ -204,8 +225,10 @@ fn gen_tables_for_fields(
     let primary_identifier = primary_keys
         .into_iter()
         .filter(|field| {
-            if let FieldType::Identifier(options) = &field.field_type
-                && options.foreign_key.is_none()
+            if let FieldType::String(str_options) = &field.field_type
+                && let StringSubtype::Identifier(Some(ref id_options)) =
+                    str_options.subtype
+                && id_options.foreign_key.is_none()
             {
                 true
             } else {

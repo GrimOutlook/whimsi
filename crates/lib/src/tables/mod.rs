@@ -145,6 +145,35 @@ msi_table_list! {
             key_path: Option<KeyPath>,
         },
 
+        /// The Condition table can be used to modify the selection state of any
+        /// entry in the Feature table based on a conditional expression.
+        Condition {
+            /// The identifier of the feature that this condition effects.
+            #[msi_column(primary_key, kind(identifier(id_length = "short")))]
+            feature_: Identifier,
+
+            /// A conditional install level for the feature in the Feature_
+            /// column of this table. The installer sets the install level of
+            /// this feature to the level specified in this column if the
+            /// expression in the Condition column evaluates to TRUE.
+            #[msi_column(primary_key, kind(integer))]
+            level: Integer,
+
+            /// If this conditional expression evaluates to TRUE, then the Level
+            /// column in the Feature table is set to the conditional install
+            /// level.
+            ///
+            /// The expression in the Condition column should not contain
+            /// reference to the installed state of any feature or component.
+            /// This is because the expressions in the Condition column are
+            /// evaluated before the installer evaluates the installed states of
+            /// features and components. Any expression in the Condition table
+            /// that attempts to check the installed state of a feature or
+            /// component always evaluates to false.
+            #[msi_column(kind(string(category = Category::Condition, length = 255)))]
+            condition: Condition,
+        },
+
         /// The Directory table specifies the directory layout for the product.
         /// Each row of the table indicates a directory both at the source and
         /// the target.
@@ -315,6 +344,20 @@ msi_table_list! {
             attributes: FeatureAttributes,
         },
 
+        /// The FeatureComponents table defines the relationship between features and components.
+        /// For each feature, this table lists all the components that make up that feature.
+        ///
+        /// There is a maximum limit of 1600 components per feature.
+        FeatureComponents {
+            /// An external key into the first column of the Feature table.
+            #[msi_column(primary_key, kind(identifier(id_length = "short")))]
+            feature_: Identifier,
+
+            /// An external key into the first column of the Component table.
+            #[msi_column(primary_key, kind(identifier(id_length = "long")))]
+            components_: Identifier,
+        },
+
         /// The Property table contains the property names and values for all
         /// defined properties in the installation. Properties with Null values
         /// are not present in the table.
@@ -328,22 +371,7 @@ msi_table_list! {
             value: Property,
         },
 
-        /// The FeatureComponents table defines the relationship between features and components.
-        /// For each feature, this table lists all the components that make up that feature.
-        ///
-        /// There is a maximum limit of 1600 components per feature.
-        FeatureComponents {
-            /// An external key into the first column of the Feature table.
-            #[msi_column(primary_key, kind(identifier(id_length = "long")))]
-            feature_: Identifier,
-
-            /// An external key into the first column of the Component table.
-            #[msi_column(primary_key, kind(identifier(id_length = "long")))]
-            components_: Identifier,
-        },
-
         // TODO:
-        // Condition,
         // PublishComponent,
         // File,
         // RemoveFile,

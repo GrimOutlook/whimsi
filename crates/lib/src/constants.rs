@@ -1,4 +1,6 @@
-use crate::types::standard_action::{AdvtAction, StandardAction};
+use crate::types::properties::ProductInformationProperty;
+use crate::types::standard_action::AdvtAction;
+use crate::types::standard_action::StandardAction;
 
 // -- Table/Column Specific Lengths -__----------------------------------------
 // I have no idea why the data type doesn't govern the size of the column but
@@ -94,4 +96,12 @@ pub const INSTALL_UI_SEQUENCE_DEFAULT_ACTIONS: &[StandardAction] = &[
     StandardAction::FileCost,
     StandardAction::CostFinalize,
     StandardAction::ExecuteAction,
+];
+
+pub const REQUIRED_PROPERTIES: &[ProductInformationProperty] = &[
+    ProductInformationProperty::ProductCode,
+    ProductInformationProperty::ProductLanguage,
+    ProductInformationProperty::Manufacturer,
+    ProductInformationProperty::ProductVersion,
+    ProductInformationProperty::ProductName,
 ];

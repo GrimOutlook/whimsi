@@ -14,7 +14,7 @@ use thiserror::Error;
 use super::ColumnValue;
 use crate::types::helpers::invalid_char::InvalidChar;
 use crate::types::helpers::to_msi_value::IntoMsiValue;
-use crate::types::properties::system_folder::SystemFolder;
+use crate::types::properties::SystemFolderProperty;
 
 static INVALID_FIRST_CHARACTER: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^[^A-Za-z_]").unwrap());
@@ -38,8 +38,8 @@ static INVALID_CHARACTER: Lazy<Regex> =
 pub struct Identifier(String);
 
 impl Identifier {
-    pub fn as_system_folder(&self) -> Option<SystemFolder> {
-        SystemFolder::iter().find(|f| f == self)
+    pub fn as_system_folder(&self) -> Option<SystemFolderProperty> {
+        SystemFolderProperty::iter().find(|f| f == self)
     }
 }
 
@@ -85,8 +85,8 @@ impl FromStr for Identifier {
     }
 }
 
-impl From<&SystemFolder> for Identifier {
-    fn from(value: &SystemFolder) -> Self {
+impl From<&SystemFolderProperty> for Identifier {
+    fn from(value: &SystemFolderProperty) -> Self {
         value
             .to_string()
             .parse()
@@ -97,8 +97,8 @@ impl From<&SystemFolder> for Identifier {
     }
 }
 
-impl From<SystemFolder> for Identifier {
-    fn from(value: SystemFolder) -> Self {
+impl From<SystemFolderProperty> for Identifier {
+    fn from(value: SystemFolderProperty) -> Self {
         (&value).into()
     }
 }

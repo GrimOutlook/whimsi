@@ -39,7 +39,7 @@ use crate::types::helpers::architecture::MsiArchitecture;
 // use crate::types::helpers::cabinets::Cabinets;
 use crate::types::helpers::page_count::PageCount;
 use crate::types::helpers::security_flag::DocSecurity;
-use crate::types::properties::system_folder::SystemFolder;
+use crate::types::properties::SystemFolderProperty;
 use crate::types::standard_action::StandardAction;
 
 /// An in-memory representation of the final MSI to be created.
@@ -55,8 +55,8 @@ pub struct MsiDatabase {
     #[getset(set = "pub")]
     meta: Option<MetaInformation>,
 
-    /// A list of all identifiers used in this MSI. Used to ensure no duplicate
-    /// Identifiers are created.
+    /// A list of all identifiers used in this MSI. Used to ensure no
+    /// duplicate Identifiers are created.
     identifiers: Rc<RefCell<Vec<Identifier>>>,
 
     /// List of all the tables managed by this builder
@@ -191,7 +191,9 @@ pub enum MsiBuilderError {
         "Directory with identifier {identifier} not found in Directory table"
     )]
     DirectoryNotFound { identifier: Identifier },
-    #[error("Directory with ID {identifier} already exists in Directory Table")]
+    #[error(
+        "Directory with ID {identifier} already exists in Directory Table"
+    )]
     DirectoryIdentifierConflict { identifier: Identifier },
     #[error(
         "Identifier {identifier} already exists for MSI. Identifiers must be unique."

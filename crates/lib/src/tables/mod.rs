@@ -29,7 +29,6 @@ use crate::types::helpers::action_identifier::ActionIdentifier;
 use crate::types::helpers::attributes::component::ComponentAttributes;
 use crate::types::helpers::attributes::feature::FeatureAttributes;
 use crate::types::helpers::attributes::file::FileAttributes;
-// use crate::types::helpers::cabinets::CabinetIdentifier;
 use crate::types::helpers::custom_action_type::CustomActionType;
 use crate::types::helpers::date::Date;
 use crate::types::helpers::disk_id::DiskId;
@@ -52,65 +51,6 @@ use crate::types::standard_action::StandardAction;
 
 msi_table_list! {
     enum SupportedTable {
-        /// The Directory table specifies the directory layout for the product.
-        /// Each row of the table indicates a directory both at the source and
-        /// the target.
-        ///
-        /// [_Reference_](https://learn.microsoft.com/en-us/windows/win32/msi/directory-table)
-        Directory {
-
-            /// The Directory column contains a unique identifier for a
-            /// directory or directory path. This column can contain the name of
-            /// a property that is set to the full path of a target directory.
-            /// If this column contains a property, the target directory takes
-            /// the name specified in the DefaultDir column and takes the parent
-            /// directory specified in the Directory_Parent column.
-            ///
-            /// The source directory always takes the name specified in the
-            /// DefaultDir column and takes the parent directory specified in
-            /// the Directory_Parent column.
-            ///
-            /// If the Directory_Parent column is either null or equal to the
-            /// value of the Directory column, the Directory column represents a
-            /// root target directory. Only one root directory may be specified
-            /// in the Directory table.
-            #[msi_column(primary_key, kind(identifier(id_length = "long")))]
-            directory: Identifier,
-
-            /// This column is a reference to the directory's parent directory.
-            /// A record that has a Directory_Parent column equal to null or
-            /// equal to the Directory column represents a root directory. The
-            /// full path of the parent directory is resolved by reference in
-            /// the Directory_Parent column is an external key into the
-            /// Directory column. For example, if a folder has a parent
-            /// directory named PDIR, the parent directory of PDIR is given in
-            /// the Directory_Parent column of the row with PDIR in the
-            /// Directory column.
-            #[msi_column(kind(identifier(foreign_key(table = "Directory"), id_length = "long")), column_name = "Directory_Parent")]
-            parent_directory: Option<Identifier>,
-
-            /// The DefaultDir column contains the directory's name
-            /// (localizable) under the parent directory. By default, this is
-            /// the name of both the target and source directories. To specify
-            /// different source and target directory names, separate the target
-            /// and source names with a colon as follows:
-            /// [targetname]:[sourcename].
-            ///
-            /// If the value of the Directory_Parent column is null or is equal
-            /// to the Directory column, the DefaultDir column specifies the
-            /// name of a root source directory.
-            ///
-            /// For a non-root source directory, a period (.) entered in the
-            /// DefaultDir column for the source directory name or the target
-            /// directory name indicates the directory should be located in its
-            /// parent directory without a subdirectory.
-            ///
-            /// The directory names in this column may be formatted as short
-            /// filename | long filename pairs.
-            #[msi_column(kind(string(localizable, category = Category::DefaultDir, length = 255)))]
-            default_dir: DefaultDir,
-        },
-
         /// The Component table lists components
         ///
         /// [_Reference_](https://learn.microsoft.com/en-us/windows/win32/msi/component-table)
@@ -208,6 +148,65 @@ msi_table_list! {
 
             #[msi_column(kind(identifier(id_length = "long")))]
             key_path: Option<KeyPath>,
+        },
+
+        /// The Directory table specifies the directory layout for the product.
+        /// Each row of the table indicates a directory both at the source and
+        /// the target.
+        ///
+        /// [_Reference_](https://learn.microsoft.com/en-us/windows/win32/msi/directory-table)
+        Directory {
+
+            /// The Directory column contains a unique identifier for a
+            /// directory or directory path. This column can contain the name of
+            /// a property that is set to the full path of a target directory.
+            /// If this column contains a property, the target directory takes
+            /// the name specified in the DefaultDir column and takes the parent
+            /// directory specified in the Directory_Parent column.
+            ///
+            /// The source directory always takes the name specified in the
+            /// DefaultDir column and takes the parent directory specified in
+            /// the Directory_Parent column.
+            ///
+            /// If the Directory_Parent column is either null or equal to the
+            /// value of the Directory column, the Directory column represents a
+            /// root target directory. Only one root directory may be specified
+            /// in the Directory table.
+            #[msi_column(primary_key, kind(identifier(id_length = "long")))]
+            directory: Identifier,
+
+            /// This column is a reference to the directory's parent directory.
+            /// A record that has a Directory_Parent column equal to null or
+            /// equal to the Directory column represents a root directory. The
+            /// full path of the parent directory is resolved by reference in
+            /// the Directory_Parent column is an external key into the
+            /// Directory column. For example, if a folder has a parent
+            /// directory named PDIR, the parent directory of PDIR is given in
+            /// the Directory_Parent column of the row with PDIR in the
+            /// Directory column.
+            #[msi_column(kind(identifier(foreign_key(table = "Directory"), id_length = "long")), column_name = "Directory_Parent")]
+            parent_directory: Option<Identifier>,
+
+            /// The DefaultDir column contains the directory's name
+            /// (localizable) under the parent directory. By default, this is
+            /// the name of both the target and source directories. To specify
+            /// different source and target directory names, separate the target
+            /// and source names with a colon as follows:
+            /// [targetname]:[sourcename].
+            ///
+            /// If the value of the Directory_Parent column is null or is equal
+            /// to the Directory column, the DefaultDir column specifies the
+            /// name of a root source directory.
+            ///
+            /// For a non-root source directory, a period (.) entered in the
+            /// DefaultDir column for the source directory name or the target
+            /// directory name indicates the directory should be located in its
+            /// parent directory without a subdirectory.
+            ///
+            /// The directory names in this column may be formatted as short
+            /// filename | long filename pairs.
+            #[msi_column(kind(string(localizable, category = Category::DefaultDir, length = 255)))]
+            default_dir: DefaultDir,
         },
 
         Feature {
@@ -320,5 +319,44 @@ msi_table_list! {
             #[msi_column(kind(integer))]
             attributes: FeatureAttributes,
         },
+
+        /// The Property table contains the property names and values for all
+        /// defined properties in the installation. Properties with Null values
+        /// are not present in the table.
+        Property {
+            /// The name of a property.
+            #[msi_column(primary_key, kind(identifier(id_length = "long")))]
+            property: Identifier,
+            /// A localizable string value for the property. This may never be
+            /// Null or an empty string.
+            #[msi_column(kind(string(length = 0, category = Category::Text)))]
+            value: Property,
+        },
+
+        // TODO:
+        // FeatureComponents,
+        // Condition,
+        // PublishComponent,
+        // File,
+        // RemoveFile,
+        // MoveFile,
+        // DuplicateFile,
+        // CreateFolder,
+        // Media,
+        // Environment,
+        // Icon,
+        // Binary,
+        // MsiFileHash,
+        // Shortcut,
+        // Registry,
+        // RemoveRegistry,
+        // Error,
+        // InstallUISequence,
+        // InstallExecuteSequence,
+        // AdminUISequence,
+        // AdminExecuteSequence,
+        // AdvtExecuteSequence,
+        // CustomAction,
+        // LaunchCondition,
     }
 }
